@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "class_sections")
@@ -27,6 +28,7 @@ public class ClassSection {
     @Column(nullable = false)
     private Boolean active = true;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "classSection", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Student> students = new HashSet<>();
 

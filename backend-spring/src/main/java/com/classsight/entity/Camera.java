@@ -3,6 +3,7 @@ package com.classsight.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "cameras")
@@ -44,7 +45,9 @@ public class Camera {
     public enum CameraStatus {
         ACTIVE,
         INACTIVE,
-        MAINTENANCE
+        MAINTENANCE,
+        ONLINE,
+        OFFLINE
     }
 
     // Getters and Setters

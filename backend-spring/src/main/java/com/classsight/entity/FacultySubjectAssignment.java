@@ -2,6 +2,7 @@ package com.classsight.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "faculty_subject_assignments")
@@ -13,14 +14,17 @@ public class FacultySubjectAssignment {
 
     @ManyToOne
     @JoinColumn(name = "faculty_id", nullable = false)
+    @JsonIgnoreProperties({"password", "roles", "createdAt", "updatedAt", "active"})
     private User faculty;
 
     @ManyToOne
     @JoinColumn(name = "subject_id", nullable = false)
+    @JsonIgnoreProperties({"createdAt", "updatedAt"})
     private Subject subject;
 
     @ManyToOne
     @JoinColumn(name = "class_section_id", nullable = false)
+    @JsonIgnoreProperties({"createdAt", "updatedAt", "students"})
     private ClassSection classSection;
 
     @Column(nullable = false)
