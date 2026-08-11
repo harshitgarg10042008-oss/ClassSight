@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Capture Test</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 20px; }
+        video { border: 2px solid #ccc; background: #000; width: 640px; height: 480px; margin-bottom: 10px; }
+        canvas { display: none; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+        #log { margin-top: 20px; width: 80%; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; min-height: 100px; white-space: pre-wrap; font-family: monospace; }
+        .controls { display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+
+    <h2>Camera Access & Upload Test</h2>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+    
+    <div class="controls">
+        <button id="startBtn">1. Start Camera</button>
+        <button id="captureBtn" disabled>2. Capture & Upload (Multipart)</button>
+        <button id="captureBase64Btn" disabled>2b. Capture & Upload (Base64)</button>
+    </div>
+
+    <div id="log">Logs will appear here...</div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startBtn = document.getElementById('startBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const captureBase64Btn = document.getElementById('captureBase64Btn');
+        const logEl = document.getElementById('log');
+
+        const BACKEND_URL = 'http://localhost:8080/capture'; 
+
+        function log(msg) {
+            console.log(msg);
+            logEl.textContent += '\n' + new Date().toLocaleTimeString() + ': ' + msg;
+        }
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                log("Requesting camera access...");
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+                log("Camera access granted. Stream started.");
+                captureBtn.disabled = false;
+                captureBase64Btn.disabled = false;
+            } catch (err) {
+                log("Error accessing camera: " + err.name + " - " + err.message);
+                log("Check permissions or if you are on HTTP (needs HTTPS or localhost).");
+            }
+        });
+
+        captureBtn.addEventListener('click', () => {
+            log("Capturing image (Multipart)...");
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(async (blob) => {
+                log("Image converted to blob. Uploading to " + BACKEND_URL + "...");
+                const formData = new FormData();
+                formData.append('image', blob, 'capture.jpg');
+
+                try {
+                    const response = await fetch(BACKEND_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        log("Upload SUCCESS: " + JSON.stringify(result));
+                    } else {
+                        log("Upload FAILED: " + JSON.stringify(result));
+                    }
+                } catch (error) {
+                    log("Upload ERROR: " + error.message);
+                }
+            }, 'image/jpeg', 0.9);
+        });
+
+        captureBase64Btn.addEventListener('click', () => {
+            log("Capturing image (Base64)...");
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const base64Data = canvas.toDataURL('image/jpeg', 0.9);
+            log("Image converted to base64. Uploading...");
+            
+            fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Data })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    log("Upload SUCCESS: " + JSON.stringify(result));
+                } else {
+                    log("Upload FAILED: " + JSON.stringify(result));
+                }
+            })
+            .catch(err => log("Upload ERROR: " + err.message));
+        });
+    </script>
+</body>
+</html>
