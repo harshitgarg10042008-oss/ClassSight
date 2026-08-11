@@ -21,6 +21,9 @@ spring:
 jwt:
   secret: ${JWT_SECRET:your_jwt_secret_here_change_in_production}
 
+face-service:
+  url: ${FACE_SERVICE_URL:http://localhost:8000}
+
 logging:
   level:
     com.classsight: DEBUG

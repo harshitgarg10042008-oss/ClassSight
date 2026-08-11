@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "students")
@@ -30,6 +31,9 @@ public class Student {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    @Column(name = "face_embedding")
+    private List<Double> faceEmbedding;
 
     @ManyToOne
     @JoinColumn(name = "class_section_id", nullable = false)
@@ -99,6 +103,14 @@ public class Student {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public List<Double> getFaceEmbedding() {
+        return faceEmbedding;
+    }
+
+    public void setFaceEmbedding(List<Double> faceEmbedding) {
+        this.faceEmbedding = faceEmbedding;
     }
 
     public ClassSection getClassSection() {

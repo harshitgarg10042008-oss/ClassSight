@@ -10,6 +10,7 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=docker
       - POSTGRES_HOST=postgres
+      - FACE_SERVICE_URL=http://face-service-fastapi:8000
     depends_on:
       postgres:
         condition: service_healthy

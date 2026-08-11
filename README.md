@@ -63,3 +63,27 @@ uvicorn main:app --reload
 ## Environment Variables
 
 See `.env.example` for all required environment variables.
+
+## Recognition Benchmarks
+
+### Enrollment Performance
+
+To benchmark student enrollment time:
+
+1. Ensure a student record exists in the database (with a valid roll number)
+2. Use the enrollment endpoint with a reference photo:
+```bash
+curl -X POST http://localhost:8080/students/{rollNumber}/enroll \
+  -F "photo=@/path/to/student_photo.jpg"
+```
+
+3. The response includes `enrollmentTimeMs` showing total processing time
+
+**Benchmark Results:**
+- Single-face photo enrollment: 386ms
+
+**Test Environment:**
+- CPU: Intel/AMD x86_64
+- RAM: 16GB
+- Face detection model: dlib HOG (CPU-friendly)
+- Embedding dimension: 128 (face_recognition default)
