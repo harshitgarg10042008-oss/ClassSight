@@ -2,6 +2,7 @@ package com.classsight.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 logger.error("Unable to get JWT Token");
             } catch (Exception e) {
                 logger.error("JWT Token has expired");
+            }
+        }
+
+        // Fallback: read JWT from HttpOnly cookie (used by browser Thymeleaf pages)
+        if (jwtToken == null && request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("jwt".equals(cookie.getName())) {
+                    jwtToken = cookie.getValue();
+                    try {
+                        username = jwtUtil.getUsernameFromToken(jwtToken);
+                    } catch (Exception e) {
+                        logger.error("Invalid JWT in cookie");
+                        jwtToken = null;
+                    }
+                    break;
+                }
             }
         }
 

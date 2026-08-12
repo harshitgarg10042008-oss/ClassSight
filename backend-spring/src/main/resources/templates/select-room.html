@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Room - ClassSight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .room-card, .camera-card { transition: all 0.2s ease; cursor: pointer; }
+        .room-card:hover, .camera-card:hover { transform: translateY(-2px); }
+        .selected-card { border-color: #3b82f6 !important; background-color: rgba(59, 130, 246, 0.1) !important; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="max-w-4xl mx-auto space-y-8">
+        
+        <header class="flex justify-between items-center glass-panel p-4 rounded-xl">
+            <h1 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">ClassSight</h1>
+            <button onclick="logout()" class="text-slate-400 hover:text-white transition-colors text-sm font-medium">Sign Out</button>
+        </header>
+
+        <main class="space-y-8">
+            <div>
+                <h2 class="text-xl font-semibold mb-4 text-slate-200">1. Select a Room</h2>
+                <div id="rooms-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Rooms loaded here -->
+                    <div class="animate-pulse flex space-x-4 glass-panel p-4 rounded-xl">
+                        <div class="flex-1 space-y-4 py-1">
+                            <div class="h-4 bg-slate-700 rounded w-3/4"></div>
+                            <div class="space-y-2">
+                                <div class="h-4 bg-slate-700 rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cameras-section" class="hidden">
+                <h2 class="text-xl font-semibold mb-4 text-slate-200">2. Select a Camera</h2>
+                <div id="cameras-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Cameras loaded here -->
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4 border-t border-slate-700/50">
+                <button id="nextBtn" disabled onclick="goNext()"
+                        class="py-3 px-8 bg-gradient-to-r from-blue-500 to-emerald-500 hover:from-blue-600 hover:to-emerald-600 text-white font-semibold rounded-lg shadow-lg transform transition-all hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0">
+                    Continue to Subject Selection &rarr;
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let allRooms = [];
+        let allCameras = [];
+        let selectedRoomId = null;
+        let selectedCameraId = null;
+
+        async function init() {
+            try {
+                const [roomsRes, camerasRes] = await Promise.all([
+                    fetch('/api/rooms'),
+                    fetch('/api/cameras')
+                ]);
+
+                if (roomsRes.status === 401 || roomsRes.status === 403) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                allRooms = await roomsRes.json();
+                allCameras = await camerasRes.json();
+
+                renderRooms();
+            } catch (err) {
+                console.error("Failed to load data", err);
+                document.getElementById('rooms-container').innerHTML = 
+                    `<div class="text-red-400 p-4 glass-panel rounded-xl">Failed to load rooms. Please try again.</div>`;
+            }
+        }
+
+        function renderRooms() {
+            const container = document.getElementById('rooms-container');
+            if (allRooms.length === 0) {
+                container.innerHTML = `<div class="text-slate-400 italic p-4 glass-panel rounded-xl">No active rooms available.</div>`;
+                return;
+            }
+
+            container.innerHTML = allRooms.map(room => `
+                <div onclick="selectRoom(${room.id})" id="room-${room.id}" 
+                     class="room-card glass-panel p-5 rounded-xl border border-slate-700 hover:border-slate-500">
+                    <h3 class="font-semibold text-lg text-white">${room.name}</h3>
+                    <p class="text-sm text-slate-400 mt-1">${room.building || ''} ${room.floor ? '• Floor ' + room.floor : ''}</p>
+                </div>
+            `).join('');
+        }
+
+        window.selectRoom = function(roomId) {
+            // Update UI selection
+            if (selectedRoomId) {
+                document.getElementById(`room-${selectedRoomId}`).classList.remove('selected-card');
+            }
+            selectedRoomId = roomId;
+            document.getElementById(`room-${roomId}`).classList.add('selected-card');
+
+            // Reset camera selection
+            selectedCameraId = null;
+            updateNextBtn();
+
+            // Show relevant cameras
+            const roomCameras = allCameras.filter(c => c.room && c.room.id === roomId);
+            const camerasContainer = document.getElementById('cameras-container');
+            document.getElementById('cameras-section').classList.remove('hidden');
+
+            if (roomCameras.length === 0) {
+                camerasContainer.innerHTML = `<div class="col-span-full text-slate-400 italic p-4 glass-panel rounded-xl">No cameras configured for this room.</div>`;
+                return;
+            }
+
+            camerasContainer.innerHTML = roomCameras.map(cam => {
+                const isOnline = cam.status === 'ONLINE';
+                const statusColor = isOnline ? 'text-emerald-400' : 'text-red-400';
+                const statusBg = isOnline ? 'bg-emerald-400/10 border-emerald-400/20' : 'bg-red-400/10 border-red-400/20';
+                
+                return `
+                    <div onclick="${isOnline ? `selectCamera(${cam.id})` : ''}" id="camera-${cam.id}" 
+                         class="${isOnline ? 'camera-card' : 'opacity-60 cursor-not-allowed'} glass-panel p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                        <div>
+                            <h4 class="font-medium text-white">${cam.name}</h4>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBg} ${statusColor}">
+                            ${cam.status}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.selectCamera = function(cameraId) {
+            if (selectedCameraId) {
+                document.getElementById(`camera-${selectedCameraId}`).classList.remove('selected-card');
+            }
+            selectedCameraId = cameraId;
+            document.getElementById(`camera-${cameraId}`).classList.add('selected-card');
+            updateNextBtn();
+        };
+
+        function updateNextBtn() {
+            document.getElementById('nextBtn').disabled = !selectedRoomId || !selectedCameraId;
+        }
+
+        window.goNext = function() {
+            if (selectedRoomId && selectedCameraId) {
+                // Store selections in sessionStorage to pass to next pages
+                sessionStorage.setItem('selectedRoomId', selectedRoomId);
+                sessionStorage.setItem('selectedCameraId', selectedCameraId);
+                window.location.href = '/select-subject';
+            }
+        };
+
+        window.logout = async function() {
+            await fetch('/auth/logout');
+            window.location.href = '/login';
+        };
+
+        // Run init
+        init();
+    </script>
+</body>
+</html>

@@ -6,6 +6,8 @@ import com.classsight.dto.UserResponse;
 import com.classsight.entity.User;
 import com.classsight.repository.UserRepository;
 import com.classsight.security.JwtUtil;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +31,7 @@ public class AuthController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -45,7 +47,14 @@ public class AuthController {
                     .orElseGet(() -> userRepository.findByEmail(userDetails.getUsername())
                             .orElseThrow(() -> new RuntimeException("User not found")));
 
-            LoginResponse response = new LoginResponse(
+            // Set HttpOnly cookie for browser-based flows
+            Cookie jwtCookie = new Cookie("jwt", token);
+            jwtCookie.setHttpOnly(true);
+            jwtCookie.setPath("/");
+            jwtCookie.setMaxAge(5 * 60 * 60); // 5 hours, matches JWT validity
+            response.addCookie(jwtCookie);
+
+            LoginResponse loginResponse = new LoginResponse(
                     token,
                     user.getId(),
                     user.getUsername(),
@@ -54,10 +63,20 @@ public class AuthController {
                     user.getRole().name()
             );
 
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(loginResponse);
         } catch (Exception e) {
             return ResponseEntity.status(401).body("Invalid username or password");
         }
+    }
+
+    @GetMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        Cookie jwtCookie = new Cookie("jwt", "");
+        jwtCookie.setHttpOnly(true);
+        jwtCookie.setPath("/");
+        jwtCookie.setMaxAge(0); // Immediately expire
+        response.addCookie(jwtCookie);
+        return ResponseEntity.ok("Logged out");
     }
 
     @GetMapping("/me")
