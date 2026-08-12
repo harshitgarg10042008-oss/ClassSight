@@ -13,7 +13,7 @@ public class AttendanceSession {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "faculty_id", nullable = false)
     private User faculty;
 
@@ -64,9 +64,12 @@ public class AttendanceSession {
     }
 
     public enum SessionStatus {
-        SCHEDULED,
-        IN_PROGRESS,
-        COMPLETED,
+        OPEN,
+        CAPTURED,
+        PROCESSING,
+        REVIEW_REQUIRED,
+        FINALIZED,
+        FAILED,
         CANCELLED
     }
 

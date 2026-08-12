@@ -164,7 +164,9 @@
             canvas.toBlob(async (blob) => {
                 const formData = new FormData();
                 formData.append('image', blob, 'capture.jpg');
-                // Could also append roomId, cameraId, assignmentId here for the backend context
+                formData.append('roomId', roomId);
+                formData.append('cameraId', cameraId);
+                formData.append('assignmentId', assignmentId);
 
                 try {
                     const response = await fetch('/capture', {
@@ -173,6 +175,11 @@
                     });
                     
                     if (response.ok) {
+                        const result = await response.json();
+                        console.log('Capture result:', result);
+                        if (result.sessionId) {
+                            document.getElementById('info-assignment').textContent = `Session ID: ${result.sessionId} (${result.sessionStatus})`;
+                        }
                         resultOverlay.classList.remove('hidden');
                     } else {
                         alert("Capture failed on server side.");
