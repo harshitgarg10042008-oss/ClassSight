@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Analytics - ClassSight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 text-slate-100 p-6">
+<div class="max-w-6xl mx-auto space-y-6">
+    <header class="rounded-xl bg-slate-800 p-5 flex items-center justify-between">
+        <div>
+            <p class="text-sm text-slate-400">Finalized attendance analytics</p>
+            <h1 class="text-2xl font-bold">Attendance report</h1>
+        </div>
+        <a href="/capture" class="text-slate-300 hover:text-white">Back to capture</a>
+    </header>
+    <div class="rounded-xl bg-slate-800 p-5 grid md:grid-cols-4 gap-3">
+        <input id="subject" class="rounded bg-slate-700 p-3" placeholder="Subject ID" type="number">
+        <input id="section" class="rounded bg-slate-700 p-3" placeholder="Class section ID" type="number">
+        <input id="from" class="rounded bg-slate-700 p-3" type="date">
+        <input id="to" class="rounded bg-slate-700 p-3" type="date">
+        <button id="load" type="button" class="rounded bg-emerald-600 p-3 font-semibold">Load analytics</button>
+    </div>
+    <div id="message" class="hidden rounded p-4"></div>
+    <section id="summary" class="hidden rounded-xl bg-slate-800 p-5 space-y-3">
+        <p id="meta" class="text-slate-300"></p>
+        <p id="threshold" class="text-amber-300"></p>
+        <a id="pdf" class="inline-block rounded bg-indigo-600 px-4 py-2" target="_blank">Download PDF report</a>
+        <table class="w-full text-left"><thead><tr class="border-b border-slate-600"><th class="p-2">Student</th><th>Roll</th><th>Present</th><th>Sessions</th><th>Attendance</th><th>Defaulter</th></tr></thead><tbody id="rows"></tbody></table>
+    </section>
+</div>
+<script>
+const byId = id => document.getElementById(id);
+function show(text, error = false) {
+  const node = byId('message');
+  node.textContent = text;
+  node.className = `rounded p-4 ${error ? 'bg-red-500/20 text-red-200' : 'bg-emerald-500/20 text-emerald-200'}`;
+  node.classList.remove('hidden');
+}
+byId('load').addEventListener('click', async () => {
+  const subjectId = byId('subject').value;
+  const classSectionId = byId('section').value;
+  if (!subjectId || !classSectionId) return show('Subject ID and class section ID are required.', true);
+  const params = new URLSearchParams({ subjectId, classSectionId });
+  if (byId('from').value) params.set('from', byId('from').value);
+  if (byId('to').value) params.set('to', byId('to').value);
+  try {
+    const response = await fetch(`/api/analytics/attendance?${params}`);
+    if (response.status === 403) throw new Error('You are not assigned to this subject and class section.');
+    if (!response.ok) throw new Error(`Analytics failed (${response.status})`);
+    const data = await response.json();
+    byId('meta').textContent = `Finalized sessions: ${data.finalizedSessionCount} · ${data.from} to ${data.to}`;
+    byId('threshold').textContent = `Defaulter threshold: ${data.defaulterThreshold}%`;
+    byId('pdf').href = `/api/analytics/attendance/report.pdf?${params}`;
+    byId('rows').innerHTML = data.students.map(student => `<tr class="border-b border-slate-700"><td class="p-2">${student.studentName}</td><td>${student.rollNumber}</td><td>${student.presentCount}</td><td>${student.sessionCount}</td><td>${student.attendancePercentage}%</td><td>${data.defaulters.some(item => item.studentId === student.studentId) ? 'YES' : 'NO'}</td></tr>`).join('');
+    byId('summary').classList.remove('hidden');
+  } catch (error) { show(error.message, true); }
+});
+</script>
+</body>
+</html>

@@ -46,6 +46,21 @@ public class AttendanceSession {
     @Column(name = "captured_photo_path", length = 1024)
     private String capturedPhotoPath;
 
+    @Column(name = "blur_score")
+    private Double blurScore;
+
+    @Column(name = "brightness_mean")
+    private Double brightnessMean;
+
+    @Column(name = "liveness_score")
+    private Double livenessScore;
+
+    @Column(name = "quality_passed")
+    private Boolean qualityPassed;
+
+    @Column(name = "quality_warning", length = 2000)
+    private String qualityWarning;
+
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<AttendanceRecord> attendanceRecords = new HashSet<>();
 
@@ -155,6 +170,46 @@ public class AttendanceSession {
 
     public void setCapturedPhotoPath(String capturedPhotoPath) {
         this.capturedPhotoPath = capturedPhotoPath;
+    }
+
+    public Double getBlurScore() {
+        return blurScore;
+    }
+
+    public void setBlurScore(Double blurScore) {
+        this.blurScore = blurScore;
+    }
+
+    public Double getBrightnessMean() {
+        return brightnessMean;
+    }
+
+    public void setBrightnessMean(Double brightnessMean) {
+        this.brightnessMean = brightnessMean;
+    }
+
+    public Double getLivenessScore() {
+        return livenessScore;
+    }
+
+    public void setLivenessScore(Double livenessScore) {
+        this.livenessScore = livenessScore;
+    }
+
+    public Boolean getQualityPassed() {
+        return qualityPassed;
+    }
+
+    public void setQualityPassed(Boolean qualityPassed) {
+        this.qualityPassed = qualityPassed;
+    }
+
+    public String getQualityWarning() {
+        return qualityWarning;
+    }
+
+    public void setQualityWarning(String qualityWarning) {
+        this.qualityWarning = qualityWarning;
     }
 
     public Set<AttendanceRecord> getAttendanceRecords() {

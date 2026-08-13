@@ -72,8 +72,16 @@ public class AttendanceRecognitionService {
 
         Map<String, Object> recognition = callRecognition(image, enrolledStudents);
         List<Map<String, Object>> matches = readMatches(recognition);
+        Map<String, Object> quality = readQuality(recognition);
+        boolean qualityPassed = Boolean.TRUE.equals(quality.get("quality_passed"));
+        session.setBlurScore(decimalValue(quality.get("blur_score")));
+        session.setBrightnessMean(decimalValue(quality.get("brightness_mean")));
+        session.setLivenessScore(decimalValue(quality.get("liveness_score")));
+        session.setQualityPassed(qualityPassed);
+        List<String> globalQualityWarnings = stringList(quality.get("warnings"));
+        session.setQualityWarning(globalQualityWarnings.isEmpty() ? null : String.join("; ", globalQualityWarnings));
         Set<Long> seenStudentIds = new HashSet<>();
-        boolean requiresReview = false;
+        boolean requiresReview = !qualityPassed;
 
         session.getAttendanceRecords().clear();
         for (Student student : enrolledStudents) {
@@ -85,18 +93,31 @@ public class AttendanceRecognitionService {
             if (match == null) {
                 record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                 record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
                 requiresReview = true;
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
                 boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
+                record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
+                List<String> faceWarnings = stringList(match.get("quality_warnings"));
+                List<String> warnings = mergeWarnings(globalQualityWarnings, faceWarnings);
                 if (!matched) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                    record.setQualityWarning(warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
+                    requiresReview = true;
+                } else if (!qualityPassed) {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                    record.setQualityWarning(String.join("; ", warnings));
                     requiresReview = true;
                 } else {
                     record.setStatus(AttendanceRecord.AttendanceStatus.PRESENT);
+                    if (!warnings.isEmpty()) {
+                        record.setQualityWarning(String.join("; ", warnings));
+                    }
                 }
             }
             session.getAttendanceRecords().add(record);
@@ -154,6 +175,31 @@ public class AttendanceRecognitionService {
             logger.error("Face recognition failed for capture", e);
             throw new IllegalStateException("Face recognition failed: " + e.getMessage(), e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> readQuality(Map<String, Object> recognition) {
+        Object rawQuality = recognition.get("quality");
+        if (!(rawQuality instanceof Map<?, ?> map)) {
+            throw new IllegalStateException("Face service response did not include quality metrics");
+        }
+        return (Map<String, Object>) map;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> stringList(Object value) {
+        if (!(value instanceof List<?> list)) return new java.util.ArrayList<>();
+        return list.stream().filter(String.class::isInstance).map(String.class::cast).toList();
+    }
+
+    private Double decimalValue(Object value) {
+        return value instanceof Number number ? number.doubleValue() : null;
+    }
+
+    private List<String> mergeWarnings(List<String> first, List<String> second) {
+        java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>(first);
+        unique.addAll(second);
+        return new java.util.ArrayList<>(unique);
     }
 
     @SuppressWarnings("unchecked")

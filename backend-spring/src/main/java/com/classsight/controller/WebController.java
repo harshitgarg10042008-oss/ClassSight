@@ -41,6 +41,11 @@ public class WebController {
         return "capture";
     }
 
+    @GetMapping("/analytics")
+    public String analyticsPage() {
+        return "analytics";
+    }
+
     @GetMapping("/review/{sessionId}")
     public String reviewPage(@PathVariable Long sessionId, Principal principal, Model model) {
         User actor = userRepository.findByUsername(principal.getName())

@@ -30,6 +30,12 @@ public class AttendanceRecord {
     @Column(name = "review_status")
     private ReviewStatus reviewStatus;
 
+    @Column(name = "quality_warning", length = 2000)
+    private String qualityWarning;
+
+    @Column(name = "face_size_ratio")
+    private Double faceSizeRatio;
+
     @Column(name = "reviewed_by")
     private Long reviewedBy;
 
@@ -112,6 +118,22 @@ public class AttendanceRecord {
 
     public void setReviewStatus(ReviewStatus reviewStatus) {
         this.reviewStatus = reviewStatus;
+    }
+
+    public String getQualityWarning() {
+        return qualityWarning;
+    }
+
+    public void setQualityWarning(String qualityWarning) {
+        this.qualityWarning = qualityWarning;
+    }
+
+    public Double getFaceSizeRatio() {
+        return faceSizeRatio;
+    }
+
+    public void setFaceSizeRatio(Double faceSizeRatio) {
+        this.faceSizeRatio = faceSizeRatio;
     }
 
     public Long getReviewedBy() {

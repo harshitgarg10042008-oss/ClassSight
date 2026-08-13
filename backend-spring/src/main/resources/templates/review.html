@@ -36,6 +36,7 @@
             <h2 class="text-lg font-semibold mb-4">Captured photo</h2>
             <img id="captured-photo" class="w-full rounded-lg bg-black object-contain max-h-[620px]" alt="Captured classroom photo">
             <p id="session-status" class="mt-3 text-sm text-slate-400"></p>
+            <p id="quality-summary" class="mt-2 text-sm text-amber-300"></p>
         </section>
 
         <section class="panel rounded-xl p-5">
@@ -84,6 +85,7 @@
                     </div>
                     <p class="text-sm text-amber-300">Confidence: ${record.confidenceScore == null ? 'no match' : Number(record.confidenceScore).toFixed(4)}</p>
                 </div>
+                <p class="quality-warning mt-2 text-sm text-amber-300">${record.qualityWarning || ''}</p>
                 <p class="decision-state mt-2 text-sm text-emerald-300" aria-live="polite">No decision selected</p>
                 <div class="grid grid-cols-2 gap-3 mt-3">
                     <button type="button" class="decision rounded-lg border border-emerald-500/50 py-2 text-emerald-300 hover:bg-emerald-500/20" data-decision="PRESENT" aria-pressed="false">Mark Present</button>
@@ -126,6 +128,10 @@
         const review = await response.json();
         document.getElementById('captured-photo').src = review.photoUrl;
         document.getElementById('session-status').textContent = `Status: ${review.status}`;
+        const quality = review.quality || {};
+        const qualitySummary = document.getElementById('quality-summary');
+        const warning = quality.warning || '';
+        qualitySummary.textContent = `Quality: ${quality.qualityPassed === false ? 'FLAGGED' : 'PASSED'} · blur=${quality.blurScore ?? 'n/a'} · brightness=${quality.brightnessMean ?? 'n/a'} · liveness=${quality.livenessScore ?? 'n/a'}${warning ? ` · ${warning}` : ''}`;
         renderRecords(review.records);
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');

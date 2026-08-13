@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface FacultySubjectAssignmentRepository extends JpaRepository<FacultySubjectAssignment, Long> {
     List<FacultySubjectAssignment> findByFacultyIdAndActiveTrue(Long facultyId);
+
+    boolean existsByFacultyIdAndSubjectIdAndClassSectionIdAndActiveTrue(
+            Long facultyId, Long subjectId, Long classSectionId);
 }

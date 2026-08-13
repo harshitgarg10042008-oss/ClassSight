@@ -42,6 +42,13 @@ public class AttendanceReviewService {
         response.put("capturedPhotoPath", session.getCapturedPhotoPath());
         response.put("photoUrl", "/api/attendance-sessions/" + sessionId + "/review/photo");
         response.put("records", records);
+        Map<String, Object> quality = new HashMap<>();
+        quality.put("blurScore", session.getBlurScore());
+        quality.put("brightnessMean", session.getBrightnessMean());
+        quality.put("livenessScore", session.getLivenessScore());
+        quality.put("qualityPassed", session.getQualityPassed());
+        quality.put("warning", session.getQualityWarning() == null ? "" : session.getQualityWarning());
+        response.put("quality", quality);
         return response;
     }
 
@@ -134,6 +141,8 @@ public class AttendanceReviewService {
                     item.put("studentName", record.getStudent().getFirstName() + " " + record.getStudent().getLastName());
                     item.put("confidenceScore", record.getConfidenceScore());
                     item.put("status", record.getStatus().toString());
+                    item.put("qualityWarning", record.getQualityWarning());
+                    item.put("faceSizeRatio", record.getFaceSizeRatio());
                     result.add(item);
                 });
         return result;
