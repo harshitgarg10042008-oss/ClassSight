@@ -1,0 +1,59 @@
+{
+  "image": "/home/ubuntu/ClassSight/docs/overnight/stage-a/source/modern_classroom_selfie.jpg",
+  "width": 1200,
+  "height": 675,
+  "face_count": 6,
+  "phases": {
+    "file_read_ms": 0.25615899357944727,
+    "jpeg_reencode_ms": 137.14834599522874,
+    "image_decode_and_resize_ms": 142.02200999716297,
+    "hog_detection_ms": 15797.487060001004,
+    "quality_liveness_full_image_ms": 22.02467199822422,
+    "batch_face_encodings_ms": 956.9090080040041,
+    "per_face_encoding_ms": [
+      162.0427049929276,
+      161.25043699867092,
+      170.08498100040015,
+      162.7303529967321,
+      165.9936329961056,
+      161.64844800368883
+    ],
+    "per_face_encoding_sum_ms": 983.7505569885252,
+    "distance_comparison_ms": [
+      0.09700199007056653,
+      0.016807010979391634,
+      0.009973999112844467,
+      0.007313006790354848,
+      0.008364004315808415,
+      0.006836009561084211
+    ],
+    "distance_comparison_sum_ms": 0.1462960208300501,
+    "per_face_quality_warning_ms": [
+      0.023258005967363715,
+      0.005527006578631699,
+      0.0034510012483224273,
+      0.0022169988369569182,
+      0.0025279878173023462,
+      0.0018909922800958157
+    ],
+    "per_face_quality_warning_sum_ms": 0.03887199272867292,
+    "serialization_ms": 0.1720709988148883,
+    "sum_measured_ms": 19023.890775992186
+  },
+  "distances": [
+    0.0,
+    0.8500089010634697,
+    0.7575583462616784,
+    0.7953537965510487,
+    0.7469639102705891,
+    0.9672121559299948
+  ],
+  "quality": {
+    "blur_score": 217.4195,
+    "brightness_mean": 105.7607,
+    "liveness_score": 0.3909,
+    "liveness_texture_score": 7.8175,
+    "quality_passed": true,
+    "warnings": []
+  }
+}

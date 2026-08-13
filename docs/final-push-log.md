@@ -156,3 +156,37 @@ The README now documents Docker Compose startup, health checks, Flyway behavior,
 ## Final push summary
 
 Implemented and verified the buildable backfill and Phase 4 hardening scope: Item 2 multi-face enrollment rejection, Item 3 CRUD and authorization completion, Flyway V1–V3, Map.of null safety, A4 CPU benchmark, Stage 26 privacy retention/consent/audit, and Stage 27 CSRF/upload/SSRF/error/access hardening. Each major stopping point has a separate commit. The remaining limitations are explicitly documented rather than marked as passed.
+
+## Performance investigation
+
+**Checkpoint:** The investigation began from a clean tree at commit `54a39cf28fa1316a948f613d8b573fdf8a466008`.
+
+The exact A4 request methodology was profiled against `docs/overnight/stage-a/source/modern_classroom_selfie.jpg`: the source was decoded and re-encoded as JPEG quality 95, then passed through the current FastAPI `/recognize` path with HOG detection, quality/liveness checks, face encodings, distance comparison, and response serialization. The 3,000 x 1,688 request produced six faces.
+
+| Phase | Baseline measured time |
+|---|---:|
+| File read | 0.26 ms |
+| JPEG quality-95 request re-encode | 139.91 ms |
+| Decode | 60.79 ms |
+| Full-resolution HOG detection | **98,942.91 ms** |
+| Full-image quality/liveness | 271.69 ms |
+| Batch face encodings | 994.51 ms |
+| Sum of six per-face encodings | 1,082.30 ms |
+| Six per-face distance comparisons | 0.16 ms |
+| Per-face quality-warning aggregation | 0.04 ms |
+| Response serialization | 0.17 ms |
+| Sum of measured phases | **102,575.24 ms** |
+
+The dominant bottleneck is therefore full-resolution dlib HOG detection, not embeddings, distance comparison, quality/liveness, logging, or serialization. The original unchanged A4 benchmark had three group timings of approximately 99,647–100,400 ms and a **100,040.47 ms mean**. The phase profile accounts for essentially all of that wall-clock time.
+
+The smallest plausible fix tested was to resize the detector input to a 1,200-pixel maximum dimension. On the same A4 request this reduced HOG detection to **15,797.49 ms** and the unchanged three-run benchmark to **17,460.35 ms mean** (`17,381.96–17,547.12 ms`), while still detecting six faces. However, the full golden-set regression rejected this change: accuracy became **16.67%**, with one false negative and four identity mismatches. The 1,200-pixel run swapped all four archival identities. A more conservative 2,000-pixel experiment returned **33.33%**, one false negative, and three identity mismatches, which was not better than the committed pre-investigation result and still failed the identity-preservation requirement.
+
+A second controlled experiment used full-resolution detection with `number_of_times_to_upsample=0`. It measured **24,549.21 ms** on the A4 image but detected all six faces there; on the 800-pixel Obama/Biden golden input it detected **zero** faces, and on the 1,536-pixel archival image it detected only **one** face. It is therefore not a safe drop-in fix.
+
+The downscaling code was fully restored and is **not included as a production change**. No distance threshold or face-size threshold was modified. The current production recognition code remains accuracy-preserving relative to the prior checkpoint, and the profiler and experiment outputs are retained as evidence under `docs/a4-benchmark/`.
+
+For classroom-scale extrapolation, the rejected 1,200-pixel experiment still averaged about **17.46 seconds per six-face photo**. A naive linear 30-face extrapolation is approximately **87.3 seconds per photo**, before accounting for detector behavior on a denser scene; this is an improvement over 100 seconds but remains too slow for a usable classroom workflow. The original baseline’s naive 30-face extrapolation from 100.04 seconds per six faces is approximately **500.2 seconds**, or over eight minutes.
+
+A larger change is therefore required before claiming classroom-scale readiness. Concrete options are: (1) replace or supplement dlib HOG with a modern lightweight detector such as an ONNX/OpenCV face detector, with a benchmarked accuracy tradeoff; (2) run a GPU-capable detector/embedding stack with batching; or (3) use a two-stage design that performs a fast detector pass and encodes only high-quality candidate crops, with box-alignment and small-face golden tests. Each option requires a new accuracy benchmark on the golden set and a real distant-face fixture. The current result is an investigation and decision point, not a performance victory.
+
+**Performance investigation status: BOTTLENECK CONFIRMED; QUICK FIX REJECTED FOR ACCURACY REGRESSION; LARGER DETECTOR/BATCHING DECISION REQUIRED.**

@@ -1,0 +1,35 @@
+[
+  {
+    "path": "docs/overnight/stage-a/source/modern_classroom_selfie.jpg",
+    "shape": [
+      1688,
+      3000,
+      3
+    ],
+    "faces": 6,
+    "detection_ms": 24549.21,
+    "encoding_ms": 1002.13
+  },
+  {
+    "path": "golden-set/obama_biden_group_2010.jpg",
+    "shape": [
+      533,
+      800,
+      3
+    ],
+    "faces": 0,
+    "detection_ms": 2207.26,
+    "encoding_ms": 0.02
+  },
+  {
+    "path": "golden-set/largegroup-1899/classroom_1899.jpg",
+    "shape": [
+      1085,
+      1536,
+      3
+    ],
+    "faces": 1,
+    "detection_ms": 8391.3,
+    "encoding_ms": 165.25
+  }
+]

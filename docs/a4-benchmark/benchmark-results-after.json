@@ -1,0 +1,258 @@
+{
+  "benchmark": "A4 CPU-first face embedding and group recognition",
+  "runtime": "CPU-only local FastAPI TestClient path",
+  "single_face_embedding": {
+    "path": "face-service-fastapi/tests/fixtures/obama_reference.jpg",
+    "image_shape": [
+      2608,
+      1916,
+      3
+    ],
+    "faces_detected": 1,
+    "embedding_dimension": 128,
+    "runs": 3,
+    "timings_ms": [
+      245.96,
+      245.36,
+      246.05
+    ],
+    "mean_ms": 245.79,
+    "min_ms": 245.36,
+    "max_ms": 246.05
+  },
+  "group_photo": {
+    "path": "docs/overnight/stage-a/source/modern_classroom_selfie.jpg",
+    "request_bytes": 778088,
+    "runs": 3,
+    "timings_ms": [
+      17451.97,
+      17381.96,
+      17547.12
+    ],
+    "mean_ms": 17460.35,
+    "min_ms": 17381.96,
+    "max_ms": 17547.12,
+    "responses": [
+      {
+        "face_count": 6,
+        "matches": [
+          {
+            "face_index": 0,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.046487,
+            "distance": 0.902098,
+            "matched": false,
+            "face_size_ratio": 0.004746,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 1,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.213409,
+            "distance": 0.73045,
+            "matched": false,
+            "face_size_ratio": 0.006944,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 2,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.039637,
+            "distance": 0.918755,
+            "matched": false,
+            "face_size_ratio": 0.01,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 3,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.135287,
+            "distance": 0.7855,
+            "matched": false,
+            "face_size_ratio": 0.020544,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 4,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.065158,
+            "distance": 0.866357,
+            "matched": false,
+            "face_size_ratio": 0.006944,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 5,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.331814,
+            "distance": 0.669999,
+            "matched": false,
+            "face_size_ratio": 0.002283,
+            "quality_warnings": []
+          }
+        ],
+        "quality": {
+          "blur_score": 217.4195,
+          "brightness_mean": 105.7607,
+          "liveness_score": 0.3909,
+          "liveness_texture_score": 7.8175,
+          "quality_passed": true,
+          "warnings": []
+        }
+      },
+      {
+        "face_count": 6,
+        "matches": [
+          {
+            "face_index": 0,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.046487,
+            "distance": 0.902098,
+            "matched": false,
+            "face_size_ratio": 0.004746,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 1,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.213409,
+            "distance": 0.73045,
+            "matched": false,
+            "face_size_ratio": 0.006944,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 2,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.039637,
+            "distance": 0.918755,
+            "matched": false,
+            "face_size_ratio": 0.01,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 3,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.135287,
+            "distance": 0.7855,
+            "matched": false,
+            "face_size_ratio": 0.020544,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 4,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.065158,
+            "distance": 0.866357,
+            "matched": false,
+            "face_size_ratio": 0.006944,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 5,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.331814,
+            "distance": 0.669999,
+            "matched": false,
+            "face_size_ratio": 0.002283,
+            "quality_warnings": []
+          }
+        ],
+        "quality": {
+          "blur_score": 217.4195,
+          "brightness_mean": 105.7607,
+          "liveness_score": 0.3909,
+          "liveness_texture_score": 7.8175,
+          "quality_passed": true,
+          "warnings": []
+        }
+      },
+      {
+        "face_count": 6,
+        "matches": [
+          {
+            "face_index": 0,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.046487,
+            "distance": 0.902098,
+            "matched": false,
+            "face_size_ratio": 0.004746,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 1,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.213409,
+            "distance": 0.73045,
+            "matched": false,
+            "face_size_ratio": 0.006944,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 2,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.039637,
+            "distance": 0.918755,
+            "matched": false,
+            "face_size_ratio": 0.01,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 3,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.135287,
+            "distance": 0.7855,
+            "matched": false,
+            "face_size_ratio": 0.020544,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 4,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.065158,
+            "distance": 0.866357,
+            "matched": false,
+            "face_size_ratio": 0.006944,
+            "quality_warnings": []
+          },
+          {
+            "face_index": 5,
+            "student_id": 101,
+            "roll_number": "OBAMA",
+            "confidence_score": 0.331814,
+            "distance": 0.669999,
+            "matched": false,
+            "face_size_ratio": 0.002283,
+            "quality_warnings": []
+          }
+        ],
+        "quality": {
+          "blur_score": 217.4195,
+          "brightness_mean": 105.7607,
+          "liveness_score": 0.3909,
+          "liveness_texture_score": 7.8175,
+          "quality_passed": true,
+          "warnings": []
+        }
+      }
+    ]
+  },
+  "recommendation": "Use the measured end-to-end latency as the baseline. A real 30+ face back-of-room image is still required before selecting downscaling or a lighter detector; this benchmark does not change production thresholds."
+}
