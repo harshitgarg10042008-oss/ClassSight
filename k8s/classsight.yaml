@@ -1,0 +1,229 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: classsight
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: classsight-secrets
+  namespace: classsight
+type: Opaque
+stringData:
+  POSTGRES_USER: classsight
+  POSTGRES_PASSWORD: classsight_password
+  POSTGRES_DB: classsight
+  MINIO_ROOT_USER: minioadmin
+  MINIO_ROOT_PASSWORD: minioadmin
+  RABBITMQ_DEFAULT_USER: classsight
+  RABBITMQ_DEFAULT_PASS: classsight_rabbit_password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: classsight-config
+  namespace: classsight
+data:
+  MINIO_ENDPOINT: http://minio:9000
+  MINIO_BUCKET: classsight-captures
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USER: classsight
+  RABBITMQ_VHOST: /
+  RECOGNITION_MODE: sync
+  FACE_SERVICE_URL: http://face-service:8000
+  NEXT_PUBLIC_API_BASE_URL: http://backend-spring:8080
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: classsight
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 5Gi}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  namespace: classsight
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 5Gi}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: rabbitmq-data
+  namespace: classsight
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 2Gi}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: postgres, namespace: classsight}
+spec:
+  selector: {app: postgres}
+  ports: [{name: postgres, port: 5432, targetPort: 5432}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: postgres, namespace: classsight}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: postgres}}
+  template:
+    metadata: {labels: {app: postgres}}
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16-alpine
+        ports: [{containerPort: 5432}]
+        envFrom: [{secretRef: {name: classsight-secrets}}]
+        volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+        readinessProbe: {exec: {command: [sh, -c, 'pg_isready -U classsight -d classsight']}, initialDelaySeconds: 10, periodSeconds: 5}
+      volumes: [{name: data, persistentVolumeClaim: {claimName: postgres-data}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: minio, namespace: classsight}
+spec:
+  selector: {app: minio}
+  ports:
+  - {name: api, port: 9000, targetPort: 9000}
+  - {name: console, port: 9001, targetPort: 9001}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: minio, namespace: classsight}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: minio}}
+  template:
+    metadata: {labels: {app: minio}}
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio:latest
+        args: [server, /data, --console-address, ':9001']
+        ports: [{containerPort: 9000}, {containerPort: 9001}]
+        envFrom: [{secretRef: {name: classsight-secrets}}]
+        volumeMounts: [{name: data, mountPath: /data}]
+        readinessProbe: {httpGet: {path: /minio/health/ready, port: 9000}, initialDelaySeconds: 10, periodSeconds: 5}
+      volumes: [{name: data, persistentVolumeClaim: {claimName: minio-data}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: rabbitmq, namespace: classsight}
+spec:
+  selector: {app: rabbitmq}
+  ports:
+  - {name: amqp, port: 5672, targetPort: 5672}
+  - {name: management, port: 15672, targetPort: 15672}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: rabbitmq, namespace: classsight}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: rabbitmq}}
+  template:
+    metadata: {labels: {app: rabbitmq}}
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management-alpine
+        ports: [{containerPort: 5672}, {containerPort: 15672}]
+        envFrom: [{secretRef: {name: classsight-secrets}}]
+        volumeMounts: [{name: data, mountPath: /var/lib/rabbitmq}]
+        readinessProbe: {exec: {command: [sh, -c, 'rabbitmq-diagnostics -q ping']}, initialDelaySeconds: 15, periodSeconds: 5}
+      volumes: [{name: data, persistentVolumeClaim: {claimName: rabbitmq-data}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: face-service, namespace: classsight}
+spec:
+  selector: {app: face-service}
+  ports: [{name: http, port: 8000, targetPort: 8000}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: face-service, namespace: classsight}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: face-service}}
+  template:
+    metadata: {labels: {app: face-service}}
+    spec:
+      containers:
+      - name: face-service
+        image: classsight-face-service-fastapi:latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8000}]
+        env:
+        - {name: RABBITMQ_WORKER_ENABLED, value: 'true'}
+        - {name: MINIO_ACCESS_KEY, valueFrom: {secretKeyRef: {name: classsight-secrets, key: MINIO_ROOT_USER}}}
+        - {name: MINIO_SECRET_KEY, valueFrom: {secretKeyRef: {name: classsight-secrets, key: MINIO_ROOT_PASSWORD}}}
+        envFrom: [{configMapRef: {name: classsight-config}}, {secretRef: {name: classsight-secrets}}]
+        readinessProbe: {httpGet: {path: /health, port: 8000}, initialDelaySeconds: 20, periodSeconds: 10}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: backend-spring, namespace: classsight}
+spec:
+  type: NodePort
+  selector: {app: backend-spring}
+  ports: [{name: http, port: 8080, targetPort: 8080, nodePort: 30080}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: backend-spring, namespace: classsight}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: backend-spring}}
+  template:
+    metadata: {labels: {app: backend-spring}}
+    spec:
+      containers:
+      - name: backend-spring
+        image: classsight-backend-spring:latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 8080}]
+        env:
+        - {name: SPRING_DATASOURCE_URL, value: jdbc:postgresql://postgres:5432/classsight}
+        - {name: SPRING_DATASOURCE_USERNAME, valueFrom: {secretKeyRef: {name: classsight-secrets, key: POSTGRES_USER}}}
+        - {name: SPRING_DATASOURCE_PASSWORD, valueFrom: {secretKeyRef: {name: classsight-secrets, key: POSTGRES_PASSWORD}}}
+        - {name: MINIO_ACCESS_KEY, valueFrom: {secretKeyRef: {name: classsight-secrets, key: MINIO_ROOT_USER}}}
+        - {name: MINIO_SECRET_KEY, valueFrom: {secretKeyRef: {name: classsight-secrets, key: MINIO_ROOT_PASSWORD}}}
+        envFrom: [{configMapRef: {name: classsight-config}}, {secretRef: {name: classsight-secrets}}]
+        readinessProbe: {httpGet: {path: /health, port: 8080}, initialDelaySeconds: 30, periodSeconds: 10}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: frontend-next, namespace: classsight}
+spec:
+  type: NodePort
+  selector: {app: frontend-next}
+  ports: [{name: http, port: 3000, targetPort: 3000, nodePort: 30300}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: frontend-next, namespace: classsight}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: frontend-next}}
+  template:
+    metadata: {labels: {app: frontend-next}}
+    spec:
+      containers:
+      - name: frontend-next
+        image: classsight-frontend-next:latest
+        imagePullPolicy: Never
+        ports: [{containerPort: 3000}]
+        envFrom: [{configMapRef: {name: classsight-config}}]
+        readinessProbe: {httpGet: {path: /, port: 3000}, initialDelaySeconds: 15, periodSeconds: 10}

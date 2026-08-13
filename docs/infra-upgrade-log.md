@@ -108,3 +108,17 @@ The modern Obama/Biden source preserved the one true positive: full-frame Obama 
 Conclusion: crop-first recognition delivers very substantial measured bandwidth savings (95.36%–98.49%) and preserves the known Obama positive in this small spike, but it is **not proven behaviorally equivalent** for all faces. Candidate ranking can change among unmatched faces and at least one crop missed a response. It is promising for a future edge experiment, but not ready to wire into production without a larger labeled set, batching/transport design, and explicit handling for crop failures.
 
 ### Item 4 status: DONE
+
+## Starting Item 5 — Kubernetes Manifests (Local Only — minikube/k3s)
+
+Started: 2026-08-13T14:08:00Z. Preconditions satisfied: Items 1 and 2 are DONE. This item will not attempt any cloud deployment or claim production readiness.
+
+## Item 5 — Kubernetes evidence
+
+Added `k8s/classsight.yaml` with 18 YAML documents: Namespace, Secret, ConfigMap, PVCs for Postgres/MinIO/RabbitMQ, Services, and Deployments for Postgres, MinIO, RabbitMQ, FastAPI, Spring Boot, and Next.js. The manifests use Kubernetes service DNS names rather than Compose host-network assumptions, keep MinIO/RabbitMQ/Postgres state on PVCs, expose Spring and Next.js through NodePorts, and represent the current RabbitMQ architecture. `scripts/validate_k8s_manifest.py` passed with 18 documents and six workload Deployments.
+
+A live local-cluster deployment was attempted. k3d could not start because Docker network endpoint setup requires the unavailable iptables raw table. A host-installed k3s fallback was then attempted. k3s initially failed to select an IP from the sandbox's link-local default route; with explicit `172.17.0.1`, the no-CNI configuration left system pods Pending. Re-enabling built-in flannel briefly made the node Ready, but pod sandboxes failed with `failed to load flannel 'subnet.env' file`, after which the API became unavailable. The final live check returned `The connection to the server 127.0.0.1:6443 was refused`. No ClassSight workload was applied, so pod readiness, service connectivity, Stage 15 through the cluster, and three-replica FastAPI distribution could not be honestly claimed.
+
+### Item 5 status: BLOCKED — local Kubernetes runtime unavailable in this sandbox
+
+This item remains explicitly local-only. No cloud deployment was attempted and no production/cloud readiness is claimed.
