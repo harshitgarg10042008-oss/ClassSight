@@ -1,5 +1,6 @@
 package com.classsight.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,7 +12,8 @@ import java.nio.file.Paths;
 import java.util.UUID;
 
 @Service
-public class CapturePhotoStorageService {
+@ConditionalOnProperty(name = "attendance.capture.backend", havingValue = "local", matchIfMissing = true)
+public class CapturePhotoStorageService implements StorageService {
 
     private final Path rootDirectory;
 
@@ -29,6 +31,28 @@ public class CapturePhotoStorageService {
         }
         Files.write(target, image.getBytes());
         return target.toString();
+    }
+
+    @Override
+    public StoredObject read(String objectKey) throws IOException {
+        Path path = safePath(objectKey);
+        return new StoredObject(Files.readAllBytes(path), Files.probeContentType(path));
+    }
+
+    @Override
+    public boolean exists(String objectKey) throws IOException {
+        return Files.isRegularFile(safePath(objectKey));
+    }
+
+    @Override
+    public void delete(String objectKey) throws IOException {
+        Files.deleteIfExists(safePath(objectKey));
+    }
+
+    private Path safePath(String objectKey) throws IOException {
+        Path path = Paths.get(objectKey).toAbsolutePath().normalize();
+        if (!path.startsWith(rootDirectory)) throw new IOException("Invalid capture path");
+        return path;
     }
 
     private String extensionFor(String contentType, String originalFilename) {

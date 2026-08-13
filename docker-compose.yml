@@ -2,6 +2,37 @@
 # a user-defined bridge network. Host networking is therefore intentional here.
 # On a normal Docker host, remove network_mode and use service names instead.
 services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    network_mode: host
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  minio-init:
+    image: minio/mc:latest
+    network_mode: host
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: >-
+      "mc alias set local http://127.0.0.1:9000 $${MINIO_ACCESS_KEY:-minioadmin} $${MINIO_SECRET_KEY:-minioadmin} &&
+      mc mb --ignore-existing local/$${MINIO_BUCKET:-classsight-captures}"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
+
   postgres:
     image: postgres:15-alpine
     network_mode: host
@@ -50,7 +81,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-classsight_password}
       JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_here_change_in_production}
       FACE_SERVICE_URL: http://127.0.0.1:${FACE_SERVICE_PORT:-8000}
+      ATTENDANCE_CAPTURE_STORAGE_BACKEND: minio
       ATTENDANCE_CAPTURE_STORAGE_PATH: /app/data/captures
+      MINIO_ENDPOINT: http://127.0.0.1:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
       ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-0.6}
       ATTENDANCE_DEFAULTER_THRESHOLD: ${ATTENDANCE_DEFAULTER_THRESHOLD:-75}
       CLASSSIGHT_ERP_EXPORT_DIR: /app/exports
@@ -64,6 +101,8 @@ services:
         condition: service_healthy
       face-service-fastapi:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health | grep -q 'UP'"]
       interval: 10s
@@ -73,3 +112,4 @@ services:
 
 volumes:
   postgres-data:
+  minio-data:

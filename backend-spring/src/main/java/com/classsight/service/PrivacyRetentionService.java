@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -17,12 +15,15 @@ import java.util.List;
 public class PrivacyRetentionService {
     private final AttendanceSessionRepository sessionRepository;
     private final int retentionDays;
+    private final StorageService storageService;
 
     public PrivacyRetentionService(
             AttendanceSessionRepository sessionRepository,
-            @Value("${privacy.retention-days:30}") int retentionDays) {
+            @Value("${privacy.retention-days:30}") int retentionDays,
+            StorageService storageService) {
         this.sessionRepository = sessionRepository;
         this.retentionDays = retentionDays;
+        this.storageService = storageService;
     }
 
     @Scheduled(cron = "${privacy.retention-cron:0 0 3 * * *}")
@@ -35,7 +36,8 @@ public class PrivacyRetentionService {
         for (AttendanceSession session : sessions) {
             String rawPath = session.getCapturedPhotoPath();
             try {
-                if (rawPath != null && Files.deleteIfExists(Path.of(rawPath))) {
+                if (rawPath != null && storageService.exists(rawPath)) {
+                    storageService.delete(rawPath);
                     deleted++;
                 }
                 // Keep the attendance session and records, but remove the retrievable raw path.

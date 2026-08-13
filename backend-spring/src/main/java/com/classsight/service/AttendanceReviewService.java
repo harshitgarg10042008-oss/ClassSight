@@ -4,7 +4,8 @@ import com.classsight.entity.AttendanceRecord;
 import com.classsight.entity.AttendanceSession;
 import com.classsight.entity.User;
 import com.classsight.repository.AttendanceSessionRepository;
-import org.springframework.core.io.FileSystemResource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -12,9 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,9 +24,17 @@ import java.util.Map;
 public class AttendanceReviewService {
 
     private final AttendanceSessionRepository sessionRepository;
+    private final StorageService storageService;
 
-    public AttendanceReviewService(AttendanceSessionRepository sessionRepository) {
+    @Autowired
+    public AttendanceReviewService(AttendanceSessionRepository sessionRepository, StorageService storageService) {
         this.sessionRepository = sessionRepository;
+        this.storageService = storageService;
+    }
+
+    /** Compatibility constructor for focused unit tests that exercise local storage. */
+    public AttendanceReviewService(AttendanceSessionRepository sessionRepository) {
+        this(sessionRepository, new CapturePhotoStorageService("./data/captures"));
     }
 
     @Transactional(readOnly = true)
@@ -58,15 +64,11 @@ public class AttendanceReviewService {
         if (session.getCapturedPhotoPath() == null || session.getCapturedPhotoPath().isBlank()) {
             throw new IllegalStateException("No captured photo is stored for session " + sessionId);
         }
-        Path path = Paths.get(session.getCapturedPhotoPath()).toAbsolutePath().normalize();
-        if (!Files.isRegularFile(path)) {
-            throw new IllegalStateException("Captured photo is missing for session " + sessionId);
-        }
         try {
-            MediaType mediaType = MediaType.parseMediaType(Files.probeContentType(path) == null
-                    ? MediaType.APPLICATION_OCTET_STREAM_VALUE
-                    : Files.probeContentType(path));
-            return new PhotoFile(new FileSystemResource(path), mediaType);
+            StorageService.StoredObject stored = storageService.read(session.getCapturedPhotoPath());
+            String contentType = stored.contentType() == null
+                    ? MediaType.APPLICATION_OCTET_STREAM_VALUE : stored.contentType();
+            return new PhotoFile(new ByteArrayResource(stored.bytes()), MediaType.parseMediaType(contentType));
         } catch (IOException e) {
             throw new IllegalStateException("Could not read captured photo", e);
         }

@@ -44,7 +44,7 @@ public class BrowserCameraAdapter {
     private com.classsight.service.AttendanceRecognitionService attendanceRecognitionService;
 
     @Autowired
-    private com.classsight.service.CapturePhotoStorageService capturePhotoStorageService;
+    private com.classsight.service.StorageService capturePhotoStorageService;
 
     @Autowired
     private FacultySubjectAssignmentRepository assignmentRepository;

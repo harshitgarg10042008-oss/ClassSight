@@ -41,7 +41,14 @@ attendance:
   recognition:
     threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
   capture:
+    backend: ${ATTENDANCE_CAPTURE_STORAGE_BACKEND:local}
     storage-path: ${ATTENDANCE_CAPTURE_STORAGE_PATH:./data/captures}
+    minio:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:minioadmin}
+      secret-key: ${MINIO_SECRET_KEY:minioadmin}
+      bucket: ${MINIO_BUCKET:classsight-captures}
+      region: ${MINIO_REGION:us-east-1}
   analytics:
     defaulter-threshold: ${ATTENDANCE_DEFAULTER_THRESHOLD:75}
 
