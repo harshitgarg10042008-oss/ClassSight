@@ -53,8 +53,10 @@ services:
       ATTENDANCE_CAPTURE_STORAGE_PATH: /app/data/captures
       ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-0.6}
       ATTENDANCE_DEFAULTER_THRESHOLD: ${ATTENDANCE_DEFAULTER_THRESHOLD:-75}
+      CLASSSIGHT_ERP_EXPORT_DIR: /app/exports
     volumes:
       - ./data/captures:/app/data/captures
+      - ./exports:/app/exports
     depends_on:
       postgres:
         condition: service_healthy
