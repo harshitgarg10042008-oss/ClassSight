@@ -138,3 +138,21 @@ A teacher-triggered missing review session request returned HTTP **404** with no
 The remaining scope limitation is that direct FastAPI service access is intended to be an internal service boundary; external deployment must keep port 8000 private behind the Spring service/network policy.
 
 **Stage 27 status: SUCCEEDED WITH MANUAL CREDENTIAL-ROTATION LIMITATION.**
+
+## Starting Stage 28 — Documentation and deployment handoff
+**Started:** 2026-08-13T11:50:00Z
+
+Updated the README and added deployment, ERP mapping, architecture, security, privacy, and known-limitations documents. The Compose configuration was parsed successfully after the hardening changes.
+
+## Completed Stage 28 — Documentation and deployment handoff
+**Completed:** 2026-08-13T11:58:00Z
+
+The README now documents Docker Compose startup, health checks, Flyway behavior, authentication, CSRF token acquisition, consent enrollment, recognition semantics, benchmark commands, privacy retention, camera deployment, and the provisional ERP boundary. `docs/architecture.md` contains the current Mermaid component diagram. `docs/camera-deployment.md` distinguishes the camera-agnostic RTSP adapter from the local simulated GStreamer verification. `docs/erp-mapping.md` states exactly how the provisional CSV provider must be replaced after the real ERP contract is supplied. `docs/known-limitations.md` consolidates the CPU benchmark, simulated RTSP, provisional ERP, draft privacy notice, manual credential rotation, and production-operations limitations.
+
+`docker compose config -q` returned success. The prior live stack health checks returned Spring and FastAPI `UP`, Flyway validated four migrations, and the hardening checks were performed against the running Spring container. A full clean production deployment with a real IP camera and real ERP was not claimed.
+
+**Stage 28 status: COMPLETE FOR DOCUMENTATION; REAL ERP AND REAL CAMERA REMAIN EXTERNAL DEPENDENCIES.**
+
+## Final push summary
+
+Implemented and verified the buildable backfill and Phase 4 hardening scope: Item 2 multi-face enrollment rejection, Item 3 CRUD and authorization completion, Flyway V1–V3, Map.of null safety, A4 CPU benchmark, Stage 26 privacy retention/consent/audit, and Stage 27 CSRF/upload/SSRF/error/access hardening. Each major stopping point has a separate commit. The remaining limitations are explicitly documented rather than marked as passed.

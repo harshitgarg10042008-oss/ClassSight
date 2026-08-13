@@ -1,0 +1,5 @@
+# ERP/SIS mapping guide
+
+The current ERP adapter is intentionally local and provisional. `LocalCsvErpProvider` validates attendance mappings and generates a CSV containing `student_id,student_name,subject,date,status`; it does not claim to submit to a real college ERP. The decision record in [docs/erp-decision.md](erp-decision.md) remains open because no vendor, API specification, credentials, or authoritative import template has been supplied.
+
+Once the real target is identified, implement a new `ErpProvider` that maps `validateMappings`, `submitAttendance`, and `getSubmissionStatus` to the target’s actual REST/SOAP API or exact file-import workflow. Preserve the existing `ErpSyncService` idempotency key and audit trail, add provider-specific authentication and retry semantics, and write contract tests from the ERP’s real documentation or sample files. Confirm the target’s student identifier, subject identifier, date/time zone, attendance status vocabulary, retry policy, and duplicate-submission behavior before enabling production sync.
