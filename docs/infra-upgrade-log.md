@@ -122,3 +122,19 @@ A live local-cluster deployment was attempted. k3d could not start because Docke
 ### Item 5 status: BLOCKED — local Kubernetes runtime unavailable in this sandbox
 
 This item remains explicitly local-only. No cloud deployment was attempted and no production/cloud readiness is claimed.
+
+## Loop complete
+
+The five-item infrastructure loop has reached its final stopping point.
+
+| Item | Status | Checkpoint |
+|---|---|---|
+| Item 1 — MinIO object storage | **DONE** | `053be76`; real capture, MinIO object existence, SHA-256 equality, restart persistence, migration hash equality, and RTSP capture evidence recorded. |
+| Item 2 — RabbitMQ event-driven processing | **DONE** | `8c20ba0`; sync compatibility, async real capture, 10/10 concurrent load, empty queues after processing, and three-message worker-crash recovery recorded. |
+| Item 3 — Next.js faculty flow | **BLOCKED pending interactive browser verification** | `c3caaf7`; production build, live page delivery, valid login, room/assignment API loading, invalid-token rejection, and old synchronous capture API recheck passed. The available browser connection could not establish a receiving end, so a real click-through cannot be claimed. |
+| Item 4 — Edge-detection spike | **DONE** | `b7ae3cf`; standalone script and real three-photo full-vs-crop measurements recorded. Bandwidth reduction was 95.36%–98.49%, but crop recognition was not fully equivalent. |
+| Item 5 — Kubernetes manifests | **BLOCKED by local-cluster runtime** | `ebdb1b7`; 18-document manifests and YAML validation passed, but k3d was blocked by the missing Docker iptables raw table and host k3s was blocked by CNI/flannel sandbox failures. No cloud deployment was attempted. |
+
+The prior functionality regression evidence is as follows. The Phase 1 capture/review path still produced real MinIO-backed sessions and review-photo bytes. The Phase 3 camera adapter path was re-run through a real local RTSP stream and stored/retrieved through MinIO. The Phase 2 ERP path was re-run live after finalizing the known review item: `/admin/erp/validate` returned HTTP 200 with `valid=true`, `/admin/erp/export` returned HTTP 200 with `GENERATED_LOCAL_ONLY` and `rowCount=2`, and `/admin/erp/status` returned HTTP 200 with `available=true` and `sizeBytes=164`; the generated CSV SHA-256 was `e9702ea5b9ebdb61a2391ca9df10ee27296b489b0c881cc5fb8151d270b9c75c`. The old synchronous capture API was also re-verified after the additive Next.js work with the expected Biden review record and photo hash. An interactive Thymeleaf walkthrough could not be performed independently because the browser connection was unavailable; no Thymeleaf source was removed or modified.
+
+Human decisions before production consideration remain explicit. Item 3 needs a working interactive browser session for its end-to-end click-through. Item 5 needs a normal local Kubernetes environment with functioning CNI/iptables before cluster deployment and scaling can be verified. Any real cloud deployment requires a confirmed provider and budget. The prior recognition-performance bottleneck remains open; this loop did not change recognition thresholds or choose a final performance direction. Real classroom photos, a real IP camera, and a real ERP vendor/API/import contract remain unresolved and are unaffected by these infrastructure changes.
