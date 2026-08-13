@@ -80,3 +80,17 @@ Unknown and low-confidence outcomes remain review-required rather than being con
 Validation evidence: the Java 17 Spring package compiled successfully. No detector, embedding, or threshold code changed in Step E, so the Step D golden-set result remains the applicable accuracy checkpoint. A live duplicate-submission test was not claimed because the running Compose Spring image predates this unbuilt commit; it will be exercised after the final rebuilt-stack smoke test.
 
 Step E stopping point: duplicate guards are implemented and committed; live rebuilt-stack verification remains scheduled for Step H.
+
+## Starting Step F — Existing RabbitMQ async recognition extension
+
+- Timestamp: 2026-08-13
+- RabbitMQ recognition already exists from the infrastructure loop. This step will extend its message payload and state reporting only; it will not create a second queue system or replace synchronous mode.
+
+
+## Completed Step F — Existing RabbitMQ async extension
+
+RabbitMQ was already implemented and feature-flagged from the infrastructure loop, so no new queue or worker system was created. The existing Spring publisher now includes the multi-reference `embeddings` payload and an `edgeCrop` flag controlled by `EDGE_CROP_ENABLED` through `attendance.recognition.edge-crop-enabled`. The existing FastAPI worker already consumes that message shape and applies the same recognition path as HTTP; result consumption still calls the existing Spring result-application service.
+
+The default remains `RECOGNITION_MODE=sync` and `EDGE_CROP_ENABLED=false`. Async mode remains available for large or multi-face captures, while synchronous mode remains the compatible default for small captures. Spring compiled successfully with Java 17. Live queue processing against a rebuilt image is deferred to Step H because the currently running Compose containers predate this commit.
+
+Step F stopping point: async integration was extended without duplicating RabbitMQ infrastructure or changing the default production mode.

@@ -46,6 +46,7 @@ attendance:
   recognition:
     threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
     mode: ${RECOGNITION_MODE:sync}
+    edge-crop-enabled: ${EDGE_CROP_ENABLED:false}
   capture:
     backend: ${ATTENDANCE_CAPTURE_STORAGE_BACKEND:local}
     storage-path: ${ATTENDANCE_CAPTURE_STORAGE_PATH:./data/captures}

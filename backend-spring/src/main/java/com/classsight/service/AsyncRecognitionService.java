@@ -21,17 +21,20 @@ public class AsyncRecognitionService {
     private final StudentRepository studentRepository;
     private final AttendanceRecognitionService recognitionService;
     private final double threshold;
+    private final boolean edgeCropEnabled;
 
     public AsyncRecognitionService(RabbitTemplate rabbitTemplate,
                                    AttendanceSessionRepository sessionRepository,
                                    StudentRepository studentRepository,
                                    AttendanceRecognitionService recognitionService,
-                                   @Value("${attendance.recognition.threshold:0.6}") double threshold) {
+                                   @Value("${attendance.recognition.threshold:0.6}") double threshold,
+                                   @Value("${attendance.recognition.edge-crop-enabled:false}") boolean edgeCropEnabled) {
         this.rabbitTemplate = rabbitTemplate;
         this.sessionRepository = sessionRepository;
         this.studentRepository = studentRepository;
         this.recognitionService = recognitionService;
         this.threshold = threshold;
+        this.edgeCropEnabled = edgeCropEnabled;
     }
 
     public void enqueue(Long sessionId, String objectKey) {
@@ -44,6 +47,7 @@ public class AsyncRecognitionService {
         message.put("objectKey", objectKey);
         message.put("distanceThreshold", threshold);
         message.put("enrolledStudents", enrolled);
+        message.put("edgeCrop", edgeCropEnabled);
         rabbitTemplate.convertAndSend(RabbitConfig.CAPTURE_EXCHANGE, "capture.request", message);
     }
 
@@ -60,6 +64,7 @@ public class AsyncRecognitionService {
         item.put("student_id", student.getId());
         item.put("roll_number", student.getRollNumber());
         item.put("embedding", student.getFaceEmbedding());
+        item.put("embeddings", student.getFaceEmbeddings() == null ? List.of() : student.getFaceEmbeddings().stream().map(com.classsight.entity.StudentFaceEmbedding::getEmbedding).toList());
         return item;
     }
 }
