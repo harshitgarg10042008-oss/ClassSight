@@ -19,6 +19,9 @@ MIN_BRIGHTNESS = float(os.getenv("QUALITY_MIN_BRIGHTNESS", "35.0"))
 MAX_BRIGHTNESS = float(os.getenv("QUALITY_MAX_BRIGHTNESS", "220.0"))
 MIN_LIVENESS_TEXTURE = float(os.getenv("QUALITY_MIN_LIVENESS_TEXTURE", "2.5"))
 MIN_FACE_SIZE_RATIO = float(os.getenv("QUALITY_MIN_FACE_SIZE_RATIO", "0.0005"))
+EDGE_CROP_ENABLED = os.getenv("EDGE_CROP_ENABLED", "false").lower() == "true"
+EDGE_CROP_PADDING = float(os.getenv("EDGE_CROP_PADDING", "0.20"))
+EDGE_CROP_MAX_DIMENSION = int(os.getenv("EDGE_CROP_MAX_DIMENSION", "0"))
 
 
 class EmbeddingResponse(BaseModel):
@@ -73,6 +76,43 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         return np.array(pil_image)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
+
+
+def _crop_face(image_array: np.ndarray, location: tuple[int, int, int, int], padding: float = EDGE_CROP_PADDING) -> np.ndarray:
+    height, width = image_array.shape[:2]
+    top, right, bottom, left = location
+    face_height = max(1, bottom - top)
+    face_width = max(1, right - left)
+    pad_y = int(face_height * max(0.0, padding))
+    pad_x = int(face_width * max(0.0, padding))
+    crop_top = max(0, top - pad_y)
+    crop_right = min(width, right + pad_x)
+    crop_bottom = min(height, bottom + pad_y)
+    crop_left = max(0, left - pad_x)
+    crop = image_array[crop_top:crop_bottom, crop_left:crop_right]
+    if crop.size == 0:
+        raise ValueError("Face crop was empty")
+    if EDGE_CROP_MAX_DIMENSION > 0:
+        pil_crop = Image.fromarray(crop)
+        pil_crop.thumbnail((EDGE_CROP_MAX_DIMENSION, EDGE_CROP_MAX_DIMENSION), Image.Resampling.LANCZOS)
+        crop = np.asarray(pil_crop)
+    return np.ascontiguousarray(crop)
+
+
+def _encode_detected_faces(image_array: np.ndarray, face_locations: list[tuple[int, int, int, int]], use_crops: bool) -> list[np.ndarray]:
+    if not use_crops:
+        return face_recognition.face_encodings(image_array, face_locations)
+    encodings: list[np.ndarray] = []
+    for location in face_locations:
+        crop = _crop_face(image_array, location)
+        crop_height, crop_width = crop.shape[:2]
+        crop_encodings = face_recognition.face_encodings(crop, [(0, crop_width, crop_height, 0)])
+        if not crop_encodings:
+            # A tight/distant crop can defeat a second detector pass. Returning a
+            # controlled error lets the caller preserve review/recapture semantics.
+            raise ValueError("Failed to generate an embedding for a detected face crop")
+        encodings.append(crop_encodings[0])
+    return encodings
 
 
 def _quality_metrics(image_array: np.ndarray, face_locations: list[tuple[int, int, int, int]]) -> QualityMetrics:
@@ -153,6 +193,7 @@ async def recognize(
     image: UploadFile = File(...),
     enrolled_students: str = Form(...),
     distance_threshold: float = Form(0.6, ge=0.0, le=2.0),
+    edge_crop: bool = Form(EDGE_CROP_ENABLED),
 ):
     try:
         try:
@@ -164,7 +205,7 @@ async def recognize(
         image_array = _load_rgb_image(await image.read())
         face_locations = face_recognition.face_locations(image_array, model="hog")
         quality = _quality_metrics(image_array, face_locations)
-        face_encodings = face_recognition.face_encodings(image_array, face_locations)
+        face_encodings = _encode_detected_faces(image_array, face_locations, edge_crop)
         if len(face_encodings) != len(face_locations):
             raise HTTPException(status_code=422, detail="Failed to generate embeddings for all detected faces")
 
@@ -199,8 +240,9 @@ async def recognize(
                 face_size_ratio=face_size_ratio,
                 quality_warnings=face_warning_list,
             ))
-        logger.info("Recognized %d face(s) against %d enrolled student(s); quality_passed=%s", len(matches), len(valid_students), quality.quality_passed)
-        return RecognitionResponse(face_count=len(face_locations), matches=matches, quality=quality, message="Group photo recognized successfully")
+        logger.info("Recognized %d face(s) against %d enrolled student(s); quality_passed=%s; edge_crop=%s", len(matches), len(valid_students), quality.quality_passed, edge_crop)
+        mode = "edge-cropped" if edge_crop else "full-frame"
+        return RecognitionResponse(face_count=len(face_locations), matches=matches, quality=quality, message=f"Group photo recognized successfully ({mode} encoding)")
     except HTTPException:
         raise
     except Exception as exc:
@@ -215,11 +257,11 @@ import pika
 from minio import Minio
 
 
-def _recognize_message(image_bytes: bytes, students_payload: list[dict], distance_threshold: float) -> dict:
+def _recognize_message(image_bytes: bytes, students_payload: list[dict], distance_threshold: float, edge_crop: bool = EDGE_CROP_ENABLED) -> dict:
     image_array = _load_rgb_image(image_bytes)
     face_locations = face_recognition.face_locations(image_array, model="hog")
     quality = _quality_metrics(image_array, face_locations)
-    face_encodings = face_recognition.face_encodings(image_array, face_locations)
+    face_encodings = _encode_detected_faces(image_array, face_locations, edge_crop)
     if len(face_encodings) != len(face_locations):
         raise ValueError("Failed to generate embeddings for all detected faces")
     valid_students = [EnrolledStudent.model_validate(item) for item in students_payload if len(item.get("embedding", [])) == 128]
@@ -246,7 +288,8 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
         matches.append(FaceMatch(face_index=face_index, student_id=candidate.student_id, roll_number=candidate.roll_number,
                                  confidence_score=_confidence_from_distance(distance, distance_threshold), distance=round(distance, 6),
                                  matched=matched, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
-    return RecognitionResponse(face_count=len(face_locations), matches=matches, quality=quality, message="Group photo recognized successfully").model_dump()
+    mode = "edge-cropped" if edge_crop else "full-frame"
+    return RecognitionResponse(face_count=len(face_locations), matches=matches, quality=quality, message=f"Group photo recognized successfully ({mode} encoding)").model_dump()
 
 
 def _rabbit_worker() -> None:
@@ -276,7 +319,7 @@ def _rabbit_worker() -> None:
                     message = json.loads(body.decode("utf-8"))
                     response = _recognize_message(
                         minio_client.get_object(os.getenv("MINIO_BUCKET", "classsight-captures"), message["objectKey"]).read(),
-                        message.get("enrolledStudents", []), float(message.get("distanceThreshold", 0.6)))
+                        message.get("enrolledStudents", []), float(message.get("distanceThreshold", 0.6)), bool(message.get("edgeCrop", EDGE_CROP_ENABLED)))
                     ch.basic_publish(exchange=result_exchange, routing_key="recognition.result",
                                      body=json.dumps({"sessionId": message["sessionId"], "recognition": response}).encode("utf-8"),
                                      properties=pika.BasicProperties(content_type="application/json", delivery_mode=2))

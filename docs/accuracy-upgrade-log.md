@@ -17,3 +17,18 @@ The current face service does not yet persist or cache enrolled embeddings indep
 Live Docker services were available with `sudo docker`, but the host Python environment lacks `face_recognition`, and the checked-in face-service image lacks some test-only packages. The baseline was therefore run in a disposable container environment. No production code was changed in Step A.
 
 Step A stopping point: audit complete; implementation proceeds only with the accuracy safety net active. Unresolved items are the golden-set baseline discrepancy, real 30+ person classroom validation, real IP camera validation, and real ERP identification, all of which remain external or separately scoped.
+
+## Starting Step B — Guarded edge face detection and cropping
+
+- Timestamp: 2026-08-13
+- The existing standalone edge spike will be extended into a reusable FastAPI path behind an explicit opt-in flag. The accuracy-safe default remains the current full-frame path until the golden-set comparison proves crop behavior equivalent.
+
+## Completed Step B — Guarded edge face detection and cropping
+
+The FastAPI service now has a reusable padded crop encoder controlled by `EDGE_CROP_ENABLED`, `EDGE_CROP_PADDING`, and `EDGE_CROP_MAX_DIMENSION`. The `/recognize` endpoint accepts an explicit `edge_crop` form field, and the existing RabbitMQ message path accepts `edgeCrop`; no second queue or parallel messaging system was created. The default remains full-frame encoding, preserving compatibility for existing Spring and RabbitMQ callers.
+
+The crop implementation detects faces once on the full image, extracts a padded contiguous crop for each detected box, and generates the embedding from the crop using the original detected box as a known crop location. The response message records whether full-frame or edge-cropped encoding was used.
+
+Validation evidence: Python syntax compilation passed; the unchanged default golden regression returned the same current result as Step A, 33.33% with one false negative and three identity mismatches. A disposable edge-crop golden harness completed both fixtures at HTTP 200 and returned the same aggregate 33.33% result, preserving the known Obama match and the existing archival identity mapping behavior. The crop path therefore did not regress the measured current baseline, but it also did not improve the golden-set accuracy. The documented historical 4/4 plus 4/4+1 baseline remains unreconciled with the checked-in harness and is not claimed as achieved.
+
+Decision: accept the crop path only as an explicit opt-in capability; do not enable it globally or claim a performance win. The current implementation still performs full-resolution HOG detection on the incoming classroom image, so it reduces downstream crop payload needs for edge clients but does not solve the approximately 100-second server-side HOG bottleneck. Real 30+ person classroom validation remains outstanding.
