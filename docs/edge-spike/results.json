@@ -1,0 +1,325 @@
+[
+  {
+    "source": "face-service-fastapi/tests/fixtures/obama_biden_group_2010.jpg",
+    "full_bytes": 7075824,
+    "face_count": 12,
+    "crop_bytes": 107024,
+    "crop_paths": [
+      "docs/edge-spike/crops/obama_biden_group_2010/face_00.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_01.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_02.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_03.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_04.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_05.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_06.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_07.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_08.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_09.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_10.jpg",
+      "docs/edge-spike/crops/obama_biden_group_2010/face_11.jpg"
+    ],
+    "full_matches": [
+      [
+        2,
+        false,
+        0.260113,
+        0.704538
+      ],
+      [
+        1,
+        true,
+        0.916445,
+        0.360501
+      ],
+      [
+        2,
+        false,
+        0.086642,
+        0.835534
+      ],
+      [
+        2,
+        false,
+        0.034154,
+        0.934212
+      ],
+      [
+        2,
+        false,
+        0.048302,
+        0.898078
+      ],
+      [
+        2,
+        false,
+        0.058226,
+        0.878344
+      ],
+      [
+        2,
+        false,
+        0.043117,
+        0.909977
+      ],
+      [
+        2,
+        false,
+        0.056905,
+        0.880779
+      ],
+      [
+        2,
+        false,
+        0.238047,
+        0.716342
+      ],
+      [
+        2,
+        false,
+        0.439117,
+        0.624475
+      ],
+      [
+        2,
+        false,
+        0.088634,
+        0.833042
+      ],
+      [
+        2,
+        false,
+        0.382176,
+        0.648032
+      ]
+    ],
+    "crop_matches": [
+      [
+        [
+          2,
+          false,
+          0.240915,
+          0.714767
+        ]
+      ],
+      [
+        [
+          1,
+          true,
+          0.913877,
+          0.363808
+        ]
+      ],
+      [
+        [
+          2,
+          false,
+          0.088552,
+          0.833144
+        ]
+      ],
+      [
+        [
+          1,
+          false,
+          0.050376,
+          0.893655
+        ]
+      ],
+      [
+        [
+          2,
+          false,
+          0.045282,
+          0.904851
+        ]
+      ],
+      [
+        [
+          1,
+          false,
+          0.148184,
+          0.774892
+        ]
+      ],
+      [
+        [
+          1,
+          false,
+          0.192078,
+          0.743656
+        ]
+      ],
+      [
+        [
+          2,
+          false,
+          0.059994,
+          0.875164
+        ]
+      ],
+      [
+        [
+          2,
+          false,
+          0.257272,
+          0.706019
+        ]
+      ],
+      [
+        [
+          2,
+          false,
+          0.43986,
+          0.624173
+        ]
+      ],
+      [
+        [
+          1,
+          false,
+          0.102368,
+          0.817118
+        ]
+      ],
+      [
+        [
+          2,
+          false,
+          0.326375,
+          0.672463
+        ]
+      ]
+    ],
+    "full_quality": {
+      "blur_score": 119.4734,
+      "brightness_mean": 121.3959,
+      "liveness_score": 0.2605,
+      "liveness_texture_score": 5.2095,
+      "quality_passed": true,
+      "warnings": []
+    }
+  },
+  {
+    "source": "face-service-fastapi/tests/fixtures/classroom_wide_distant_faces.jpg",
+    "full_bytes": 2050577,
+    "face_count": 2,
+    "crop_bytes": 95065,
+    "crop_paths": [
+      "docs/edge-spike/crops/classroom_wide_distant_faces/face_00.jpg",
+      "docs/edge-spike/crops/classroom_wide_distant_faces/face_01.jpg"
+    ],
+    "full_matches": [
+      [
+        1,
+        false,
+        0.119555,
+        0.799665
+      ],
+      [
+        1,
+        false,
+        0.14814,
+        0.774927
+      ]
+    ],
+    "crop_matches": [
+      [
+        [
+          1,
+          false,
+          0.117971,
+          0.801179
+        ]
+      ],
+      [
+        [
+          1,
+          false,
+          0.147166,
+          0.7757
+        ]
+      ]
+    ],
+    "full_quality": {
+      "blur_score": 945.2545,
+      "brightness_mean": 138.2047,
+      "liveness_score": 0.3764,
+      "liveness_texture_score": 7.5286,
+      "quality_passed": true,
+      "warnings": []
+    }
+  },
+  {
+    "source": "golden-set/largegroup-1899/classroom_1899.jpg",
+    "full_bytes": 216467,
+    "face_count": 4,
+    "crop_bytes": 7753,
+    "crop_paths": [
+      "docs/edge-spike/crops/classroom_1899/face_00.jpg",
+      "docs/edge-spike/crops/classroom_1899/face_01.jpg",
+      "docs/edge-spike/crops/classroom_1899/face_02.jpg",
+      "docs/edge-spike/crops/classroom_1899/face_03.jpg"
+    ],
+    "full_matches": [
+      [
+        2,
+        false,
+        0.035206,
+        0.93107
+      ],
+      [
+        2,
+        false,
+        0.073972,
+        0.852722
+      ],
+      [
+        2,
+        false,
+        0.112069,
+        0.806978
+      ],
+      [
+        1,
+        false,
+        0.152271,
+        0.77169
+      ]
+    ],
+    "crop_matches": [
+      [
+        [
+          2,
+          false,
+          0.03149,
+          0.942609
+        ]
+      ],
+      [],
+      [
+        [
+          2,
+          false,
+          0.120462,
+          0.798806
+        ]
+      ],
+      [
+        [
+          1,
+          false,
+          0.162354,
+          0.764082
+        ]
+      ]
+    ],
+    "full_quality": {
+      "blur_score": 63.5525,
+      "brightness_mean": 93.7851,
+      "liveness_score": 0.317,
+      "liveness_texture_score": 6.3405,
+      "quality_passed": true,
+      "warnings": []
+    }
+  }
+]

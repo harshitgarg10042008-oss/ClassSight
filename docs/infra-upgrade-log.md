@@ -88,3 +88,23 @@ Added `frontend-next/` as an additive Next.js 14 faculty flow. It contains login
 The production Next.js build passed with strict TypeScript checks. Live HTTP verification returned the rendered page containing `CLASSSIGHT / FACULTY` and `Capture attendance with confidence`. A real teacher login returned HTTP 200; live `/api/rooms` and `/teacher/assignments` returned the expected room and assignment JSON; a deliberately invalid token was rejected with HTTP 403. The old faculty capture API flow was re-run in synchronous mode after the frontend change: the real 7,075,824-byte image returned HTTP 200, session 17 was `REVIEW_REQUIRED`, Joe Biden was the same review record with confidence `0.2601` and face-size ratio `0.000716`, and the review photo returned HTTP 200 with the expected 7,075,824 bytes and SHA-256 `7e5664ccf9215843ae9d8834819ca8902e318b493b13a466c209b6d89fac1308`.
 
 A full interactive browser takeover could not be completed because the available browser connection returned `Could not establish connection. Receiving end does not exist`; therefore the four-screen click-through itself is not claimed as live-verified. The implementation is build-verified and API-verified, but Item 3 is **BLOCKED pending interactive browser verification**, not marked DONE.
+
+## Starting Item 4 — Edge Detection Spike (Simulated, Not Real Hardware)
+
+Started: 2026-08-13T14:03:00Z. Preconditions satisfied: Item 1 is DONE. This remains a standalone experiment only; no production capture or recognition code will be modified.
+
+## Item 4 — Edge Detection Spike evidence
+
+Added and ran `scripts/edge_detection_spike.py` as a standalone detection-only experiment. It used the same machine to detect faces with HOG, crop each face with 20% padding, save crops, and call the live FastAPI `/recognize` endpoint on the original frame and each crop. No production capture or recognition code was changed.
+
+| Real photo | Faces detected | Full-frame bytes | Crop bytes total | Byte reduction |
+|---|---:|---:|---:|---:|
+| `obama_biden_group_2010.jpg` | 12 | 7,075,824 | 107,024 | 98.49% |
+| `classroom_wide_distant_faces.jpg` | 2 | 2,050,577 | 95,065 | 95.36% |
+| `classroom_1899.jpg` | 4 | 216,467 | 7,753 | 96.42% |
+
+The modern Obama/Biden source preserved the one true positive: full-frame Obama matched student 1 with `matched=true`, confidence `0.916445`, distance `0.360501`; the corresponding crop also matched student 1 with `matched=true`, confidence `0.913877`, distance `0.363808`. The Biden face stayed review/unmatched in both modes, with full-frame confidence `0.260113`, distance `0.704538`, versus crop confidence `0.240915`, distance `0.714767`. Several non-matching faces were ranked differently between full and crop calls, and one historical classroom face produced no crop recognition result although the full frame returned an unmatched candidate. The two other photos contained no known enrolled identity; their crop/full confidence and distance values were close for most faces, but the historical classroom crop set had one missed response.
+
+Conclusion: crop-first recognition delivers very substantial measured bandwidth savings (95.36%–98.49%) and preserves the known Obama positive in this small spike, but it is **not proven behaviorally equivalent** for all faces. Candidate ranking can change among unmatched faces and at least one crop missed a response. It is promising for a future edge experiment, but not ready to wire into production without a larger labeled set, batching/transport design, and explicit handling for crop failures.
+
+### Item 4 status: DONE
