@@ -56,9 +56,16 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
 
-def _confidence_from_distance(distance: float) -> float:
-    # face_recognition returns Euclidean distance; expose a bounded, intuitive score.
-    return round(max(0.0, min(1.0, 1.0 - float(distance))), 6)
+def _confidence_from_distance(distance: float, boundary: float = 0.6) -> float:
+    """Return display confidence without reusing the distance cutoff numerically.
+
+    The face_recognition/dlib convention is a distance comparison. This smooth
+    sigmoid is only for display: the configured distance boundary maps to 0.5,
+    so match decisions never compare this score against that same boundary.
+    """
+    slope = 0.1
+    confidence = 1.0 / (1.0 + np.exp((float(distance) - boundary) / slope))
+    return round(float(max(0.0, min(1.0, confidence))), 6)
 
 
 @app.post("/enroll", response_model=EmbeddingResponse)
@@ -96,6 +103,7 @@ async def enroll(image: UploadFile = File(...)):
 async def recognize(
     image: UploadFile = File(...),
     enrolled_students: str = Form(...),
+    distance_threshold: float = Form(0.6, ge=0.0, le=2.0),
 ):
     """Detect every face and return its closest enrolled-student candidate.
 
@@ -143,15 +151,17 @@ async def recognize(
 
             candidate = valid_students[candidate_index]
             distance = float(distances[candidate_index])
-            claimed_student_ids.add(candidate.student_id)
+            matched = distance < distance_threshold
+            if matched:
+                claimed_student_ids.add(candidate.student_id)
             matches.append(
                 FaceMatch(
                     face_index=face_index,
                     student_id=candidate.student_id,
                     roll_number=candidate.roll_number,
-                    confidence_score=_confidence_from_distance(distance),
+                    confidence_score=_confidence_from_distance(distance, distance_threshold),
                     distance=round(distance, 6),
-                    matched=True,
+                    matched=matched,
                 )
             )
 

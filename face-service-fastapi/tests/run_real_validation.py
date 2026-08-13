@@ -54,7 +54,10 @@ def main():
         response = client.post(
             "/recognize",
             files={"image": (GROUP.name, group_bytes, "image/jpeg")},
-            data={"enrolled_students": json.dumps(enrolled)},
+            data={
+                "enrolled_students": json.dumps(enrolled),
+                "distance_threshold": str(THRESHOLD),
+            },
         )
     if response.status_code != 200:
         raise AssertionError(f"recognize failed: {response.status_code} {response.text}")
@@ -63,7 +66,8 @@ def main():
     print(f"group_photo={GROUP.name}")
     print(f"reference_photos={', '.join(path.name for _, path in REFERENCE_FILES.values())}")
     print(f"face_count={body['face_count']}")
-    print(f"threshold={THRESHOLD:.2f}")
+    print(f"distance_threshold={THRESHOLD:.2f}")
+    print("confidence_note=display-only sigmoid; distance threshold remains the match decision")
     print("face_index | expected_identity_by_reference_distance | expected_distance | predicted_student | endpoint_confidence | endpoint_distance | outcome")
 
     rows = []
@@ -77,7 +81,9 @@ def main():
         predicted_id = match.get("student_id")
         predicted_name = REFERENCE_FILES.get(predicted_id, ("NONE", None))[0] if predicted_id else "NONE"
         confidence = float(match["confidence_score"])
-        outcome = "PRESENT_CANDIDATE" if predicted_id and confidence >= THRESHOLD else "REVIEW_OR_NO_MATCH"
+        endpoint_distance = float(match["distance"])
+        matched = bool(match["matched"]) and endpoint_distance < THRESHOLD
+        outcome = "PRESENT_CANDIDATE" if predicted_id and matched else "REVIEW_OR_NO_MATCH"
         row = {
             "face_index": index,
             "expected_identity_by_reference_distance": expected_identity,
@@ -86,13 +92,14 @@ def main():
             "predicted_student": predicted_name,
             "predicted_student_id": predicted_id,
             "endpoint_confidence": confidence,
-            "endpoint_distance": match.get("distance"),
+            "endpoint_distance": endpoint_distance,
+            "matched": matched,
             "outcome": outcome,
         }
         rows.append(row)
         print(
             f"{index:10d} | {expected_identity:42s} | {expected_distance:16.6f} | "
-            f"{predicted_name:17s} | {confidence:18.6f} | {str(match.get('distance')):16s} | {outcome}"
+            f"{predicted_name:17s} | {confidence:18.6f} | {endpoint_distance:16.6f} | {outcome}"
         )
 
     print("\nfull_json=")
@@ -102,12 +109,12 @@ def main():
         row for row in rows
         if row["expected_identity_by_reference_distance"] in {name for name, _ in REFERENCE_FILES.values()}
         and row["predicted_student"] == row["expected_identity_by_reference_distance"]
-        and row["endpoint_confidence"] >= THRESHOLD
+        and row["matched"]
     ]
     false_present = [
         row for row in rows
         if row["expected_identity_by_reference_distance"] == "UNENROLLED/UNKNOWN"
-        and row["endpoint_confidence"] >= THRESHOLD
+        and row["matched"]
     ]
     print(f"\ncorrect_enrolled_matches={len(enrolled_correct)}/{len(REFERENCE_FILES)}")
     print(f"false_present_candidates_for_unenrolled_faces={len(false_present)}")

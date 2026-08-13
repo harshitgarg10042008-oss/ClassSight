@@ -43,7 +43,7 @@ public class AttendanceRecognitionService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final String faceServiceUrl;
-    private final double confidenceThreshold;
+    private final double distanceThreshold;
 
     public AttendanceRecognitionService(
             AttendanceSessionRepository attendanceSessionRepository,
@@ -51,13 +51,13 @@ public class AttendanceRecognitionService {
             RestTemplate restTemplate,
             ObjectMapper objectMapper,
             @Value("${face-service.url}") String faceServiceUrl,
-            @Value("${attendance.recognition.threshold:0.6}") double confidenceThreshold) {
+            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold) {
         this.attendanceSessionRepository = attendanceSessionRepository;
         this.studentRepository = studentRepository;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.faceServiceUrl = faceServiceUrl;
-        this.confidenceThreshold = confidenceThreshold;
+        this.distanceThreshold = distanceThreshold;
     }
 
     @Transactional
@@ -86,8 +86,10 @@ public class AttendanceRecognitionService {
                 record.setStatus(AttendanceRecord.AttendanceStatus.ABSENT);
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
+                double distance = numericValue(match.get("distance"));
+                boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
-                if (confidence < confidenceThreshold) {
+                if (!matched) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                     requiresReview = true;
@@ -113,7 +115,7 @@ public class AttendanceRecognitionService {
         }
         AttendanceSession saved = attendanceSessionRepository.save(session);
         logger.info("Attendance session {} processed: {} students, status {}, threshold {}",
-                sessionId, enrolledStudents.size(), saved.getStatus(), confidenceThreshold);
+                sessionId, enrolledStudents.size(), saved.getStatus(), distanceThreshold);
         return saved;
     }
 
@@ -132,6 +134,7 @@ public class AttendanceRecognitionService {
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("image", image.getResource());
             body.add("enrolled_students", objectMapper.writeValueAsString(payload));
+            body.add("distance_threshold", String.valueOf(distanceThreshold));
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     faceServiceUrl + "/recognize",

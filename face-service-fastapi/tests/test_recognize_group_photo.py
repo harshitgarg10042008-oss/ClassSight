@@ -76,7 +76,8 @@ def test_recognize_cross_photo_group_with_unenrolled_person():
         predicted_id = match.get("student_id")
         predicted_name = REFERENCE_FILES.get(predicted_id, ("NONE", None))[0] if predicted_id else "NONE"
         confidence = float(match["confidence_score"])
-        present = predicted_id is not None and confidence >= THRESHOLD
+        distance = float(match["distance"])
+        present = predicted_id is not None and bool(match["matched"]) and distance < THRESHOLD
         row = {
             "face_index": face_index,
             "expected": expected_name,
@@ -84,7 +85,8 @@ def test_recognize_cross_photo_group_with_unenrolled_person():
             "reference_distances": {REFERENCE_FILES[sid][0]: round(distance, 6) for sid, distance in distances.items()},
             "predicted": predicted_name,
             "confidence": confidence,
-            "endpoint_distance": match.get("distance"),
+            "endpoint_distance": distance,
+            "matched": bool(match["matched"]),
             "present_candidate": present,
         }
         rows.append(row)
@@ -103,7 +105,7 @@ def test_recognize_cross_photo_group_with_unenrolled_person():
     print(f"SUMMARY unenrolled_faces={len(unenrolled_rows)} false_present={len(false_present)}")
 
     # These assertions are intentionally strict: the test must fail rather than
-    # calling a low-confidence candidate or an unenrolled face PRESENT.
+    # calling a distance-ineligible candidate or an unenrolled face PRESENT.
     assert len(correct_enrolled) == len(REFERENCE_FILES), (
         f"Cross-photo matching missed enrolled students; rows={rows}"
     )
