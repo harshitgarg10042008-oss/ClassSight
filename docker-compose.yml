@@ -53,6 +53,7 @@ services:
     build:
       context: ./face-service-fastapi
       dockerfile: Dockerfile
+      network: host
     network_mode: host
     environment:
       QUALITY_BLUR_THRESHOLD: ${QUALITY_BLUR_THRESHOLD:-30.0}
@@ -71,6 +72,7 @@ services:
     build:
       context: ./backend-spring
       dockerfile: Dockerfile
+      network: host
     network_mode: host
     environment:
       SPRING_PROFILES_ACTIVE: docker
