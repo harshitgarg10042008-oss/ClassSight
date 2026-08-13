@@ -33,3 +33,22 @@ Postgres confirmed `LIVE-OBAMA` has an embedding after the control test. The mul
 
 **Item #2 status: SUCCEEDED.**
 **Git checkpoint:** this log entry is committed in the Item #2 verification commit.
+
+## Starting Item #3 — CRUD update/delete for Room, Camera, Subject, Assignment
+**Started:** 2026-08-13T10:43:00Z
+
+The existing admin PUT handlers were exercised and DELETE handlers were added for all four entities. Delete behavior is dependency-aware: rooms return a conflict while cameras reference them, and subjects return a conflict while assignments reference them.
+
+## Completed Item #3 — CRUD update/delete for Room, Camera, Subject, Assignment
+**Completed:** 2026-08-13T10:46:00Z
+
+Live admin evidence used temporary records and was followed by cleanup. Room create/update returned HTTP **200** and persisted the changed name, building, floor, and capacity. Camera create/update returned HTTP **200** and persisted changed name, status, and stream URL. Deleting the temporary room while its camera existed returned HTTP **409** with `Room cannot be deleted while cameras reference it`. After deleting the camera, deleting the room returned HTTP **204**.
+
+Subject create/update returned HTTP **200** and persisted the changed code, name, and description. A temporary assignment create/update returned HTTP **200** and persisted `active=false`. Deleting the subject while the assignment existed returned HTTP **409** with `Subject cannot be deleted while assignments reference it`. After deleting the assignment, subject deletion returned HTTP **204**.
+
+A teacher attempting `PUT /admin/rooms/1` received HTTP **403**. A teacher attempting `DELETE /admin/cameras/1` received HTTP **403**. Postgres cleanup queries returned zero rows for the temporary room, camera, subject, and assignment IDs.
+
+The implementation adds `DELETE /admin/rooms/{id}`, `/admin/cameras/{id}`, `/admin/subjects/{id}`, and `/admin/assignments/{id}`. Room and subject dependency checks return explicit 409 responses instead of leaking persistence exceptions.
+
+**Item #3 status: SUCCEEDED.**
+**Git checkpoint:** this implementation and evidence are committed in the Item #3 commit.

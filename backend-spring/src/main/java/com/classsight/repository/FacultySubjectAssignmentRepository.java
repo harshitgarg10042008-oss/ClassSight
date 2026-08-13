@@ -12,4 +12,6 @@ public interface FacultySubjectAssignmentRepository extends JpaRepository<Facult
 
     boolean existsByFacultyIdAndSubjectIdAndClassSectionIdAndActiveTrue(
             Long facultyId, Long subjectId, Long classSectionId);
+
+    boolean existsBySubjectId(Long subjectId);
 }

@@ -89,4 +89,11 @@ public class AdminAssignmentController {
             return ResponseEntity.ok(assignmentRepository.save(assignment));
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteAssignment(@PathVariable Long id) {
+        if (!assignmentRepository.existsById(id)) return ResponseEntity.notFound().build();
+        assignmentRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
 }

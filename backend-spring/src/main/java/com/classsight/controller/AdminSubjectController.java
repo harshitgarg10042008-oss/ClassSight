@@ -3,6 +3,7 @@ package com.classsight.controller;
 import com.classsight.dto.SubjectRequest;
 import com.classsight.entity.Subject;
 import com.classsight.repository.SubjectRepository;
+import com.classsight.repository.FacultySubjectAssignmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,9 @@ public class AdminSubjectController {
 
     @Autowired
     private SubjectRepository subjectRepository;
+
+    @Autowired
+    private FacultySubjectAssignmentRepository assignmentRepository;
 
     @GetMapping
     public List<Subject> getAllSubjects() {
@@ -43,5 +47,15 @@ public class AdminSubjectController {
             
             return ResponseEntity.ok(subjectRepository.save(subject));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteSubject(@PathVariable Long id) {
+        if (!subjectRepository.existsById(id)) return ResponseEntity.notFound().build();
+        if (assignmentRepository.existsBySubjectId(id)) {
+            return ResponseEntity.status(409).body("Subject cannot be deleted while assignments reference it");
+        }
+        subjectRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

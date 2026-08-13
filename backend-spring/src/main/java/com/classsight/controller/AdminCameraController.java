@@ -67,6 +67,13 @@ public class AdminCameraController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCamera(@PathVariable Long id) {
+        if (!cameraRepository.existsById(id)) return ResponseEntity.notFound().build();
+        cameraRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/{id}/capture-frame")
     public ResponseEntity<?> captureFrame(@PathVariable Long id) {
         RtspCameraAdapter.FrameResult result = frameAdapter.captureFrame(id);

@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface CameraRepository extends JpaRepository<Camera, Long> {
     List<Camera> findByStatus(Camera.CameraStatus status);
+    boolean existsByRoomId(Long roomId);
 }
