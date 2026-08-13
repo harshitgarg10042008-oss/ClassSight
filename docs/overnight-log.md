@@ -159,3 +159,24 @@ The final Phase 2 walkthrough will verify finalized local attendance → mapping
 ## Stage 20 status
 
 IN PROGRESS.
+
+
+## Completed Stage 20 — Phase 2 verification
+
+**Completed:** 2026-08-13T11:20:00+00:00
+
+The detailed walkthrough is in `docs/phase2-demo-walkthrough.md`. Live ADMIN verification from finalized session `1` covered mapping validation, local CSV generation, host-file hash/content comparison against Postgres, local-only status, persisted sync state, simulated failure, retry, and immediate idempotent repeat.
+
+Validation returned HTTP 200 with `valid=true` and `rowCount=2`. The host CSV was 156 bytes with SHA-256 `1f95c707e1233b896aa190137a0588da5d1399c022b12def4977dd4620340d78`, and its two rows exactly matched Postgres. The final sync record was `SYNCED`, and the fallback message correctly stated that no ERP delivery was attempted.
+
+**Stage 20 status: SUCCEEDED.**
+
+## Starting Stage 21 — isolated RTSP capture spike
+
+**Started:** 2026-08-13T11:22:00+00:00
+
+No real IP camera is available. This stage will first check for FFmpeg and use a simulated local RTSP stream only if the required tools are present. It will capture actual frames, measure startup and steady-state latency, verify image decodability and resolution, and stop cleanly if the environment cannot support the spike. No camera entity or application integration will be built before this isolated result is known.
+
+## Stage 21 status
+
+IN PROGRESS.
