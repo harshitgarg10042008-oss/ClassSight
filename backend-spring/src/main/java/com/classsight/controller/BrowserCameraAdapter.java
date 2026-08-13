@@ -38,6 +38,9 @@ public class BrowserCameraAdapter {
     private AttendanceSessionService attendanceSessionService;
 
     @Autowired
+    private com.classsight.service.AttendanceRecognitionService attendanceRecognitionService;
+
+    @Autowired
     private FacultySubjectAssignmentRepository assignmentRepository;
 
     @Autowired
@@ -108,19 +111,18 @@ public class BrowserCameraAdapter {
                 attendanceSessionService.transitionToCaptured(session.getId());
                 logger.info("Transitioned session {} to CAPTURED", session.getId());
                 
-                // Transition to PROCESSING (sent for recognition - placeholder)
-                attendanceSessionService.transitionToProcessing(session.getId());
-                logger.info("Transitioned session {} to PROCESSING", session.getId());
-                
-                // Transition to REVIEW_REQUIRED (placeholder for recognition result)
-                attendanceSessionService.transitionToReviewRequired(session.getId());
-                logger.info("Transitioned session {} to REVIEW_REQUIRED (placeholder)", session.getId());
-                
+                // The uploaded image is still available here, so process it before
+                // returning and persist one AttendanceRecord per enrolled student.
+                AttendanceSession processedSession = attendanceRecognitionService
+                        .processCapturedSession(session.getId(), image);
+                logger.info("Processed session {} with status {}", processedSession.getId(), processedSession.getStatus());
+
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
-                response.put("message", "Image received and session created successfully");
-                response.put("sessionId", session.getId());
-                response.put("sessionStatus", "REVIEW_REQUIRED");
+                response.put("message", "Image recognized and attendance records created successfully");
+                response.put("sessionId", processedSession.getId());
+                response.put("sessionStatus", processedSession.getStatus().toString());
+                response.put("attendanceRecordCount", processedSession.getAttendanceRecords().size());
                 response.put("size", image.getSize());
                 response.put("contentType", image.getContentType());
                 

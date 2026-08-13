@@ -1,69 +1,168 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, Field, ValidationError
 import face_recognition
 import numpy as np
 from PIL import Image
 import io
+import json
 import logging
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Face Service FastAPI")
 
+
 class EmbeddingResponse(BaseModel):
     embedding: list[float]
     face_count: int
     message: str
 
+
+class EnrolledStudent(BaseModel):
+    student_id: int
+    roll_number: Optional[str] = None
+    embedding: list[float] = Field(min_length=1)
+
+
+class FaceMatch(BaseModel):
+    face_index: int
+    student_id: Optional[int] = None
+    roll_number: Optional[str] = None
+    confidence_score: float = Field(ge=0.0, le=1.0)
+    distance: Optional[float] = None
+    matched: bool
+
+
+class RecognitionResponse(BaseModel):
+    face_count: int
+    matches: list[FaceMatch]
+    message: str
+
+
 @app.get("/health")
 def health():
     return {"status": "UP", "service": "face-service-fastapi"}
 
+
+def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
+    try:
+        pil_image = Image.open(io.BytesIO(image_bytes))
+        if pil_image.mode != "RGB":
+            pil_image = pil_image.convert("RGB")
+        return np.array(pil_image)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
+
+
+def _confidence_from_distance(distance: float) -> float:
+    # face_recognition returns Euclidean distance; expose a bounded, intuitive score.
+    return round(max(0.0, min(1.0, 1.0 - float(distance))), 6)
+
+
 @app.post("/enroll", response_model=EmbeddingResponse)
 async def enroll(image: UploadFile = File(...)):
     try:
-        # Read image bytes
-        image_bytes = await image.read()
-        
-        # Load image using PIL
-        pil_image = Image.open(io.BytesIO(image_bytes))
-        
-        # Convert to RGB if necessary
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
-        
-        # Convert to numpy array for face_recognition
-        image_array = np.array(pil_image)
-        
-        # Detect faces using HOG (CPU-friendly)
+        image_array = _load_rgb_image(await image.read())
         face_locations = face_recognition.face_locations(image_array, model="hog")
         face_count = len(face_locations)
-        
-        # Validate face count
+
         if face_count == 0:
             raise HTTPException(status_code=400, detail="No face detected in the image")
-        elif face_count > 1:
-            raise HTTPException(status_code=400, detail=f"Multiple faces detected ({face_count}). Please provide an image with exactly one face.")
-        
-        # Generate face embedding
+        if face_count > 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Multiple faces detected ({face_count}). Please provide an image with exactly one face.",
+            )
+
         face_encodings = face_recognition.face_encodings(image_array, face_locations)
-        
-        if len(face_encodings) == 0:
+        if not face_encodings:
             raise HTTPException(status_code=400, detail="Failed to generate face embedding")
-        
-        embedding = face_encodings[0].tolist()
-        
-        logger.info(f"Successfully generated embedding for image with {face_count} face(s)")
-        
+
         return EmbeddingResponse(
-            embedding=embedding,
+            embedding=face_encodings[0].tolist(),
             face_count=face_count,
-            message="Face embedding generated successfully"
+            message="Face embedding generated successfully",
         )
-        
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error processing enrollment: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal error during enrollment: {str(e)}")
+    except Exception as exc:
+        logger.exception("Error processing enrollment")
+        raise HTTPException(status_code=500, detail=f"Internal error during enrollment: {exc}") from exc
+
+
+@app.post("/recognize", response_model=RecognitionResponse)
+async def recognize(
+    image: UploadFile = File(...),
+    enrolled_students: str = Form(...),
+):
+    """Detect every face and return its closest enrolled-student candidate.
+
+    The Spring backend supplies only the active students in the session's
+    ClassSection, keeping class membership and attendance persistence there.
+    A candidate is returned even when its confidence is low so the caller can
+    apply its configured review threshold and preserve an auditable result.
+    """
+    try:
+        try:
+            payload = json.loads(enrolled_students)
+            students = [EnrolledStudent.model_validate(item) for item in payload]
+        except (json.JSONDecodeError, ValidationError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid enrolled_students payload: {exc}") from exc
+
+        image_array = _load_rgb_image(await image.read())
+        face_locations = face_recognition.face_locations(image_array, model="hog")
+        face_encodings = face_recognition.face_encodings(image_array, face_locations)
+
+        if len(face_encodings) != len(face_locations):
+            raise HTTPException(status_code=422, detail="Failed to generate embeddings for all detected faces")
+
+        valid_students = [student for student in students if len(student.embedding) == 128]
+        matches: list[FaceMatch] = []
+        claimed_student_ids: set[int] = set()
+
+        for face_index, face_encoding in enumerate(face_encodings):
+            if not valid_students:
+                matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0))
+                continue
+
+            distances = face_recognition.face_distance(
+                np.asarray([student.embedding for student in valid_students], dtype=np.float64),
+                face_encoding,
+            )
+            ranked_indexes = np.argsort(distances)
+            candidate_index = next(
+                (int(index) for index in ranked_indexes if valid_students[int(index)].student_id not in claimed_student_ids),
+                None,
+            )
+
+            if candidate_index is None:
+                matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0))
+                continue
+
+            candidate = valid_students[candidate_index]
+            distance = float(distances[candidate_index])
+            claimed_student_ids.add(candidate.student_id)
+            matches.append(
+                FaceMatch(
+                    face_index=face_index,
+                    student_id=candidate.student_id,
+                    roll_number=candidate.roll_number,
+                    confidence_score=_confidence_from_distance(distance),
+                    distance=round(distance, 6),
+                    matched=True,
+                )
+            )
+
+        logger.info("Recognized %d face(s) against %d enrolled student(s)", len(matches), len(valid_students))
+        return RecognitionResponse(
+            face_count=len(face_locations),
+            matches=matches,
+            message="Group photo recognized successfully",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Error processing group recognition")
+        raise HTTPException(status_code=500, detail=f"Internal error during recognition: {exc}") from exc

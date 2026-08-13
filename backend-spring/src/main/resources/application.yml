@@ -24,6 +24,10 @@ jwt:
 face-service:
   url: ${FACE_SERVICE_URL:http://localhost:8000}
 
+attendance:
+  recognition:
+    threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
+
 logging:
   level:
     com.classsight: DEBUG
