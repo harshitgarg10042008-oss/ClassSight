@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -34,6 +35,9 @@ public class Student {
 
     @Column(name = "face_embedding")
     private List<Double> faceEmbedding;
+
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<StudentFaceEmbedding> faceEmbeddings = new ArrayList<>();
 
     @Column(name = "consent_given", nullable = false)
     private Boolean consentGiven = false;
@@ -121,6 +125,17 @@ public class Student {
 
     public void setFaceEmbedding(List<Double> faceEmbedding) {
         this.faceEmbedding = faceEmbedding;
+    }
+
+    public List<StudentFaceEmbedding> getFaceEmbeddings() {
+        return faceEmbeddings;
+    }
+
+    public void addFaceEmbedding(List<Double> embedding) {
+        StudentFaceEmbedding reference = new StudentFaceEmbedding();
+        reference.setStudent(this);
+        reference.setEmbedding(embedding);
+        faceEmbeddings.add(reference);
     }
 
     public Boolean getConsentGiven() {

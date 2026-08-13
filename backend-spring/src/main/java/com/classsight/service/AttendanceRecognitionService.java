@@ -222,8 +222,9 @@ public class AttendanceRecognitionService {
                 item.put("student_id", student.getId());
                 item.put("roll_number", student.getRollNumber());
                 item.put("embedding", student.getFaceEmbedding());
+                item.put("embeddings", embeddingsFor(student));
                 return item;
-            }).filter(item -> item.get("embedding") != null).toList();
+            }).filter(item -> item.get("embedding") != null || (item.get("embeddings") instanceof List<?> references && !references.isEmpty())).toList();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -248,6 +249,21 @@ public class AttendanceRecognitionService {
             logger.error("Face recognition failed for capture", e);
             throw new IllegalStateException("Face recognition failed: " + e.getMessage(), e);
         }
+    }
+
+    private List<List<Double>> embeddingsFor(Student student) {
+        List<List<Double>> embeddings = new java.util.ArrayList<>();
+        if (student.getFaceEmbeddings() != null) {
+            student.getFaceEmbeddings().stream()
+                    .map(com.classsight.entity.StudentFaceEmbedding::getEmbedding)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(embedding -> embedding.size() == 128)
+                    .forEach(embeddings::add);
+        }
+        if (embeddings.isEmpty() && student.getFaceEmbedding() != null && student.getFaceEmbedding().size() == 128) {
+            embeddings.add(student.getFaceEmbedding());
+        }
+        return embeddings;
     }
 
     @SuppressWarnings("unchecked")

@@ -87,6 +87,7 @@ public class StudentController {
 
             // Store embedding in student record
             student.setFaceEmbedding(embedding);
+            student.addFaceEmbedding(embedding);
             User actor = userRepository.findByUsername(authentication.getName())
                     .orElseThrow(() -> new IllegalStateException("Authenticated enrolling user not found"));
             student.setConsentGiven(true);

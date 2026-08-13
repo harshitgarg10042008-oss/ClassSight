@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, ValidationError
 import face_recognition
 import numpy as np
 from PIL import Image, ImageFilter
+import hashlib
 import io
 import json
 import logging
@@ -36,7 +37,8 @@ class EmbeddingResponse(BaseModel):
 class EnrolledStudent(BaseModel):
     student_id: int
     roll_number: Optional[str] = None
-    embedding: list[float] = Field(min_length=1)
+    embedding: list[float] = Field(default_factory=list)
+    embeddings: list[list[float]] = Field(default_factory=list)
 
 
 class QualityMetrics(BaseModel):
@@ -194,6 +196,40 @@ def _recognition_state(matched: bool, warnings: list[str], has_candidate: bool) 
     return "RECOGNIZED"
 
 
+_EMBEDDING_CACHE: dict[int, tuple[str, list[np.ndarray]]] = {}
+
+
+def _student_embeddings(student: EnrolledStudent) -> list[np.ndarray]:
+    raw_embeddings = list(student.embeddings)
+    if student.embedding:
+        raw_embeddings.append(student.embedding)
+    valid = [embedding for embedding in raw_embeddings if len(embedding) == 128]
+    fingerprint = hashlib.sha256(json.dumps(valid, separators=(",", ":")).encode("utf-8")).hexdigest()
+    cached = _EMBEDDING_CACHE.get(student.student_id)
+    if cached and cached[0] == fingerprint:
+        return cached[1]
+    normalized: list[np.ndarray] = []
+    additional_count = len(student.embeddings)
+    for index, embedding in enumerate(valid):
+        vector = np.asarray(embedding, dtype=np.float64)
+        # Preserve the legacy primary vector exactly; normalize only additional
+        # references so existing threshold and distance behavior is unchanged.
+        if index < additional_count:
+            norm = float(np.linalg.norm(vector))
+            vector = vector / norm if norm else vector
+        normalized.append(vector)
+    _EMBEDDING_CACHE[student.student_id] = (fingerprint, normalized)
+    return normalized
+
+
+def _best_student_distance(student: EnrolledStudent, face_encoding: np.ndarray) -> float:
+    embeddings = _student_embeddings(student)
+    if not embeddings:
+        return float("inf")
+    distances = face_recognition.face_distance(np.asarray(embeddings, dtype=np.float64), face_encoding)
+    return float(np.min(distances))
+
+
 def _confidence_from_distance(distance: float, boundary: float = 0.6) -> float:
     slope = 0.1
     confidence = 1.0 / (1.0 + np.exp((float(distance) - boundary) / slope))
@@ -242,7 +278,7 @@ async def recognize(
         if len(face_encodings) != len(face_locations):
             raise HTTPException(status_code=422, detail="Failed to generate embeddings for all detected faces")
 
-        valid_students = [student for student in students if len(student.embedding) == 128]
+        valid_students = [student for student in students if _student_embeddings(student)]
         matches: list[FaceMatch] = []
         claimed_student_ids: set[int] = set()
         for face_index, face_encoding in enumerate(face_encodings):
@@ -252,7 +288,7 @@ async def recognize(
             if not valid_students:
                 matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list, recognition_state=_recognition_state(False, face_warning_list, False)))
                 continue
-            distances = face_recognition.face_distance(np.asarray([student.embedding for student in valid_students], dtype=np.float64), face_encoding)
+            distances = np.asarray([_best_student_distance(student, face_encoding) for student in valid_students], dtype=np.float64)
             ranked_indexes = np.argsort(distances)
             candidate_index = next((int(index) for index in ranked_indexes if valid_students[int(index)].student_id not in claimed_student_ids), None)
             if candidate_index is None:
@@ -298,7 +334,7 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
     face_encodings = _encode_detected_faces(image_array, face_locations, edge_crop)
     if len(face_encodings) != len(face_locations):
         raise ValueError("Failed to generate embeddings for all detected faces")
-    valid_students = [EnrolledStudent.model_validate(item) for item in students_payload if len(item.get("embedding", [])) == 128]
+    valid_students = [EnrolledStudent.model_validate(item) for item in students_payload if _student_embeddings(EnrolledStudent.model_validate(item))]
     matches: list[FaceMatch] = []
     claimed_student_ids: set[int] = set()
     for face_index, face_encoding in enumerate(face_encodings):
@@ -308,7 +344,7 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
         if not valid_students:
             matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list, recognition_state=_recognition_state(False, face_warning_list, False)))
             continue
-        distances = face_recognition.face_distance(np.asarray([student.embedding for student in valid_students], dtype=np.float64), face_encoding)
+        distances = np.asarray([_best_student_distance(student, face_encoding) for student in valid_students], dtype=np.float64)
         ranked_indexes = np.argsort(distances)
         candidate_index = next((int(index) for index in ranked_indexes if valid_students[int(index)].student_id not in claimed_student_ids), None)
         if candidate_index is None:

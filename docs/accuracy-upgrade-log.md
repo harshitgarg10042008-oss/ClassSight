@@ -48,3 +48,19 @@ Recognition responses now distinguish `RECOGNIZED`, `UNKNOWN`, `LOW_CONFIDENCE`,
 Validation evidence: six focused FastAPI tests passed; the Spring Boot package compiled successfully with Java 17; the unchanged golden regression returned the same 33.33% current result as Step A and Step B, with one false negative and three identity mismatches. No accuracy regression was introduced relative to the measured current baseline. The historical baseline discrepancy remains unresolved and is not being concealed.
 
 Step C stopping point: state and quality extensions are committed with safe defaults. Rotation/occlusion checks are opt-in pending representative validation, and no threshold was changed.
+
+## Starting Step D — Multi-reference embeddings and cache
+
+- Timestamp: 2026-08-13
+- The current Student model stores one `face_embedding` array. This step will add an additive reference-embedding store and cache, preserving the existing column and enrollment API compatibility.
+
+
+## Completed Step D — Multi-reference embeddings and cache
+
+An additive `student_face_embeddings` table and `StudentFaceEmbedding` entity now support multiple reference vectors per student. Enrollment continues to write the legacy `students.face_embedding` column and additionally appends each successful consented enrollment to the reference collection. Spring sends both `embedding` and `embeddings` fields so old clients remain compatible. FastAPI accepts both forms, computes the best distance across a student’s references, and caches parsed vectors by student ID and content fingerprint.
+
+The first cache implementation normalized the legacy primary vector and changed measured distances even though the aggregate golden accuracy remained 33.33%. That specific behavior was corrected before acceptance: the primary legacy vector is now preserved exactly, while only additional references are normalized. The rerun restored the previous distance values and the unchanged golden result. This is recorded as an accuracy-safe correction, not silently accepted as a regression.
+
+Validation evidence: seven focused FastAPI tests passed; the Spring Boot package compiled with Java 17; the golden regression remained exactly at the Step A/B/C result of 33.33%, with one false negative and three identity mismatches. No performance improvement is claimed yet because the current request still transmits the enrolled payload and uses the existing CPU detector. The historical golden baseline discrepancy remains unresolved.
+
+Step D stopping point: multi-reference persistence and process-local caching are implemented, legacy behavior is preserved, and the primary-vector regression was rejected and fixed before commit.
