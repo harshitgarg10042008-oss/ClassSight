@@ -130,3 +130,32 @@ This stage will add a distinct mock provider and explicit scenario selection for
 ## Stage 19 status
 
 IN PROGRESS.
+
+
+## Completed Stage 19 — mock ERP/sandbox mode
+
+**Completed:** 2026-08-13T11:00:00+00:00
+
+A distinct `MockErpProvider` was added; it is not mixed into the local CSV provider. Live ADMIN calls against session `1` returned HTTP 200 for each scenario:
+
+| Scenario | Result | Persisted evidence |
+|---|---|---|
+| `DUPLICATE` | `SYNCED`, `idempotentNoOp=true` | Existing SYNCED record was not resubmitted; attempt count stayed 2 at that point. |
+| `INVALID_STUDENT` | `FAILED` | Audit note recorded the invalid student rejection; attempt count 3. |
+| `TIMEOUT` | `FAILED` | Audit note recorded the injected timeout; attempt count 4. |
+| `PARTIAL_SUCCESS` | `PARTIAL` | Audit note recorded partial acceptance; attempt count 5. |
+| `SUCCESS` | `SYNCED` | Final audit recorded successful mock acceptance; attempt count 6. |
+
+Postgres ended with one persisted sync record in `SYNCED` state and eight audit rows covering the prior local failure/retry plus all mock transitions. These are simulated sandbox outcomes only; no real ERP response is being claimed.
+
+**Stage 19 status: SUCCEEDED.**
+
+## Starting Stage 20 — Phase 2 verification
+
+**Started:** 2026-08-13T11:02:00+00:00
+
+The final Phase 2 walkthrough will verify finalized local attendance → mapping validation → CSV export → persisted sync status → idempotent repeat, with the honest ERP-unavailable/local-only fallback message.
+
+## Stage 20 status
+
+IN PROGRESS.

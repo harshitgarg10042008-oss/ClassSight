@@ -6,6 +6,7 @@ import com.classsight.entity.ErpSyncRecord;
 import com.classsight.service.ErpProvider;
 import com.classsight.service.ErpSyncService;
 import com.classsight.service.LocalCsvErpProvider;
+import com.classsight.service.MockErpProvider;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,6 +45,15 @@ public class AdminErpController {
             @AuthenticationPrincipal com.classsight.entity.User actor) {
         String username = actor == null ? "admin" : actor.getUsername();
         return ResponseEntity.ok(syncService.export(request.getSessionIds(), username, simulateFailure));
+    }
+
+    @PostMapping("/mock/{scenario}/{sessionId}")
+    public ResponseEntity<ErpSyncService.SyncResult> mock(
+            @PathVariable MockErpProvider.Scenario scenario,
+            @PathVariable Long sessionId,
+            @AuthenticationPrincipal com.classsight.entity.User actor) {
+        String username = actor == null ? "admin" : actor.getUsername();
+        return ResponseEntity.ok(syncService.mockScenario(sessionId, username, scenario));
     }
 
     @GetMapping("/sync-records")

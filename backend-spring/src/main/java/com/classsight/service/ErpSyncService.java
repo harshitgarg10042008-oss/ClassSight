@@ -19,15 +19,18 @@ public class ErpSyncService {
     private final ErpSyncRecordRepository syncRepository;
     private final ErpSyncAuditRepository auditRepository;
     private final LocalCsvErpProvider provider;
+    private final MockErpProvider mockProvider;
 
     public ErpSyncService(AttendanceSessionRepository sessionRepository,
                           ErpSyncRecordRepository syncRepository,
                           ErpSyncAuditRepository auditRepository,
-                          LocalCsvErpProvider provider) {
+                          LocalCsvErpProvider provider,
+                          MockErpProvider mockProvider) {
         this.sessionRepository = sessionRepository;
         this.syncRepository = syncRepository;
         this.auditRepository = auditRepository;
         this.provider = provider;
+        this.mockProvider = mockProvider;
     }
 
     @Transactional
@@ -72,6 +75,37 @@ public class ErpSyncService {
         List<SyncResult> results = new ArrayList<>();
         for (Long sessionId : sessionIds) results.add(exportOne(sessionId, actor, simulateFailure));
         return results;
+    }
+
+    @Transactional
+    public SyncResult mockScenario(Long sessionId, String actor, MockErpProvider.Scenario scenario) {
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session " + sessionId + " was not found"));
+        ErpSyncRecord record = syncRepository.findBySessionId(sessionId).orElseGet(() -> {
+            ErpSyncRecord created = new ErpSyncRecord();
+            created.setSession(session);
+            created.setStatus(ErpSyncRecord.SyncStatus.PENDING);
+            created.setActor(actor);
+            return syncRepository.save(created);
+        });
+        if (scenario == MockErpProvider.Scenario.DUPLICATE && record.getStatus() == ErpSyncRecord.SyncStatus.SYNCED) {
+            return new SyncResult(sessionId, record.getStatus().name(), true, true, record.getExportPath(), record.getAttemptCount(), "Mock ERP duplicate scenario: persisted SYNCED record was not resubmitted");
+        }
+        MockErpProvider.Result result = mockProvider.run(scenario);
+        String previous = record.getStatus() == null ? null : record.getStatus().name();
+        record.setStatus(result.status());
+        record.setActor(actor);
+        record.setAttemptCount(record.getAttemptCount() + 1);
+        record.setLastError(result.successful() ? null : result.message());
+        syncRepository.save(record);
+        ErpSyncAudit audit = new ErpSyncAudit();
+        audit.setSyncRecord(record);
+        audit.setFromStatus(previous);
+        audit.setToStatus(result.status().name());
+        audit.setActor(actor);
+        audit.setNote("MOCK_SCENARIO=" + scenario.name() + ": " + result.message());
+        auditRepository.save(audit);
+        return new SyncResult(sessionId, result.status().name(), false, result.successful(), record.getExportPath(), record.getAttemptCount(), result.message());
     }
 
     @Transactional(readOnly = true)
