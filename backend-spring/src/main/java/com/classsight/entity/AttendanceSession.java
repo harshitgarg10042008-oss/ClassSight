@@ -46,6 +46,9 @@ public class AttendanceSession {
     @Column(name = "captured_photo_path", length = 1024)
     private String capturedPhotoPath;
 
+    @Column(name = "capture_fingerprint", length = 64)
+    private String captureFingerprint;
+
     @Column(name = "blur_score")
     private Double blurScore;
 
@@ -162,6 +165,14 @@ public class AttendanceSession {
 
     public void setEndedAt(LocalDateTime endedAt) {
         this.endedAt = endedAt;
+    }
+
+    public String getCaptureFingerprint() {
+        return captureFingerprint;
+    }
+
+    public void setCaptureFingerprint(String captureFingerprint) {
+        this.captureFingerprint = captureFingerprint;
     }
 
     public String getCapturedPhotoPath() {

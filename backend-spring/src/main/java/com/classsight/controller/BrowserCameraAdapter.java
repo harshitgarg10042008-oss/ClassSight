@@ -117,6 +117,19 @@ public class BrowserCameraAdapter {
                 Camera camera = cameraOpt.get();
                 Subject subject = assignment.getSubject();
                 ClassSection classSection = assignment.getClassSection();
+                byte[] imageBytes = image.getBytes();
+                Optional<AttendanceSession> duplicate = attendanceSessionService.findRecentDuplicate(faculty, imageBytes, room, camera, subject, classSection);
+                if (duplicate.isPresent()) {
+                    AttendanceSession existing = duplicate.get();
+                    Map<String, Object> duplicateResponse = new HashMap<>();
+                    duplicateResponse.put("status", "success");
+                    duplicateResponse.put("duplicate", true);
+                    duplicateResponse.put("message", "Identical capture already submitted recently");
+                    duplicateResponse.put("sessionId", existing.getId());
+                    duplicateResponse.put("sessionStatus", existing.getStatus().toString());
+                    duplicateResponse.put("reviewUrl", "/api/attendance-sessions/" + existing.getId() + "/review");
+                    return ResponseEntity.ok(duplicateResponse);
+                }
                 
                 logger.info("Creating session with faculty ID: {}, room ID: {}, camera ID: {}, subject ID: {}, class ID: {}", 
                         faculty.getId(), room.getId(), camera.getId(), subject.getId(), classSection.getId());
@@ -124,6 +137,8 @@ public class BrowserCameraAdapter {
                 // Create session with OPEN status
                 AttendanceSession session = attendanceSessionService.createSession(
                         faculty, room, camera, subject, classSection);
+                attendanceSessionService.setCaptureFingerprint(session.getId(),
+                        attendanceSessionService.captureFingerprint(faculty, room, camera, subject, classSection, imageBytes));
                 
                 logger.info("Created AttendanceSession with ID: {}, Status: OPEN", session.getId());
                 
@@ -192,8 +207,18 @@ public class BrowserCameraAdapter {
             if (assignment == null || room == null || camera == null) return ResponseEntity.badRequest().body(Map.of("error", "Invalid room, camera, or assignment"));
             RtspCameraAdapter.FrameResult frame = rtspCameraAdapter.captureFrame(cameraId);
             if (!frame.success()) return ResponseEntity.status(502).body(Map.of("error", frame.message(), "cameraId", cameraId, "latencyMs", frame.latencyMs()));
-            AttendanceSession session = attendanceSessionService.createSession(faculty, room, camera, assignment.getSubject(), assignment.getClassSection());
             DiskMultipartFile diskFrame = new DiskMultipartFile(Path.of(frame.path()), "image/jpeg");
+            byte[] frameBytes = diskFrame.getBytes();
+            Optional<AttendanceSession> duplicate = attendanceSessionService.findRecentDuplicate(faculty, frameBytes, room, camera, assignment.getSubject(), assignment.getClassSection());
+            if (duplicate.isPresent()) {
+                AttendanceSession existing = duplicate.get();
+                return ResponseEntity.ok(Map.of("status", "success", "duplicate", true,
+                        "message", "Identical camera frame already submitted recently",
+                        "sessionId", existing.getId(), "sessionStatus", existing.getStatus().toString(),
+                        "reviewUrl", "/api/attendance-sessions/" + existing.getId() + "/review"));
+            }
+            AttendanceSession session = attendanceSessionService.createSession(faculty, room, camera, assignment.getSubject(), assignment.getClassSection());
+            attendanceSessionService.setCaptureFingerprint(session.getId(), attendanceSessionService.captureFingerprint(faculty, room, camera, assignment.getSubject(), assignment.getClassSection(), frameBytes));
             String capturedPhotoPath = capturePhotoStorageService.store(session.getId(), diskFrame);
             attendanceSessionService.setCapturedPhotoPath(session.getId(), capturedPhotoPath);
             attendanceSessionService.transitionToCaptured(session.getId());

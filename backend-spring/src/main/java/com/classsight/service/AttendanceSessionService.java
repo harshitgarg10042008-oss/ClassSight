@@ -14,7 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +33,24 @@ public class AttendanceSessionService {
 
     @Autowired
     private UserRepository userRepository;
+
+    public Optional<AttendanceSession> findRecentDuplicate(User faculty, byte[] imageBytes, Room room, Camera camera, Subject subject, ClassSection classSection) {
+        String fingerprint = captureFingerprint(faculty, room, camera, subject, classSection, imageBytes);
+        return attendanceSessionRepository.findFirstByCaptureFingerprintAndCreatedAtAfterOrderByCreatedAtDesc(
+                fingerprint, LocalDateTime.now().minusSeconds(30));
+    }
+
+    public String captureFingerprint(User faculty, Room room, Camera camera, Subject subject, ClassSection classSection, byte[] imageBytes) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String context = String.join(":", String.valueOf(faculty.getId()), String.valueOf(room.getId()),
+                    String.valueOf(camera.getId()), String.valueOf(subject.getId()), String.valueOf(classSection.getId()));
+            digest.update(context.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest.digest(imageBytes));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
+    }
 
     public AttendanceSession createSession(User faculty, Room room, Camera camera, 
                                            Subject subject, ClassSection classSection) {
@@ -97,6 +119,13 @@ public class AttendanceSessionService {
 
     public AttendanceSession transitionToCaptured(Long sessionId) {
         return updateStatus(sessionId, AttendanceSession.SessionStatus.CAPTURED);
+    }
+
+    public AttendanceSession setCaptureFingerprint(Long sessionId, String fingerprint) {
+        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        session.setCaptureFingerprint(fingerprint);
+        return attendanceSessionRepository.save(session);
     }
 
     public AttendanceSession setCapturedPhotoPath(Long sessionId, String photoPath) {

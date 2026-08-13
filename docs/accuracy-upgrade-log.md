@@ -64,3 +64,19 @@ The first cache implementation normalized the legacy primary vector and changed 
 Validation evidence: seven focused FastAPI tests passed; the Spring Boot package compiled with Java 17; the golden regression remained exactly at the Step A/B/C result of 33.33%, with one false negative and three identity mismatches. No performance improvement is claimed yet because the current request still transmits the enrolled payload and uses the existing CPU detector. The historical golden baseline discrepancy remains unresolved.
 
 Step D stopping point: multi-reference persistence and process-local caching are implemented, legacy behavior is preserved, and the primary-vector regression was rejected and fixed before commit.
+
+## Starting Step E — Duplicate prevention and unknown handling
+
+- Timestamp: 2026-08-13
+- Existing per-image deduplication uses `claimedStudentIds` in both Spring and FastAPI. This step will preserve that guard and add an idempotent capture fingerprint for repeated submissions where the current session model allows it.
+
+
+## Completed Step E — Duplicate prevention and unknown handling
+
+The existing FastAPI and Spring per-image `claimedStudentIds` logic already prevents the same student from being assigned more than once within one image. Spring now also computes a SHA-256 fingerprint over the capture bytes plus room, camera, subject, class section, and faculty context. A recent identical submission within a 30-second window returns the existing session instead of creating another attendance session. The guard applies to browser multipart captures and RTSP adapter captures, and the fingerprint is persisted through Flyway V6.
+
+Unknown and low-confidence outcomes remain review-required rather than being converted to attendance automatically. The explicit recognition states from Step C are persisted and surfaced for review; duplicate prevention does not alter the existing PRESENT, ABSENT, or REVIEW status contract.
+
+Validation evidence: the Java 17 Spring package compiled successfully. No detector, embedding, or threshold code changed in Step E, so the Step D golden-set result remains the applicable accuracy checkpoint. A live duplicate-submission test was not claimed because the running Compose Spring image predates this unbuilt commit; it will be exercised after the final rebuilt-stack smoke test.
+
+Step E stopping point: duplicate guards are implemented and committed; live rebuilt-stack verification remains scheduled for Step H.

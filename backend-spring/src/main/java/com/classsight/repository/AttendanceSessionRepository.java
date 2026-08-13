@@ -16,6 +16,8 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
 
     Optional<AttendanceSession> findFirstByFacultyOrderByCreatedAtDesc(User faculty);
 
+    Optional<AttendanceSession> findFirstByCaptureFingerprintAndCreatedAtAfterOrderByCreatedAtDesc(String captureFingerprint, LocalDateTime cutoff);
+
     List<AttendanceSession> findByStatus(AttendanceSession.SessionStatus status);
 
     List<AttendanceSession> findByCreatedAtBeforeAndCapturedPhotoPathIsNotNull(LocalDateTime cutoff);
