@@ -1,2 +1,3 @@
-date,git_commit,threshold,overall_accuracy_pct,false_positive_count,false_negative_count
-2026-08-13T08:23:24.929970+00:00,72cb495fe405365ea4b6853b5bb4806c430c397b,0.6,50.0,0,1
+date,git_commit,threshold,overall_accuracy_pct,false_positive_count,false_negative_count,identity_mismatch_count
+2026-08-13T08:23:24.929970+00:00,72cb495fe405365ea4b6853b5bb4806c430c397b,0.6,50.0,0,1,0
+2026-08-13T09:13:55.860738+00:00,df016337ab1aea24af3db18a5672e3b48116bec3,0.6,33.33,0,1,3

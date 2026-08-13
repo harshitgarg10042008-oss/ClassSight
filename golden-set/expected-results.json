@@ -2,5 +2,22 @@
   "obama_biden_group_2010.jpg": {
     "expected_present": ["Obama", "Biden"],
     "notes": "Human visual verification of the source image: Obama is seated near right-center; Biden is seated near center. Other people are intentionally not included as expected enrolled identities."
+  },
+  "largegroup-1899/classroom_1899.jpg": {
+    "references": [
+      {"student_id": 200, "name": "candidate_00", "path": "golden-set/largegroup-1899/refs/candidate_00.jpg"},
+      {"student_id": 201, "name": "candidate_01", "path": "golden-set/largegroup-1899/refs/candidate_01.jpg"},
+      {"student_id": 202, "name": "candidate_02", "path": "golden-set/largegroup-1899/refs/candidate_02.jpg"},
+      {"student_id": 203, "name": "candidate_03", "path": "golden-set/largegroup-1899/refs/candidate_03.jpg"}
+    ],
+    "resize_max": null,
+    "expected_present": ["candidate_00", "candidate_01", "candidate_02", "candidate_03"],
+    "expected_by_face": {
+      "0": "candidate_00",
+      "1": "candidate_01",
+      "2": "candidate_02",
+      "3": "candidate_03"
+    },
+    "notes": "Public-domain 1899 Library of Congress classroom photograph. Manual visual count is approximately 23 visible faces (roughly 22 children and one teacher); only the four frontal detector-found faces were selected as the enrolled subset. The other visible faces are intentionally treated as undetected strangers."
   }
 }

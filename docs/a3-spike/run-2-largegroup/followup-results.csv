@@ -1,0 +1,5 @@
+face_index,human_annotated_identity,predicted_candidate,predicted_student_id,matched,confidence_score,distance,face_size_ratio,quality_warnings
+0,candidate_00,candidate_01,201,True,0.995129,0.068034,0.001591,[]
+1,candidate_01,candidate_02,202,True,0.995822,0.052625,0.002307,[]
+2,candidate_02,candidate_00,200,True,0.99271,0.108604,0.001109,[]
+3,candidate_03,candidate_03,203,True,0.995678,0.056023,0.001623,[]

@@ -1,0 +1,85 @@
+{
+  "run": "A3 follow-up large-group stand-in",
+  "source_file": "docs/a3-spike/run-2-largegroup/source/classroom_1899_original.jpg",
+  "source_url": "https://commons.wikimedia.org/wiki/File:Grade_school_children_posed_in_classroom,_with_teacher_standing_in_back_of_room,_Washington,_D.C._LCCN96525653.jpg",
+  "license_note": "Wikimedia Commons displays public-domain/no-known-restrictions information for this 1899 Library of Congress photograph.",
+  "production_distance_threshold": 0.6,
+  "manual_visual_ground_truth": {
+    "visible_faces_approximate": 23,
+    "note": "Manual visual count is approximate: roughly 22 children plus one teacher are visibly represented; four detector-found frontal faces were selected as candidate_00..candidate_03 for the enrolled subset.",
+    "enrolled_subset": [
+      "candidate_00",
+      "candidate_01",
+      "candidate_02",
+      "candidate_03"
+    ]
+  },
+  "faces_detected": 4,
+  "faces_undetected_approximate": 19,
+  "faces_matched_correctly": 1,
+  "faces_matched_incorrectly": 3,
+  "enrolled_faces_below_match_threshold": 0,
+  "face_size_warning_threshold": 0.0005,
+  "face_size_warning_fired": false,
+  "face_size_ratios_detected": [
+    0.001591,
+    0.002307,
+    0.001109,
+    0.001623
+  ],
+  "detection_recognition_time_ms": 34174.71,
+  "quality": {
+    "blur_score": 64.2031,
+    "brightness_mean": 93.7845,
+    "liveness_score": 0.3174,
+    "liveness_texture_score": 6.349,
+    "quality_passed": true,
+    "warnings": []
+  },
+  "rows": [
+    {
+      "face_index": 0,
+      "human_annotated_identity": "candidate_00",
+      "predicted_candidate": "candidate_01",
+      "predicted_student_id": 201,
+      "matched": true,
+      "confidence_score": 0.995129,
+      "distance": 0.068034,
+      "face_size_ratio": 0.001591,
+      "quality_warnings": []
+    },
+    {
+      "face_index": 1,
+      "human_annotated_identity": "candidate_01",
+      "predicted_candidate": "candidate_02",
+      "predicted_student_id": 202,
+      "matched": true,
+      "confidence_score": 0.995822,
+      "distance": 0.052625,
+      "face_size_ratio": 0.002307,
+      "quality_warnings": []
+    },
+    {
+      "face_index": 2,
+      "human_annotated_identity": "candidate_02",
+      "predicted_candidate": "candidate_00",
+      "predicted_student_id": 200,
+      "matched": true,
+      "confidence_score": 0.99271,
+      "distance": 0.108604,
+      "face_size_ratio": 0.001109,
+      "quality_warnings": []
+    },
+    {
+      "face_index": 3,
+      "human_annotated_identity": "candidate_03",
+      "predicted_candidate": "candidate_03",
+      "predicted_student_id": 203,
+      "matched": true,
+      "confidence_score": 0.995678,
+      "distance": 0.056023,
+      "face_size_ratio": 0.001623,
+      "quality_warnings": []
+    }
+  ]
+}
