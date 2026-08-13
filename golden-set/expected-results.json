@@ -1,0 +1,6 @@
+{
+  "obama_biden_group_2010.jpg": {
+    "expected_present": ["Obama", "Biden"],
+    "notes": "Human visual verification of the source image: Obama is seated near right-center; Biden is seated near center. Other people are intentionally not included as expected enrolled identities."
+  }
+}

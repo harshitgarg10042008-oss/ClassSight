@@ -1,0 +1,3 @@
+filename,face_index,human_annotated_identity,predicted_student,predicted_student_id,matched,confidence_score,distance,face_size_ratio,quality_warnings
+obama_biden_group_2010.jpg,0,Obama,Obama,101,True,0.788225,0.468574,0.003039,[]
+obama_biden_group_2010.jpg,1,Biden,Biden,102,False,0.333229,0.669362,0.003039,[]

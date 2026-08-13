@@ -1,0 +1,82 @@
+group_photo=obama_biden_group_2010.jpg
+reference_photos=obama_reference.jpg, biden_reference.jpg
+face_count=2
+distance_threshold=0.60
+confidence_note=display-only sigmoid; distance threshold remains the match decision
+face_index | expected_identity_by_reference_distance | expected_distance | predicted_student | endpoint_confidence | endpoint_distance | outcome
+         0 | Obama                                      |         0.483962 | Obama             |           0.761401 |         0.483962 | PRESENT_CANDIDATE
+         1 | UNENROLLED/UNKNOWN                         |         0.667401 | Biden             |           0.337599 |         0.667401 | REVIEW_OR_NO_MATCH
+
+full_json=
+{
+  "response": {
+    "face_count": 2,
+    "matches": [
+      {
+        "face_index": 0,
+        "student_id": 101,
+        "roll_number": "OBAMA",
+        "confidence_score": 0.761401,
+        "distance": 0.483962,
+        "matched": true,
+        "face_size_ratio": 0.003039,
+        "quality_warnings": []
+      },
+      {
+        "face_index": 1,
+        "student_id": 102,
+        "roll_number": "BIDEN",
+        "confidence_score": 0.337599,
+        "distance": 0.667401,
+        "matched": false,
+        "face_size_ratio": 0.003039,
+        "quality_warnings": []
+      }
+    ],
+    "quality": {
+      "blur_score": 835.7618,
+      "brightness_mean": 121.5099,
+      "liveness_score": 0.7492,
+      "liveness_texture_score": 14.9842,
+      "quality_passed": true,
+      "warnings": []
+    },
+    "message": "Group photo recognized successfully"
+  },
+  "analysis": [
+    {
+      "face_index": 0,
+      "expected_identity_by_reference_distance": "Obama",
+      "expected_distance": 0.483962,
+      "reference_distances": {
+        "Obama": 0.483962,
+        "Biden": 0.798831
+      },
+      "predicted_student": "Obama",
+      "predicted_student_id": 101,
+      "endpoint_confidence": 0.761401,
+      "endpoint_distance": 0.483962,
+      "matched": true,
+      "outcome": "PRESENT_CANDIDATE"
+    },
+    {
+      "face_index": 1,
+      "expected_identity_by_reference_distance": "UNENROLLED/UNKNOWN",
+      "expected_distance": 0.667401,
+      "reference_distances": {
+        "Obama": 0.81503,
+        "Biden": 0.667401
+      },
+      "predicted_student": "Biden",
+      "predicted_student_id": 102,
+      "endpoint_confidence": 0.337599,
+      "endpoint_distance": 0.667401,
+      "matched": false,
+      "outcome": "REVIEW_OR_NO_MATCH"
+    }
+  ]
+}
+
+correct_enrolled_matches=1/2
+false_present_candidates_for_unenrolled_faces=0
+validation_interpretation=FAIL_OR_REVIEW_REQUIRED

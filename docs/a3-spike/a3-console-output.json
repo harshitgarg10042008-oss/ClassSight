@@ -1,0 +1,60 @@
+{
+  "threshold": 0.6,
+  "references": {
+    "101": {
+      "name": "Obama",
+      "file": "face-service-fastapi/tests/fixtures/obama_reference.jpg"
+    },
+    "102": {
+      "name": "Biden",
+      "file": "face-service-fastapi/tests/fixtures/biden_reference.jpg"
+    }
+  },
+  "ground_truth_note": "Only face 0=Obama and face 1=Biden in the conference-room group were human-annotated by visual inspection. Other faces are not treated as known identities. The two wide classroom/auditorium fixtures were verified separately through live /capture in STAGE11_12_LIVE_EVIDENCE.md because local HOG processing of those large images exceeded the sandbox CPU window.",
+  "photos": [
+    {
+      "filename": "obama_biden_group_2010.jpg",
+      "source_type": "provisional stand-in; not the requested 30+ back-of-room classroom set",
+      "faces_detected": 2,
+      "faces_matched_correctly": 1,
+      "faces_matched_incorrectly": 0,
+      "faces_undetected": null,
+      "human_annotated_enrolled_faces": 2,
+      "unknown_faces_with_false_present": 0,
+      "avg_confidence_for_correct_matches": 0.788225,
+      "detection_recognition_time_ms": 9268.71,
+      "quality": {
+        "blur_score": 835.7618,
+        "brightness_mean": 121.5099,
+        "liveness_score": 0.7492,
+        "liveness_texture_score": 14.9842,
+        "quality_passed": true,
+        "warnings": []
+      },
+      "rows": [
+        {
+          "face_index": 0,
+          "human_annotated_identity": "Obama",
+          "predicted_student": "Obama",
+          "predicted_student_id": 101,
+          "matched": true,
+          "confidence_score": 0.788225,
+          "distance": 0.468574,
+          "face_size_ratio": 0.003039,
+          "quality_warnings": []
+        },
+        {
+          "face_index": 1,
+          "human_annotated_identity": "Biden",
+          "predicted_student": "Biden",
+          "predicted_student_id": 102,
+          "matched": false,
+          "confidence_score": 0.333229,
+          "distance": 0.669362,
+          "face_size_ratio": 0.003039,
+          "quality_warnings": []
+        }
+      ]
+    }
+  ]
+}

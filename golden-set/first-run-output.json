@@ -1,0 +1,44 @@
+{
+  "summary": {
+    "date": "2026-08-13T08:23:24.929970+00:00",
+    "git_commit": "72cb495fe405365ea4b6853b5bb4806c430c397b",
+    "threshold": 0.6,
+    "overall_accuracy_pct": 50.0,
+    "false_positive_count": 0,
+    "false_negative_count": 1
+  },
+  "photos": [
+    {
+      "filename": "obama_biden_group_2010.jpg",
+      "expected_present": [
+        "Biden",
+        "Obama"
+      ],
+      "predicted_present": [
+        "Obama"
+      ],
+      "false_negatives": [
+        "Biden"
+      ],
+      "false_positives": [],
+      "faces_detected": 2,
+      "details": [
+        {
+          "face_index": 0,
+          "predicted": "Obama",
+          "matched": true,
+          "confidence": 0.788225,
+          "distance": 0.468574
+        },
+        {
+          "face_index": 1,
+          "predicted": "Biden",
+          "matched": false,
+          "confidence": 0.333229,
+          "distance": 0.669362
+        }
+      ],
+      "pass": false
+    }
+  ]
+}

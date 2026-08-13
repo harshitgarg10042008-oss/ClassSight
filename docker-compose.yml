@@ -1,53 +1,71 @@
-version: '3.8'
-
+# The current Docker sandbox cannot reliably attach the Postgres container to
+# a user-defined bridge network. Host networking is therefore intentional here.
+# On a normal Docker host, remove network_mode and use service names instead.
 services:
-  backend-spring:
-    build:
-      context: ./backend-spring
-      dockerfile: Dockerfile
-      network: host
-    ports:
-      - "8080:8080"
+  postgres:
+    image: postgres:15-alpine
+    network_mode: host
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - POSTGRES_HOST=postgres
-      - FACE_SERVICE_URL=http://face-service-fastapi:8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - classsight-network
+      POSTGRES_DB: ${POSTGRES_DB:-classsight}
+      POSTGRES_USER: ${POSTGRES_USER:-classsight}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-classsight_password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-classsight} -d ${POSTGRES_DB:-classsight}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   face-service-fastapi:
     build:
       context: ./face-service-fastapi
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    networks:
-      - classsight-network
-
-  postgres:
-    image: postgres:15-alpine
+    network_mode: host
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-classsight}
-      - POSTGRES_USER=${POSTGRES_USER:-classsight}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-classsight_password}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+      QUALITY_BLUR_THRESHOLD: ${QUALITY_BLUR_THRESHOLD:-30.0}
+      QUALITY_MIN_BRIGHTNESS: ${QUALITY_MIN_BRIGHTNESS:-35.0}
+      QUALITY_MAX_BRIGHTNESS: ${QUALITY_MAX_BRIGHTNESS:-220.0}
+      QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
+      QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-classsight} -d ${POSTGRES_DB:-classsight}" ]
-      interval: 5s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
       timeout: 5s
-      retries: 5
-    networks:
-      - classsight-network
+      retries: 12
+      start_period: 20s
 
-networks:
-  classsight-network:
-    driver: bridge
+  backend-spring:
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
+    network_mode: host
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-classsight}
+      POSTGRES_USER: ${POSTGRES_USER:-classsight}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-classsight_password}
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_here_change_in_production}
+      FACE_SERVICE_URL: http://127.0.0.1:${FACE_SERVICE_PORT:-8000}
+      ATTENDANCE_CAPTURE_STORAGE_PATH: /app/data/captures
+      ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-0.6}
+      ATTENDANCE_DEFAULTER_THRESHOLD: ${ATTENDANCE_DEFAULTER_THRESHOLD:-75}
+    volumes:
+      - ./data/captures:/app/data/captures
+    depends_on:
+      postgres:
+        condition: service_healthy
+      face-service-fastapi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health | grep -q 'UP'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
 
 volumes:
   postgres-data:
