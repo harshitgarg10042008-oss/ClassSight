@@ -1,0 +1,4 @@
+[tcp @ 0x55d70d710540] Connection to tcp://127.0.0.1:8554?timeout=0 failed: Connection refused
+[in#0 @ 0x55d70d753c40] Error opening input: Connection refused
+Error opening input file rtsp://127.0.0.1:8554/classsight.
+Error opening input files: Connection refused

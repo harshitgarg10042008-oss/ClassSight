@@ -180,3 +180,29 @@ No real IP camera is available. This stage will first check for FFmpeg and use a
 ## Stage 21 status
 
 IN PROGRESS.
+
+
+### Stage 21 frame inspection note
+
+Two captured frames were visually inspected directly. `frame-01.jpg` decoded as a 640 × 360 RGB JPEG of the GStreamer SMPTE test pattern, size 16,749 bytes, SHA-256 `fbdea8127aca493afd65233915891d57e213863cebc12a3650fddae4da5634e4`. `frame-02.jpg` decoded independently as another 640 × 360 RGB JPEG, size 19,943 bytes, SHA-256 `1938773abed9eb2c17dcde4d0eb6602f041d279d795f792ad32f9a94de41453e4`. The images visibly differ, confirming consecutive stream frames rather than one copied file.
+
+
+## Completed Stage 21 — isolated RTSP capture spike
+
+**Completed:** 2026-08-13T12:05:00+00:00
+
+FFmpeg was present, but its RTSP listen mode failed with `Connection refused`. A safe GStreamer RTSP server workaround was installed and used. The isolated stream `rtsp://127.0.0.1:8554/classsight` served a real `videotestsrc` pattern. FFmpeg captured three independently decoded JPEG frames at 640 × 360: 16,749, 19,943, and 19,919 bytes. The GStreamer server became ready in approximately 106.84 ms; the capture command retrieved all three frames in approximately 5,986.47 ms. Two frames were visually inspected and differed. Full hashes and logs are in `docs/overnight/stage21-rtsp/`.
+
+The first finer-grained latency attempt was interrupted by shell job-control behavior and is explicitly excluded from the evidence. No real IP camera was available or tested.
+
+**Stage 21 status: SUCCEEDED WITH SIMULATED SOURCE.**
+
+## Starting Stage 22 — camera entity, admin management, and room mapping
+
+**Started:** 2026-08-13T12:07:00+00:00
+
+Stage 21 succeeded with a simulated RTSP stream, so Stage 22 may proceed. Existing Camera and admin-camera code will be inspected first. Any missing connection-test or health fields will be implemented behind ADMIN-only endpoints, and non-admin access will be live-tested as HTTP 403.
+
+## Stage 22 status
+
+IN PROGRESS.
