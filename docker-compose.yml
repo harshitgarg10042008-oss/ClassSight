@@ -2,6 +2,24 @@
 # a user-defined bridge network. Host networking is therefore intentional here.
 # On a normal Docker host, remove network_mode and use service names instead.
 services:
+  frontend-next:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+      network: host
+    network_mode: host
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+    depends_on:
+      backend-spring:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000 | grep -q 'ClassSight'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address :9001

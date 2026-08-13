@@ -76,3 +76,15 @@ With `RECOGNITION_MODE=async`, a real 7,075,824-byte Obama/Biden capture returne
 Additional Item 2 live verification completed before the Item 2 checkpoint is considered final. The 10-concurrent capture load test completed all 10/10 sessions successfully in 78.34 seconds. Every session reached `REVIEW_REQUIRED` with one review record; individual end-to-end times ranged from 10.33s to 78.33s while the single worker processed messages serially. RabbitMQ queues had zero ready and unacknowledged messages afterward.
 
 Crash recovery was tested with the FastAPI worker stopped before publishing. Three real captures returned HTTP 200 with sessions 14, 15, and 16 initially `CAPTURED`; RabbitMQ then reported `classsight.capture.recognition` with 3 ready and 0 unacknowledged messages. After restarting the worker, sessions 14, 15, and 16 all reached `REVIEW_REQUIRED` with one review record each. Queue inspection then returned zero ready and unacknowledged messages across capture, result, and dead-letter queues. This confirms durable queued-message recovery across a worker outage.
+
+## Starting Item 3 — Decoupled Frontend (Next.js) — Faculty Flow Only
+
+Started: 2026-08-13T13:56:00Z. Preconditions satisfied: Item 1 is DONE (`053be76`) and Item 2 is DONE (`8c20ba0`). The new frontend will be additive; existing Thymeleaf pages and REST contracts will remain in place.
+
+## Item 3 — Decoupled Frontend evidence
+
+Added `frontend-next/` as an additive Next.js 14 faculty flow. It contains login, room selection, subject/class assignment selection, real image upload capture, asynchronous status polling through the existing review endpoint, review decision controls, and finalization. The access token is held in React memory only and is sent through `Authorization`; it is never written to localStorage. The frontend is a separate Compose service on port 3000 and the existing Thymeleaf routes were not removed or modified.
+
+The production Next.js build passed with strict TypeScript checks. Live HTTP verification returned the rendered page containing `CLASSSIGHT / FACULTY` and `Capture attendance with confidence`. A real teacher login returned HTTP 200; live `/api/rooms` and `/teacher/assignments` returned the expected room and assignment JSON; a deliberately invalid token was rejected with HTTP 403. The old faculty capture API flow was re-run in synchronous mode after the frontend change: the real 7,075,824-byte image returned HTTP 200, session 17 was `REVIEW_REQUIRED`, Joe Biden was the same review record with confidence `0.2601` and face-size ratio `0.000716`, and the review photo returned HTTP 200 with the expected 7,075,824 bytes and SHA-256 `7e5664ccf9215843ae9d8834819ca8902e318b493b13a466c209b6d89fac1308`.
+
+A full interactive browser takeover could not be completed because the available browser connection returned `Could not establish connection. Receiving end does not exist`; therefore the four-screen click-through itself is not claimed as live-verified. The implementation is build-verified and API-verified, but Item 3 is **BLOCKED pending interactive browser verification**, not marked DONE.
