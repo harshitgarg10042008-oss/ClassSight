@@ -17,6 +17,7 @@ import com.classsight.service.AttendanceSessionService;
 import com.classsight.service.DiskMultipartFile;
 import com.classsight.service.RtspCameraAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -45,6 +46,12 @@ public class BrowserCameraAdapter {
 
     @Autowired
     private com.classsight.service.StorageService capturePhotoStorageService;
+
+    @Autowired
+    private com.classsight.service.AsyncRecognitionService asyncRecognitionService;
+
+    @Value("${attendance.recognition.mode:sync}")
+    private String recognitionMode;
 
     @Autowired
     private FacultySubjectAssignmentRepository assignmentRepository;
@@ -128,11 +135,17 @@ public class BrowserCameraAdapter {
                 attendanceSessionService.transitionToCaptured(session.getId());
                 logger.info("Transitioned session {} to CAPTURED; photo stored at {}", session.getId(), capturedPhotoPath);
                 
-                // The uploaded image is still available here, so process it before
-                // returning and persist one AttendanceRecord per enrolled student.
-                AttendanceSession processedSession = attendanceRecognitionService
-                        .processCapturedSession(session.getId(), image);
-                logger.info("Processed session {} with status {}", processedSession.getId(), processedSession.getStatus());
+                AttendanceSession processedSession;
+                if ("async".equalsIgnoreCase(recognitionMode)) {
+                    asyncRecognitionService.enqueue(session.getId(), capturedPhotoPath);
+                    processedSession = attendanceSessionService.getSessionById(session.getId()).orElseThrow();
+                    logger.info("Queued session {} for asynchronous recognition", session.getId());
+                } else {
+                    // The uploaded image is still available here, so process it before
+                    // returning and persist one AttendanceRecord per enrolled student.
+                    processedSession = attendanceRecognitionService.processCapturedSession(session.getId(), image);
+                    logger.info("Processed session {} with status {}", processedSession.getId(), processedSession.getStatus());
+                }
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
@@ -184,7 +197,13 @@ public class BrowserCameraAdapter {
             String capturedPhotoPath = capturePhotoStorageService.store(session.getId(), diskFrame);
             attendanceSessionService.setCapturedPhotoPath(session.getId(), capturedPhotoPath);
             attendanceSessionService.transitionToCaptured(session.getId());
-            AttendanceSession processed = attendanceRecognitionService.processCapturedSession(session.getId(), diskFrame);
+            AttendanceSession processed;
+            if ("async".equalsIgnoreCase(recognitionMode)) {
+                asyncRecognitionService.enqueue(session.getId(), capturedPhotoPath);
+                processed = attendanceSessionService.getSessionById(session.getId()).orElseThrow();
+            } else {
+                processed = attendanceRecognitionService.processCapturedSession(session.getId(), diskFrame);
+            }
             Map<String, Object> response = new HashMap<>();
             response.put("status", "success");
             response.put("source", "RTSP_ADAPTER");

@@ -33,6 +33,21 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
 
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    network_mode: host
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-classsight}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-classsight_rabbit_password}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
   postgres:
     image: postgres:15-alpine
     network_mode: host
@@ -61,6 +76,15 @@ services:
       QUALITY_MAX_BRIGHTNESS: ${QUALITY_MAX_BRIGHTNESS:-220.0}
       QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
       QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
+      RABBITMQ_WORKER_ENABLED: ${RABBITMQ_WORKER_ENABLED:-false}
+      RABBITMQ_HOST: 127.0.0.1
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-classsight}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-classsight_rabbit_password}
+      MINIO_ENDPOINT: http://127.0.0.1:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
@@ -91,6 +115,11 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
       ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-0.6}
+      RECOGNITION_MODE: ${RECOGNITION_MODE:-sync}
+      RABBITMQ_HOST: 127.0.0.1
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-classsight}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-classsight_rabbit_password}
       ATTENDANCE_DEFAULTER_THRESHOLD: ${ATTENDANCE_DEFAULTER_THRESHOLD:-75}
       CLASSSIGHT_ERP_EXPORT_DIR: /app/exports
       CLASSSIGHT_CAMERA_HEALTH_INTERVAL_MS: ${CLASSSIGHT_CAMERA_HEALTH_INTERVAL_MS:-5000}
@@ -102,6 +131,8 @@ services:
       postgres:
         condition: service_healthy
       face-service-fastapi:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
@@ -115,3 +146,4 @@ services:
 volumes:
   postgres-data:
   minio-data:
+  rabbitmq-data:

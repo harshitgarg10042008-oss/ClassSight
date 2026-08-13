@@ -58,3 +58,21 @@ The existing Spring focused tests also pass after the storage changes. The brows
 ### Item 1 status: DONE
 
 All available Item 1 exit criteria are now satisfied: new captures flow to MinIO and are retrievable; existing local data migration was hash-verified; data survived a full stack restart; the existing recognition/review path and simulated RTSP camera path remained functional; and the Item 1 implementation is ready for its required commit.
+
+## Starting Item 2 — Event-Driven Architecture (RabbitMQ)
+
+Started: 2026-08-13T13:38:00Z. Item 1 is DONE and committed as `053be76`; MinIO, restart persistence, migration hashes, browser capture, and simulated RTSP camera flow were live-verified. Item 2 will remain additive and default to synchronous mode until async verification is complete.
+
+## Completed Item 2 — Event-Driven Architecture (RabbitMQ)
+
+RabbitMQ was added as a durable Compose service with persistent storage, healthcheck, direct exchanges, durable capture/result queues, and an empty dead-letter queue. Spring AMQP support publishes capture messages containing the MinIO object key, session ID, enrolled embeddings, and threshold; the FastAPI worker consumes the message, downloads the image from MinIO, runs the existing recognition algorithm, and publishes a JSON result. Spring consumes the result and applies the existing attendance/review rules. `RECOGNITION_MODE` remains feature-flagged and defaults to `sync`.
+
+The rebuild of the FastAPI image was not completed within the sandbox memory budget because dlib recompilation was OOM-sensitive. For honest live verification, the already-built face-service image was reused with the modified `main.py` mounted and only `pika` and `minio` installed at runtime. The worker connected successfully to RabbitMQ after the broker became healthy.
+
+With `RECOGNITION_MODE=async`, a real 7,075,824-byte Obama/Biden capture returned HTTP 200 with session 3 initially `CAPTURED` and zero records, proving the request did not block on recognition. Polling then observed session 3 transition to `REVIEW_REQUIRED` with the expected Joe Biden review record (confidence `0.2601`, face-size ratio `0.000716`, low-confidence warning). The review-photo endpoint returned HTTP 200, `image/jpeg`, 7,075,824 bytes, SHA-256 `7e5664ccf9215843ae9d8834819ca8902e318b493b13a466c209b6d89fac1308`. RabbitMQ reported zero ready and unacknowledged messages across capture, result, and dead-letter queues after processing.
+
+### Item 2 status: DONE
+
+Additional Item 2 live verification completed before the Item 2 checkpoint is considered final. The 10-concurrent capture load test completed all 10/10 sessions successfully in 78.34 seconds. Every session reached `REVIEW_REQUIRED` with one review record; individual end-to-end times ranged from 10.33s to 78.33s while the single worker processed messages serially. RabbitMQ queues had zero ready and unacknowledged messages afterward.
+
+Crash recovery was tested with the FastAPI worker stopped before publishing. Three real captures returned HTTP 200 with sessions 14, 15, and 16 initially `CAPTURED`; RabbitMQ then reported `classsight.capture.recognition` with 3 ready and 0 unacknowledged messages. After restarting the worker, sessions 14, 15, and 16 all reached `REVIEW_REQUIRED` with one review record each. Queue inspection then returned zero ready and unacknowledged messages across capture, result, and dead-letter queues. This confirms durable queued-message recovery across a worker outage.

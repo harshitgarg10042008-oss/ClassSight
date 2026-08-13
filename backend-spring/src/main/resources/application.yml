@@ -26,6 +26,11 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
     locations: classpath:db/migration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:classsight}
+    password: ${RABBITMQ_PASSWORD:classsight_rabbit_password}
 
 jwt:
   secret: ${JWT_SECRET:your_jwt_secret_here_change_in_production}
@@ -40,6 +45,7 @@ privacy:
 attendance:
   recognition:
     threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
+    mode: ${RECOGNITION_MODE:sync}
   capture:
     backend: ${ATTENDANCE_CAPTURE_STORAGE_BACKEND:local}
     storage-path: ${ATTENDANCE_CAPTURE_STORAGE_PATH:./data/captures}

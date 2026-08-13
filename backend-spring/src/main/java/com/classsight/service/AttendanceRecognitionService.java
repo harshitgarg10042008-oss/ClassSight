@@ -143,6 +143,68 @@ public class AttendanceRecognitionService {
         return saved;
     }
 
+    /** Applies a recognition response produced by either the synchronous HTTP path or RabbitMQ worker. */
+    @Transactional
+    public AttendanceSession processRecognitionResult(Long sessionId, Map<String, Object> recognition) {
+        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
+        List<Student> enrolledStudents = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
+        Map<Long, Student> studentsById = enrolledStudents.stream()
+                .collect(Collectors.toMap(Student::getId, Function.identity()));
+        List<Map<String, Object>> matches = readMatches(recognition);
+        Map<String, Object> quality = readQuality(recognition);
+        boolean qualityPassed = Boolean.TRUE.equals(quality.get("quality_passed"));
+        session.setBlurScore(decimalValue(quality.get("blur_score")));
+        session.setBrightnessMean(decimalValue(quality.get("brightness_mean")));
+        session.setLivenessScore(decimalValue(quality.get("liveness_score")));
+        session.setQualityPassed(qualityPassed);
+        List<String> globalQualityWarnings = stringList(quality.get("warnings"));
+        session.setQualityWarning(globalQualityWarnings.isEmpty() ? null : String.join("; ", globalQualityWarnings));
+        Set<Long> seenStudentIds = new HashSet<>();
+        boolean requiresReview = !qualityPassed;
+        session.getAttendanceRecords().clear();
+        for (Student student : enrolledStudents) {
+            Map<String, Object> match = findMatchForStudent(matches, student.getId(), seenStudentIds);
+            AttendanceRecord record = new AttendanceRecord();
+            record.setSession(session);
+            record.setStudent(student);
+            if (match == null) {
+                record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
+                requiresReview = true;
+            } else {
+                double confidence = numericValue(match.get("confidence_score"));
+                double distance = numericValue(match.get("distance"));
+                boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
+                record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
+                record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
+                List<String> faceWarnings = stringList(match.get("quality_warnings"));
+                List<String> warnings = mergeWarnings(globalQualityWarnings, faceWarnings);
+                if (!matched) {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                    record.setQualityWarning(warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
+                    requiresReview = true;
+                } else if (!qualityPassed) {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                    record.setQualityWarning(String.join("; ", warnings));
+                    requiresReview = true;
+                } else {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.PRESENT);
+                    if (!warnings.isEmpty()) record.setQualityWarning(String.join("; ", warnings));
+                }
+            }
+            session.getAttendanceRecords().add(record);
+        }
+        if (studentsById.size() != enrolledStudents.size()) throw new IllegalStateException("Duplicate student IDs found in ClassSection");
+        session.setStatus(requiresReview ? AttendanceSession.SessionStatus.REVIEW_REQUIRED : AttendanceSession.SessionStatus.FINALIZED);
+        session.setEndedAt(java.time.LocalDateTime.now());
+        return attendanceSessionRepository.save(session);
+    }
+
     public AttendanceSession processCapturedSession(Long sessionId, Path imagePath) {
         return processCapturedSession(sessionId, new DiskMultipartFile(imagePath, "image/jpeg"));
     }

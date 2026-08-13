@@ -206,3 +206,95 @@ async def recognize(
     except Exception as exc:
         logger.exception("Error processing group recognition")
         raise HTTPException(status_code=500, detail="Internal error during recognition") from exc
+
+
+# Optional RabbitMQ worker. The HTTP endpoints above remain the default path.
+import threading
+import time
+import pika
+from minio import Minio
+
+
+def _recognize_message(image_bytes: bytes, students_payload: list[dict], distance_threshold: float) -> dict:
+    image_array = _load_rgb_image(image_bytes)
+    face_locations = face_recognition.face_locations(image_array, model="hog")
+    quality = _quality_metrics(image_array, face_locations)
+    face_encodings = face_recognition.face_encodings(image_array, face_locations)
+    if len(face_encodings) != len(face_locations):
+        raise ValueError("Failed to generate embeddings for all detected faces")
+    valid_students = [EnrolledStudent.model_validate(item) for item in students_payload if len(item.get("embedding", [])) == 128]
+    matches: list[FaceMatch] = []
+    claimed_student_ids: set[int] = set()
+    for face_index, face_encoding in enumerate(face_encodings):
+        face_warning_list = _face_quality_warnings(face_locations[face_index], image_array.shape, quality)
+        top, right, bottom, left = face_locations[face_index]
+        face_size_ratio = round(max(0, bottom - top) * max(0, right - left) / float(image_array.shape[0] * image_array.shape[1]), 6)
+        if not valid_students:
+            matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+            continue
+        distances = face_recognition.face_distance(np.asarray([student.embedding for student in valid_students], dtype=np.float64), face_encoding)
+        ranked_indexes = np.argsort(distances)
+        candidate_index = next((int(index) for index in ranked_indexes if valid_students[int(index)].student_id not in claimed_student_ids), None)
+        if candidate_index is None:
+            matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+            continue
+        candidate = valid_students[candidate_index]
+        distance = float(distances[candidate_index])
+        matched = distance < distance_threshold
+        if matched:
+            claimed_student_ids.add(candidate.student_id)
+        matches.append(FaceMatch(face_index=face_index, student_id=candidate.student_id, roll_number=candidate.roll_number,
+                                 confidence_score=_confidence_from_distance(distance, distance_threshold), distance=round(distance, 6),
+                                 matched=matched, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+    return RecognitionResponse(face_count=len(face_locations), matches=matches, quality=quality, message="Group photo recognized successfully").model_dump()
+
+
+def _rabbit_worker() -> None:
+    host = os.getenv("RABBITMQ_HOST", "127.0.0.1")
+    port = int(os.getenv("RABBITMQ_PORT", "5672"))
+    user = os.getenv("RABBITMQ_USER", "classsight")
+    password = os.getenv("RABBITMQ_PASSWORD", "classsight_rabbit_password")
+    minio_endpoint = os.getenv("MINIO_ENDPOINT", "127.0.0.1:9000").replace("http://", "").replace("https://", "")
+    minio_secure = os.getenv("MINIO_ENDPOINT", "").startswith("https://")
+    minio_client = Minio(minio_endpoint, access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
+                         secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin"), secure=minio_secure)
+    exchange = "classsight.capture.exchange"
+    result_exchange = "classsight.recognition.exchange"
+    while True:
+        try:
+            credentials = pika.PlainCredentials(user, password)
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host=host, port=port, credentials=credentials, heartbeat=30))
+            channel = connection.channel()
+            channel.exchange_declare(exchange=exchange, exchange_type="direct", durable=True)
+            channel.exchange_declare(exchange=result_exchange, exchange_type="direct", durable=True)
+            channel.queue_declare(queue="classsight.capture.recognition", durable=True)
+            channel.queue_bind(queue="classsight.capture.recognition", exchange=exchange, routing_key="capture.request")
+            channel.queue_declare(queue="classsight.recognition.result", durable=True)
+            channel.queue_bind(queue="classsight.recognition.result", exchange=result_exchange, routing_key="recognition.result")
+            def handle(ch, method, properties, body):
+                try:
+                    message = json.loads(body.decode("utf-8"))
+                    response = _recognize_message(
+                        minio_client.get_object(os.getenv("MINIO_BUCKET", "classsight-captures"), message["objectKey"]).read(),
+                        message.get("enrolledStudents", []), float(message.get("distanceThreshold", 0.6)))
+                    ch.basic_publish(exchange=result_exchange, routing_key="recognition.result",
+                                     body=json.dumps({"sessionId": message["sessionId"], "recognition": response}).encode("utf-8"),
+                                     properties=pika.BasicProperties(content_type="application/json", delivery_mode=2))
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                except Exception:
+                    logger.exception("RabbitMQ recognition worker failed; message will be retried")
+                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+            channel.basic_qos(prefetch_count=1)
+            channel.basic_consume(queue="classsight.capture.recognition", on_message_callback=handle)
+            logger.info("RabbitMQ recognition worker connected")
+            channel.start_consuming()
+        except Exception:
+            logger.exception("RabbitMQ worker connection failed; retrying")
+            time.sleep(5)
+
+
+@app.on_event("startup")
+def start_optional_rabbit_worker():
+    if os.getenv("RABBITMQ_WORKER_ENABLED", "false").lower() == "true":
+        threading.Thread(target=_rabbit_worker, name="rabbitmq-recognition-worker", daemon=True).start()
+        logger.info("RabbitMQ recognition worker enabled")
