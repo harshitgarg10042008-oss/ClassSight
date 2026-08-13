@@ -8,7 +8,14 @@
     <style>
         body { font-family: Inter, sans-serif; background: #0f172a; color: #f8fafc; }
         .panel { background: rgba(30,41,59,.82); border: 1px solid rgba(148,163,184,.2); }
-        .selected { outline: 2px solid #34d399; background: rgba(16,185,129,.2); }
+        .selected,
+        button.decision.selected,
+        button.decision[aria-pressed="true"] {
+            outline: 3px solid #34d399;
+            outline-offset: 2px;
+            background: rgba(16,185,129,.28);
+            color: #ecfdf5;
+        }
     </style>
 </head>
 <body class="min-h-screen p-6">
@@ -37,7 +44,7 @@
                 <span id="record-count" class="text-sm text-amber-300"></span>
             </div>
             <div id="records" class="space-y-3"></div>
-            <button id="submit" class="mt-6 w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-3 font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+            <button id="submit" type="button" disabled class="mt-6 w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-3 font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
                 Submit decisions and finalize session
             </button>
         </section>
@@ -47,6 +54,8 @@
     const sessionId = /*[[${sessionId}]]*/ 0;
     const choices = new Map();
     const message = document.getElementById('message');
+    const recordsContainer = document.getElementById('records');
+    const submitButton = document.getElementById('submit');
 
     function showMessage(text, error = false) {
         message.textContent = text;
@@ -54,15 +63,19 @@
         message.classList.remove('hidden');
     }
 
+    function updateSubmitState(recordCount) {
+        submitButton.disabled = choices.size !== recordCount;
+    }
+
     function renderRecords(records) {
-        const container = document.getElementById('records');
         document.getElementById('record-count').textContent = `${records.length} flagged`;
+        choices.clear();
         if (!records.length) {
-            container.innerHTML = '<p class="text-emerald-300">No records require review.</p>';
-            document.getElementById('submit').disabled = true;
+            recordsContainer.innerHTML = '<p class="text-emerald-300">No records require review.</p>';
+            updateSubmitState(0);
             return;
         }
-        container.innerHTML = records.map(record => `
+        recordsContainer.innerHTML = records.map(record => `
             <div class="record rounded-lg border border-slate-700 p-4" data-student-id="${record.studentId}">
                 <div class="flex justify-between gap-3">
                     <div>
@@ -71,20 +84,40 @@
                     </div>
                     <p class="text-sm text-amber-300">Confidence: ${record.confidenceScore == null ? 'no match' : Number(record.confidenceScore).toFixed(4)}</p>
                 </div>
+                <p class="decision-state mt-2 text-sm text-emerald-300" aria-live="polite">No decision selected</p>
                 <div class="grid grid-cols-2 gap-3 mt-3">
-                    <button class="decision rounded-lg border border-emerald-500/50 py-2 text-emerald-300 hover:bg-emerald-500/20" data-decision="PRESENT">Mark Present</button>
-                    <button class="decision rounded-lg border border-rose-500/50 py-2 text-rose-300 hover:bg-rose-500/20" data-decision="ABSENT">Mark Absent</button>
+                    <button type="button" class="decision rounded-lg border border-emerald-500/50 py-2 text-emerald-300 hover:bg-emerald-500/20" data-decision="PRESENT" aria-pressed="false">Mark Present</button>
+                    <button type="button" class="decision rounded-lg border border-rose-500/50 py-2 text-rose-300 hover:bg-rose-500/20" data-decision="ABSENT" aria-pressed="false">Mark Absent</button>
                 </div>
             </div>`).join('');
-        container.querySelectorAll('.decision').forEach(button => button.addEventListener('click', () => {
-            const card = button.closest('.record');
-            const studentId = Number(card.dataset.studentId);
-            choices.set(studentId, button.dataset.decision);
-            card.querySelectorAll('.decision').forEach(item => item.classList.remove('selected'));
-            button.classList.add('selected');
-            document.getElementById('submit').disabled = choices.size !== records.length;
-        }));
+        updateSubmitState(records.length);
     }
+
+    // Delegation is intentional: records are rendered asynchronously by renderRecords().
+    // Keeping one listener on the stable #records element avoids binding before dynamic
+    // buttons exist and guarantees every Present/Absent click updates the visible state.
+    recordsContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('button.decision');
+        if (!button || !recordsContainer.contains(button)) return;
+        event.preventDefault();
+
+        const card = button.closest('.record');
+        const studentId = Number(card?.dataset.studentId);
+        const decision = button.dataset.decision;
+        if (!card || !Number.isFinite(studentId) || !['PRESENT', 'ABSENT'].includes(decision)) {
+            showMessage('Could not apply that review decision.', true);
+            return;
+        }
+
+        choices.set(studentId, decision);
+        card.querySelectorAll('button.decision').forEach(item => {
+            const selected = item === button;
+            item.classList.toggle('selected', selected);
+            item.setAttribute('aria-pressed', String(selected));
+        });
+        card.querySelector('.decision-state').textContent = `Selected: ${decision}`;
+        updateSubmitState(recordsContainer.querySelectorAll('.record').length);
+    });
 
     async function loadReview() {
         const response = await fetch(`/api/attendance-sessions/${sessionId}/review`);
@@ -98,16 +131,23 @@
         document.getElementById('content').classList.remove('hidden');
     }
 
-    document.getElementById('submit').addEventListener('click', async () => {
+    submitButton.addEventListener('click', async () => {
+        if (submitButton.disabled) return;
+        submitButton.disabled = true;
         const decisions = [...choices.entries()].map(([studentId, decision]) => ({ studentId, decision }));
-        const response = await fetch(`/api/attendance-sessions/${sessionId}/review`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisions })
-        });
-        if (response.status === 403) return showMessage('You are not authorized to review this session.', true);
-        if (!response.ok) return showMessage(`Review submission failed (${response.status})`, true);
-        const result = await response.json();
-        showMessage(`Saved. Session status: ${result.status}`);
-        document.getElementById('submit').disabled = true;
+        try {
+            const response = await fetch(`/api/attendance-sessions/${sessionId}/review`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ decisions })
+            });
+            if (response.status === 403) return showMessage('You are not authorized to review this session.', true);
+            if (!response.ok) return showMessage(`Review submission failed (${response.status})`, true);
+            const result = await response.json();
+            showMessage(`Saved. Session status: ${result.status}`);
+        } catch (error) {
+            showMessage(`Review submission failed: ${error.message}`, true);
+        }
     });
 
     loadReview().catch(error => {
