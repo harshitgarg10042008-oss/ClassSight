@@ -35,6 +35,16 @@ public class Student {
     @Column(name = "face_embedding")
     private List<Double> faceEmbedding;
 
+    @Column(name = "consent_given", nullable = false)
+    private Boolean consentGiven = false;
+
+    @Column(name = "consented_at")
+    private LocalDateTime consentedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "consented_by")
+    private User consentedBy;
+
     @ManyToOne
     @JoinColumn(name = "class_section_id", nullable = false)
     private ClassSection classSection;
@@ -111,6 +121,30 @@ public class Student {
 
     public void setFaceEmbedding(List<Double> faceEmbedding) {
         this.faceEmbedding = faceEmbedding;
+    }
+
+    public Boolean getConsentGiven() {
+        return consentGiven;
+    }
+
+    public void setConsentGiven(Boolean consentGiven) {
+        this.consentGiven = consentGiven;
+    }
+
+    public LocalDateTime getConsentedAt() {
+        return consentedAt;
+    }
+
+    public void setConsentedAt(LocalDateTime consentedAt) {
+        this.consentedAt = consentedAt;
+    }
+
+    public User getConsentedBy() {
+        return consentedBy;
+    }
+
+    public void setConsentedBy(User consentedBy) {
+        this.consentedBy = consentedBy;
     }
 
     public ClassSection getClassSection() {

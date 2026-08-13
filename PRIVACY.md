@@ -1,0 +1,5 @@
+# ClassSight Privacy Notice (Draft)
+
+ClassSight collects enrollment and attendance photographs, derived face embeddings used for matching, and attendance records containing recognition outcomes and teacher review decisions. Raw captured attendance photographs are retained for the configurable `PRIVACY_RETENTION_DAYS` period (default: 30 days) and are then deleted by the scheduled retention job while attendance decisions and derived embeddings remain available for the application’s operational records. Enrollment consent is recorded with the student, consent timestamp, and authenticated enrolling actor; the enrollment API requires `consentGiven=true`. This document is an implementation description, not a legal compliance document, privacy impact assessment, or legal advice, and must be reviewed and approved by the college before any real deployment.
+
+The current implementation does not send biometric data to an identified external ERP. The face service processes uploaded images and embeddings in the configured local service boundary, and application logs are intended to contain aggregate operational information rather than raw image bytes or embedding vectors.

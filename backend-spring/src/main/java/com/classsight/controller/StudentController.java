@@ -1,7 +1,9 @@
 package com.classsight.controller;
 
 import com.classsight.entity.Student;
+import com.classsight.entity.User;
 import com.classsight.repository.StudentRepository;
+import com.classsight.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import java.security.Principal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +30,9 @@ public class StudentController {
     private StudentRepository studentRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private RestTemplate restTemplate;
 
     @Value("${face-service.url}")
@@ -35,11 +41,18 @@ public class StudentController {
     @PostMapping("/{rollNumber}/enroll")
     public ResponseEntity<?> enrollStudent(
             @PathVariable String rollNumber,
-            @RequestParam("photo") MultipartFile photo) {
+            @RequestParam("photo") MultipartFile photo,
+            @RequestParam(name = "consentGiven", defaultValue = "false") boolean consentGiven,
+            Principal authentication) {
         
         long startTime = System.currentTimeMillis();
         
         try {
+            if (!consentGiven) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Explicit consentGiven=true is required for biometric enrollment"));
+            }
             // Find student by roll number
             Student student = studentRepository.findByRollNumber(rollNumber)
                     .orElseThrow(() -> new RuntimeException("Student not found with roll number: " + rollNumber));
@@ -70,6 +83,11 @@ public class StudentController {
 
             // Store embedding in student record
             student.setFaceEmbedding(embedding);
+            User actor = userRepository.findByUsername(authentication.getName())
+                    .orElseThrow(() -> new IllegalStateException("Authenticated enrolling user not found"));
+            student.setConsentGiven(true);
+            student.setConsentedAt(java.time.LocalDateTime.now());
+            student.setConsentedBy(actor);
             studentRepository.save(student);
 
             long endTime = System.currentTimeMillis();

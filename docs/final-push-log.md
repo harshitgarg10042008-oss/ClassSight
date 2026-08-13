@@ -84,3 +84,37 @@ All production `Map.of` call sites were searched. The concrete nullable-message 
 The focused live build test passed: `AttendanceReviewControllerTest` ran **4 tests, 0 failures, 0 errors**. The new regression covers an `IllegalArgumentException` with a null message and confirms HTTP 400 JSON with `error=BAD_REQUEST` and `message=IllegalArgumentException`. Existing 403 and photo tests also remained green.
 
 **Item #5 status: SUCCEEDED.**
+
+## Starting Item #8 — A4 CPU-first benchmark
+**Started:** 2026-08-13T11:20:00Z
+
+The benchmark used the real `obama_reference.jpg` single-face enrollment fixture and the real six-face `modern_classroom_selfie.jpg` group fixture. It measured the existing CPU-only FastAPI recognition path rather than estimating from code.
+
+## Completed Item #8 — A4 CPU-first benchmark
+**Completed:** 2026-08-13T11:32:00Z
+
+The single-face embedding benchmark measured **244.22 ms mean** across three runs, with a **243.36–244.98 ms** range. The full six-face group detection plus recognition call measured **100,040.47 ms mean**, with a **99,647.04–100,400.02 ms** range. The endpoint detected six faces consistently; with only Obama enrolled, all six faces were correctly reported as `matched=false` for this unrelated modern classroom image, with distances `0.901535`, `0.721034`, `0.923615`, `0.795011`, `0.857932`, and `0.644945`.
+
+The benchmark artifact is `docs/a4-benchmark/benchmark_cpu.py` and `docs/a4-benchmark/benchmark-results.json`. This confirms that the current HOG/dlib CPU path is very slow for group photos. The result supports considering input downscaling, a lighter detector, batching, or a GPU path before real 30-face operation. No production threshold was changed. The benchmark is not a 30-person classroom validation.
+
+**Item #8 status: SUCCEEDED WITH PERFORMANCE LIMITATION.**
+
+## Starting Stage 26 — Privacy measures
+**Started:** 2026-08-13T11:33:00Z
+
+Implemented configurable raw-capture retention, enrollment consent metadata, an admin manual retention trigger for verification, and a privacy document. Existing scheduling support was reused.
+
+## Completed Stage 26 — Privacy measures
+**Completed:** 2026-08-13T11:39:00Z
+
+The default retention setting is `PRIVACY_RETENTION_DAYS=30`, configurable through environment variables, with a daily cron at 03:00. The job selects expired sessions, deletes only the raw file, clears the stored raw path, and leaves the attendance session and records intact. `POST /admin/privacy/retention/run` is admin-only for controlled operational verification.
+
+Live retention evidence used session `3` and a real **803,500-byte JPEG**. Its `created_at` was backdated to 31 days before the test. Before the trigger, the file existed and both attendance records were `REVIEW`. The live response was `{"deletedFiles":1,"retentionDays":30}`. Afterward, `FILE_EXISTS=false`, `captured_photo_path` was null, and both session-3 attendance records remained `REVIEW`.
+
+Enrollment now requires multipart `consentGiven=true` and records `consent_given`, `consented_at`, and `consented_by`. The first live request exposed a real wiring defect: the authenticated actor was stored as null because the controller expected a `User` principal. The controller was corrected to resolve the actor from the authenticated principal name. The repeated live enrollment using `obama_reference.jpg` returned HTTP 200 with `embeddingSize=128`; Postgres then showed `LIVE-OBAMA | consent_given=t | consented_at=2026-08-13 11:37:07.207894 | consented_by=1`.
+
+A repository-wide biometric-log search found no raw image bytes or embedding vectors being logged. The face service logs aggregate face counts and quality status only; the Spring enrollment logger records the face-service URL, student roll number, timing, and message, not the embedding payload. `PRIVACY.md` states the retention behavior and explicitly says it is not a legal compliance document and must be reviewed by the college.
+
+There is no separate student enrollment Thymeleaf screen in the current application; the consent checkbox is therefore represented by the required API form field in the existing enrollment flow. A dedicated student-facing enrollment UI remains a documentation/UI follow-up.
+
+**Stage 26 status: SUCCEEDED WITH UI FOLLOW-UP.**

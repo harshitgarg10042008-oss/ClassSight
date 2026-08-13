@@ -18,6 +18,8 @@ public interface AttendanceSessionRepository extends JpaRepository<AttendanceSes
 
     List<AttendanceSession> findByStatus(AttendanceSession.SessionStatus status);
 
+    List<AttendanceSession> findByCreatedAtBeforeAndCapturedPhotoPathIsNotNull(LocalDateTime cutoff);
+
     List<AttendanceSession> findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
             Long classSectionId,
             Long subjectId,

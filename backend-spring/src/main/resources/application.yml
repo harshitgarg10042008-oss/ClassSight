@@ -33,6 +33,10 @@ jwt:
 face-service:
   url: ${FACE_SERVICE_URL:http://localhost:8000}
 
+privacy:
+  retention-days: ${PRIVACY_RETENTION_DAYS:30}
+  retention-cron: ${PRIVACY_RETENTION_CRON:0 0 3 * * *}
+
 attendance:
   recognition:
     threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
