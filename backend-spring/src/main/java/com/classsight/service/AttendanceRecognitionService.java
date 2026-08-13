@@ -94,6 +94,7 @@ public class AttendanceRecognitionService {
             if (match == null) {
                 record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                 record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                record.setRecognitionState("UNKNOWN");
                 record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
                 requiresReview = true;
             } else {
@@ -102,6 +103,8 @@ public class AttendanceRecognitionService {
                 boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
                 record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
+                boolean stateRequiresRecapture = "RECAPTURE_REQUIRED".equals(String.valueOf(match.getOrDefault("recognition_state", "")));
+                record.setRecognitionState(String.valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
                 List<String> faceWarnings = stringList(match.get("quality_warnings"));
                 List<String> warnings = mergeWarnings(globalQualityWarnings, faceWarnings);
                 if (!matched) {
@@ -109,7 +112,7 @@ public class AttendanceRecognitionService {
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                     record.setQualityWarning(warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
                     requiresReview = true;
-                } else if (!qualityPassed) {
+                } else if (!qualityPassed || stateRequiresRecapture) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                     record.setQualityWarning(String.join("; ", warnings));
@@ -172,6 +175,7 @@ public class AttendanceRecognitionService {
             if (match == null) {
                 record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                 record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                record.setRecognitionState("UNKNOWN");
                 record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
                 requiresReview = true;
             } else {
@@ -180,6 +184,8 @@ public class AttendanceRecognitionService {
                 boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
                 record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
+                boolean stateRequiresRecapture = "RECAPTURE_REQUIRED".equals(String.valueOf(match.getOrDefault("recognition_state", "")));
+                record.setRecognitionState(String.valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
                 List<String> faceWarnings = stringList(match.get("quality_warnings"));
                 List<String> warnings = mergeWarnings(globalQualityWarnings, faceWarnings);
                 if (!matched) {
@@ -187,7 +193,7 @@ public class AttendanceRecognitionService {
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                     record.setQualityWarning(warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
                     requiresReview = true;
-                } else if (!qualityPassed) {
+                } else if (!qualityPassed || stateRequiresRecapture) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                     record.setQualityWarning(String.join("; ", warnings));

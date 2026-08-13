@@ -6,6 +6,7 @@ from PIL import Image, ImageFilter
 import io
 import json
 import logging
+import math
 import os
 from typing import Optional
 
@@ -19,6 +20,8 @@ MIN_BRIGHTNESS = float(os.getenv("QUALITY_MIN_BRIGHTNESS", "35.0"))
 MAX_BRIGHTNESS = float(os.getenv("QUALITY_MAX_BRIGHTNESS", "220.0"))
 MIN_LIVENESS_TEXTURE = float(os.getenv("QUALITY_MIN_LIVENESS_TEXTURE", "2.5"))
 MIN_FACE_SIZE_RATIO = float(os.getenv("QUALITY_MIN_FACE_SIZE_RATIO", "0.0005"))
+QUALITY_POSE_CHECKS_ENABLED = os.getenv("QUALITY_POSE_CHECKS_ENABLED", "false").lower() == "true"
+QUALITY_MAX_ROLL_DEGREES = float(os.getenv("QUALITY_MAX_ROLL_DEGREES", "25.0"))
 EDGE_CROP_ENABLED = os.getenv("EDGE_CROP_ENABLED", "false").lower() == "true"
 EDGE_CROP_PADDING = float(os.getenv("EDGE_CROP_PADDING", "0.20"))
 EDGE_CROP_MAX_DIMENSION = int(os.getenv("EDGE_CROP_MAX_DIMENSION", "0"))
@@ -54,6 +57,7 @@ class FaceMatch(BaseModel):
     matched: bool
     face_size_ratio: Optional[float] = None
     quality_warnings: list[str] = []
+    recognition_state: str = "UNKNOWN"
 
 
 class RecognitionResponse(BaseModel):
@@ -151,14 +155,43 @@ def _quality_metrics(image_array: np.ndarray, face_locations: list[tuple[int, in
     )
 
 
-def _face_quality_warnings(face_location: tuple[int, int, int, int], image_shape: tuple[int, ...], quality: QualityMetrics) -> list[str]:
+def _pose_quality_warnings(image_array: np.ndarray, face_location: tuple[int, int, int, int]) -> list[str]:
+    if not QUALITY_POSE_CHECKS_ENABLED:
+        return []
+    landmarks = face_recognition.face_landmarks(image_array, [face_location])
+    if not landmarks:
+        return ["face pose or landmarks unavailable; recapture required"]
+    face_landmarks = landmarks[0]
+    required = {"left_eye", "right_eye", "nose_tip", "top_lip", "bottom_lip"}
+    if not required.issubset(face_landmarks):
+        return ["face partially occluded or landmarks unavailable; recapture required"]
+    left_eye = np.mean(np.asarray(face_landmarks["left_eye"], dtype=np.float32), axis=0)
+    right_eye = np.mean(np.asarray(face_landmarks["right_eye"], dtype=np.float32), axis=0)
+    roll_degrees = abs(math.degrees(math.atan2(float(right_eye[1] - left_eye[1]), float(right_eye[0] - left_eye[0]))))
+    if roll_degrees > QUALITY_MAX_ROLL_DEGREES:
+        return [f"face rotated (roll={roll_degrees:.1f}°, threshold={QUALITY_MAX_ROLL_DEGREES:.1f}°)"]
+    return []
+
+
+def _face_quality_warnings(image_array: np.ndarray, face_location: tuple[int, int, int, int], image_shape: tuple[int, ...], quality: QualityMetrics) -> list[str]:
     height, width = image_shape[:2]
     top, right, bottom, left = face_location
     ratio = max(0, bottom - top) * max(0, right - left) / float(height * width)
     warnings = list(quality.warnings)
     if ratio < MIN_FACE_SIZE_RATIO:
         warnings.append(f"face too small (ratio={ratio:.6f}, threshold={MIN_FACE_SIZE_RATIO:.6f})")
+    warnings.extend(_pose_quality_warnings(image_array, face_location))
     return list(dict.fromkeys(warnings))
+
+
+def _recognition_state(matched: bool, warnings: list[str], has_candidate: bool) -> str:
+    if warnings:
+        return "RECAPTURE_REQUIRED"
+    if not has_candidate:
+        return "UNKNOWN"
+    if not matched:
+        return "LOW_CONFIDENCE"
+    return "RECOGNIZED"
 
 
 def _confidence_from_distance(distance: float, boundary: float = 0.6) -> float:
@@ -213,17 +246,17 @@ async def recognize(
         matches: list[FaceMatch] = []
         claimed_student_ids: set[int] = set()
         for face_index, face_encoding in enumerate(face_encodings):
-            face_warning_list = _face_quality_warnings(face_locations[face_index], image_array.shape, quality)
+            face_warning_list = _face_quality_warnings(image_array, face_locations[face_index], image_array.shape, quality)
             top, right, bottom, left = face_locations[face_index]
             face_size_ratio = round(max(0, bottom - top) * max(0, right - left) / float(image_array.shape[0] * image_array.shape[1]), 6)
             if not valid_students:
-                matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+                matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list, recognition_state=_recognition_state(False, face_warning_list, False)))
                 continue
             distances = face_recognition.face_distance(np.asarray([student.embedding for student in valid_students], dtype=np.float64), face_encoding)
             ranked_indexes = np.argsort(distances)
             candidate_index = next((int(index) for index in ranked_indexes if valid_students[int(index)].student_id not in claimed_student_ids), None)
             if candidate_index is None:
-                matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+                matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list, recognition_state=_recognition_state(False, face_warning_list, False)))
                 continue
             candidate = valid_students[candidate_index]
             distance = float(distances[candidate_index])
@@ -239,6 +272,7 @@ async def recognize(
                 matched=matched,
                 face_size_ratio=face_size_ratio,
                 quality_warnings=face_warning_list,
+                recognition_state=_recognition_state(matched, face_warning_list, True),
             ))
         logger.info("Recognized %d face(s) against %d enrolled student(s); quality_passed=%s; edge_crop=%s", len(matches), len(valid_students), quality.quality_passed, edge_crop)
         mode = "edge-cropped" if edge_crop else "full-frame"
@@ -268,17 +302,17 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
     matches: list[FaceMatch] = []
     claimed_student_ids: set[int] = set()
     for face_index, face_encoding in enumerate(face_encodings):
-        face_warning_list = _face_quality_warnings(face_locations[face_index], image_array.shape, quality)
+        face_warning_list = _face_quality_warnings(image_array, face_locations[face_index], image_array.shape, quality)
         top, right, bottom, left = face_locations[face_index]
         face_size_ratio = round(max(0, bottom - top) * max(0, right - left) / float(image_array.shape[0] * image_array.shape[1]), 6)
         if not valid_students:
-            matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+            matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list, recognition_state=_recognition_state(False, face_warning_list, False)))
             continue
         distances = face_recognition.face_distance(np.asarray([student.embedding for student in valid_students], dtype=np.float64), face_encoding)
         ranked_indexes = np.argsort(distances)
         candidate_index = next((int(index) for index in ranked_indexes if valid_students[int(index)].student_id not in claimed_student_ids), None)
         if candidate_index is None:
-            matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+            matches.append(FaceMatch(face_index=face_index, matched=False, confidence_score=0.0, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list, recognition_state=_recognition_state(False, face_warning_list, False)))
             continue
         candidate = valid_students[candidate_index]
         distance = float(distances[candidate_index])
@@ -287,7 +321,8 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
             claimed_student_ids.add(candidate.student_id)
         matches.append(FaceMatch(face_index=face_index, student_id=candidate.student_id, roll_number=candidate.roll_number,
                                  confidence_score=_confidence_from_distance(distance, distance_threshold), distance=round(distance, 6),
-                                 matched=matched, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list))
+                                 matched=matched, face_size_ratio=face_size_ratio, quality_warnings=face_warning_list,
+                                 recognition_state=_recognition_state(matched, face_warning_list, True)))
     mode = "edge-cropped" if edge_crop else "full-frame"
     return RecognitionResponse(face_count=len(face_locations), matches=matches, quality=quality, message=f"Group photo recognized successfully ({mode} encoding)").model_dump()
 

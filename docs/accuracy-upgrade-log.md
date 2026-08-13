@@ -32,3 +32,19 @@ The crop implementation detects faces once on the full image, extracts a padded 
 Validation evidence: Python syntax compilation passed; the unchanged default golden regression returned the same current result as Step A, 33.33% with one false negative and three identity mismatches. A disposable edge-crop golden harness completed both fixtures at HTTP 200 and returned the same aggregate 33.33% result, preserving the known Obama match and the existing archival identity mapping behavior. The crop path therefore did not regress the measured current baseline, but it also did not improve the golden-set accuracy. The documented historical 4/4 plus 4/4+1 baseline remains unreconciled with the checked-in harness and is not claimed as achieved.
 
 Decision: accept the crop path only as an explicit opt-in capability; do not enable it globally or claim a performance win. The current implementation still performs full-resolution HOG detection on the incoming classroom image, so it reduces downstream crop payload needs for edge clients but does not solve the approximately 100-second server-side HOG bottleneck. Real 30+ person classroom validation remains outstanding.
+
+## Starting Step C — Quality checks and confidence states
+
+- Timestamp: 2026-08-13
+- Existing Stage 11 blur, brightness, liveness-texture, and minimum-face-size checks will be extended in place. The existing 0.6 distance threshold remains the matching boundary unless an explicit configuration refinement is added and documented.
+
+
+## Completed Step C — Quality checks and confidence states
+
+The existing FastAPI quality checks were extended rather than rebuilt. Pose checks are available behind `QUALITY_POSE_CHECKS_ENABLED`, with configurable `QUALITY_MAX_ROLL_DEGREES`; missing landmarks or excessive roll produce a recapture warning. The default remains disabled so existing golden behavior is preserved until representative pose fixtures are available.
+
+Recognition responses now distinguish `RECOGNIZED`, `UNKNOWN`, `LOW_CONFIDENCE`, and `RECAPTURE_REQUIRED`. The existing distance threshold remains 0.6 and continues to determine the `matched` boolean; the new state is a refinement and does not silently redefine the threshold. Spring persists the state through Flyway V4, keeps existing PRESENT/ABSENT/REVIEW behavior, and exposes `recognitionState` in the review response.
+
+Validation evidence: six focused FastAPI tests passed; the Spring Boot package compiled successfully with Java 17; the unchanged golden regression returned the same 33.33% current result as Step A and Step B, with one false negative and three identity mismatches. No accuracy regression was introduced relative to the measured current baseline. The historical baseline discrepancy remains unresolved and is not being concealed.
+
+Step C stopping point: state and quality extensions are committed with safe defaults. Rotation/occlusion checks are opt-in pending representative validation, and no threshold was changed.

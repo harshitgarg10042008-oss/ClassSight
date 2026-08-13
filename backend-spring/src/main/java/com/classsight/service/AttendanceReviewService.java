@@ -142,6 +142,7 @@ public class AttendanceReviewService {
                     item.put("rollNumber", record.getStudent().getRollNumber());
                     item.put("studentName", record.getStudent().getFirstName() + " " + record.getStudent().getLastName());
                     item.put("confidenceScore", record.getConfidenceScore());
+                    item.put("recognitionState", record.getRecognitionState());
                     item.put("status", record.getStatus().toString());
                     item.put("qualityWarning", record.getQualityWarning());
                     item.put("faceSizeRatio", record.getFaceSizeRatio());

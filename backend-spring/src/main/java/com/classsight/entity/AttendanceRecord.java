@@ -36,6 +36,9 @@ public class AttendanceRecord {
     @Column(name = "face_size_ratio")
     private Double faceSizeRatio;
 
+    @Column(name = "recognition_state", length = 32)
+    private String recognitionState;
+
     @Column(name = "reviewed_by")
     private Long reviewedBy;
 
@@ -126,6 +129,14 @@ public class AttendanceRecord {
 
     public void setQualityWarning(String qualityWarning) {
         this.qualityWarning = qualityWarning;
+    }
+
+    public String getRecognitionState() {
+        return recognitionState;
+    }
+
+    public void setRecognitionState(String recognitionState) {
+        this.recognitionState = recognitionState;
     }
 
     public Double getFaceSizeRatio() {
