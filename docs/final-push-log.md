@@ -52,3 +52,21 @@ The implementation adds `DELETE /admin/rooms/{id}`, `/admin/cameras/{id}`, `/adm
 
 **Item #3 status: SUCCEEDED.**
 **Git checkpoint:** this implementation and evidence are committed in the Item #3 commit.
+
+## Starting Item #4 — Flyway migrations
+**Started:** 2026-08-13T10:47:00Z
+
+The current database schema was exported from the live Postgres instance. Flyway was added, Hibernate schema ownership was changed from `ddl-auto: update` to `ddl-auto: validate`, and baseline/status-constraint migrations were created.
+
+## Completed Item #4 — Flyway migrations
+**Completed:** 2026-08-13T11:15:00Z
+
+Added `V1__baseline.sql` containing the verified current schema and `V2__status_constraints.sql` documenting the camera and attendance-session status checks. The first fresh-volume attempt exposed a real portability issue: `pg_dump` emitted `\\restrict`/psql meta-commands that JDBC cannot execute. Those lines were removed, the artifact was rebuilt, and the fresh test was repeated successfully.
+
+Existing populated database evidence: the Flyway-enabled Spring jar started healthy; Postgres contained **2 students** and **3 attendance sessions**, and `flyway_schema_history` contained a successful baseline row plus successful V2 status-constraint migration.
+
+Fresh-volume evidence: a new temporary Postgres 15 database started with no application tables. The Flyway-enabled application logged `Successfully validated 2 migrations`, `Successfully applied 2 migrations to schema public, now at version v2`, and started on port 18080. The fresh database then contained **12 public tables** and successful history rows for versions `1` and `2`. No Hibernate-generated schema was required.
+
+The Maven/package build succeeded. A Docker runtime-layer rebuild encountered a network stall while reinstalling Alpine FFmpeg, so the live migration verification used the already FFmpeg-capable Spring container with the newly built jar; this is an infrastructure-build limitation, not a Flyway migration failure. A full clean-clone image rebuild should be repeated when the Alpine mirror is responsive.
+
+**Item #4 status: SUCCEEDED WITH DOCKER BUILD LIMITATION.**
