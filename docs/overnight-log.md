@@ -312,3 +312,28 @@ A stale teacher cookie initially returned HTTP 403; a fresh login corrected this
 2. Supply a real 30+ person back-of-room classroom capture for recognition validation and decide whether a margin-based safety rule is needed after representative testing.
 3. Supply a real IP camera or RTSP URL and credential policy before treating camera integration as production-ready.
 4. Decide whether camera health intervals, frame retention, credential-key rotation, and a user-facing camera dashboard should be production defaults.
+
+## Post-run verification
+**Verified:** 2026-08-13T10:32:00Z–2026-08-13T10:33:00Z
+
+This pass independently repeated the live checks and investigated the clean-clone RTSP failure. The first repeat of `POST /capture/from-camera` returned HTTP 502 with error `/app/data/captures/camera-frames`. The cause was environmental: the host bind source had been deleted while the existing container was still running, leaving a stale mount whose `camera-frames` child could not be created. After recreating `data/captures`, recreating the Spring container (not only restarting it), and adding the tracked `data/captures/.gitkeep` marker, the mount was writable from inside the fresh container and Stage 25 succeeded. The application already calls `Files.createDirectories(frameDirectory)` in `RtspCameraAdapter`; the failure was the stale/deleted bind mount, not a recognition or RTSP parsing defect.
+
+### Stage A identity-confusion verification
+
+The literal source diff is saved at `docs/overnight/stage-a/original-vs-corrected-harness.diff`. The original A3 follow-up hard-coded `CROPS = .../candidate-crops` from the same archival source (`run_followup.py:25–27`) and assigned `human_annotated_identity` by detector index (`run_followup.py:74–76`). The corrected investigation harness instead loads each case's reference crop directory separately, computes the full-photo detections and encodings itself, computes a ranked distance list against every enrolled identity, and records the endpoint winner independently (`run_ranked_distances.py:38–45`, `47–52`, `71–92`). Therefore the earlier 3-of-4 wrong-identity result cannot be treated as a clean independent recognition-accuracy result: the original comparison was vulnerable to same-source/crop contamination and positional detector-order assumptions. The corrected rerun did not reproduce the claim: archival 1899 was 4/4 correct, with distances 0.095062, 0.068856, 0.086565, and 0.064423; the modern five-face case was 4/4 enrolled faces correct with distances 0.040341, 0.040377, 0.052809, and 0.061283, while the fifth unenrolled face was unmatched at best distance 0.752982. This remains a small investigation, not production-scale validation, and no thresholds were changed.
+
+### Live sanity-check results
+
+| Check | Live result | Evidence |
+|---|---|---|
+| Stage 17 ERP export | HTTP 200; `GENERATED_LOCAL_ONLY`; `rowCount=2`; generated path `/app/exports/attendance-20260813-102954.csv` | Existing export was a CSV; the prior committed export `attendance-20260813-094846.csv` was 156 bytes and SHA-256 `1f95c707e1233b896aa190137a0588da5d1399c022b12def4977dd4620340d78`. |
+| Stage 18 idempotency | Both consecutive sync calls returned HTTP 200, `SYNCED`, `idempotentNoOp=true`, `attemptCount=6`, and the same export path | Postgres persisted `status=SYNCED`, `attempt_count=6`, and 8 audit rows for session 1. |
+| Stage 22 online | HTTP 200, `ONLINE`, 640×360, 16,749 bytes, latency 5,628 ms | Local simulated GStreamer RTSP source only. |
+| Stage 22 offline | HTTP 200 response carrying `status=OFFLINE`, `success=false`, `bytes=0`, and connection-refused error; Postgres persisted `cameras.status=OFFLINE` | The HTTP 200 is the API's health-probe response convention; the body correctly reports failure. |
+| Stage 25 capture | HTTP 200; new session 3 was `REVIEW_REQUIRED`, `source=RTSP_ADAPTER`, 640×360, 16,749 bytes, two attendance records | Postgres persisted `/app/data/captures/session-3-f1a6a0e5-3686-4258-b63e-9a6216167c6a.jpg`; host capture was written at 16,749 bytes. |
+
+The camera and RTSP evidence remains limited to the local simulated stream at `rtsp://127.0.0.1:8554/classsight`. No real IP camera, ONVIF discovery, vendor authentication, packet loss, or network outage was tested.
+
+### Post-run status
+
+All Stage 17–25 implementation/verification commits are present in Git: `069ed3b`, `a86dcfa`, `48cff2b`, `2353164`, `e95df03`, `0b6a79c`, `1bfa4d7`, `4ec1182`, and `23c86f3`. This verification pass adds the clean-clone capture-directory marker, the literal Stage A diff, and this evidence section.
