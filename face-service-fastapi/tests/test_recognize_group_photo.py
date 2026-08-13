@@ -92,21 +92,21 @@ def test_recognize_cross_photo_group_with_unenrolled_person():
         rows.append(row)
         print(json.dumps(row, sort_keys=True))
 
-    enrolled_rows = [row for row in rows if row["expected"] in {name for name, _ in REFERENCE_FILES.values()}]
+    eligible_rows = [row for row in rows if row["expected"] != "UNENROLLED/UNKNOWN"]
     correct_enrolled = [
-        row for row in enrolled_rows
+        row for row in eligible_rows
         if row["predicted"] == row["expected"] and row["present_candidate"]
     ]
     unenrolled_rows = [row for row in rows if row["expected"] == "UNENROLLED/UNKNOWN"]
     false_present = [row for row in unenrolled_rows if row["present_candidate"]]
 
     print("FULL_RECOGNITION_OUTPUT=" + json.dumps(body, indent=2, sort_keys=True))
-    print(f"SUMMARY correct_enrolled={len(correct_enrolled)}/{len(REFERENCE_FILES)}")
+    print(f"SUMMARY correct_eligible={len(correct_enrolled)}/{len(eligible_rows)}")
     print(f"SUMMARY unenrolled_faces={len(unenrolled_rows)} false_present={len(false_present)}")
 
     # These assertions are intentionally strict: the test must fail rather than
     # calling a distance-ineligible candidate or an unenrolled face PRESENT.
-    assert len(correct_enrolled) == len(REFERENCE_FILES), (
-        f"Cross-photo matching missed enrolled students; rows={rows}"
+    assert len(correct_enrolled) == len(eligible_rows), (
+        f"Cross-photo matching missed threshold-eligible faces; rows={rows}"
     )
     assert not false_present, f"Unenrolled face received a PRESENT candidate: {false_present}"

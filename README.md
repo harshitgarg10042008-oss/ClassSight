@@ -165,6 +165,13 @@ Copy `.env.example` to `.env` and adjust values only when needed. The most impor
 | `QUALITY_BLUR_THRESHOLD` | `30.0` | Image-quality blur threshold. |
 | `QUALITY_MIN_BRIGHTNESS` | `35.0` | Minimum accepted image brightness. |
 | `QUALITY_MAX_BRIGHTNESS` | `220.0` | Maximum accepted image brightness. |
+| `QUALITY_MIN_LIVENESS_TEXTURE` | `2.5` | Minimum texture signal used by the existing liveness proxy. |
+| `QUALITY_MIN_FACE_SIZE_RATIO` | `0.0005` | Minimum detected face-area ratio. |
+| `QUALITY_POSE_CHECKS_ENABLED` | `false` | Enables optional roll and landmark/occlusion warnings; keep disabled until representative pose fixtures are validated. |
+| `QUALITY_MAX_ROLL_DEGREES` | `25.0` | Maximum allowed roll when pose checks are enabled. |
+| `EDGE_CROP_ENABLED` | `false` | Opt-in padded face-crop encoding for HTTP and RabbitMQ recognition; full-frame mode remains the safe default. |
+| `EDGE_CROP_PADDING` | `0.20` | Relative padding around each detected face crop. |
+| `EDGE_CROP_MAX_DIMENSION` | `0` | Optional crop dimension cap; `0` preserves the crop resolution. |
 
 ## Authentication and API security
 
@@ -196,11 +203,13 @@ curl -X POST http://localhost:8080/students/{rollNumber}/enroll \
   -F 'consentGiven=true'
 ```
 
-The service rejects missing, non-image, oversized, undecodable, zero-face, and multi-face enrollment images.
+The service rejects missing, non-image, oversized, undecodable, zero-face, and multi-face enrollment images. Each successful consented enrollment remains the student’s primary embedding and is also appended to the additive multi-reference embedding table. Recognition compares against the best valid reference for each student and caches parsed vectors by student and content fingerprint.
 
 ### Recognition and review
 
-A captured photo is stored in MinIO under an object key. The review endpoint streams the photo from MinIO and preserves the original content type and response behavior:
+The face service reports explicit states for each detected face: `RECOGNIZED`, `UNKNOWN`, `LOW_CONFIDENCE`, or `RECAPTURE_REQUIRED`. The existing `0.6` distance threshold still controls the `matched` result; the state adds quality and candidate context without changing that threshold’s meaning. Unknown, low-confidence, blurry, too-dark, too-small, rotated, or landmark-deficient results remain review/recapture outcomes and are never silently converted to attendance.
+
+A captured photo is stored in MinIO under an object key. The review endpoint streams the photo from MinIO and preserves the original content type and response behavior. The response keeps `records` for unresolved manual decisions and also supplies `allRecords` so the Next.js faculty flow can show recognized and unresolved outcomes together:
 
 ```text
 GET /api/attendance-sessions/{sessionId}/review
@@ -239,6 +248,7 @@ To enable the additive RabbitMQ path locally:
 # .env
 RECOGNITION_MODE=async
 RABBITMQ_WORKER_ENABLED=true
+EDGE_CROP_ENABLED=false
 ```
 
 Then recreate the services:
@@ -247,6 +257,8 @@ Then recreate the services:
 docker compose up -d --build face-service-fastapi backend-spring
 docker compose logs -f face-service-fastapi backend-spring
 ```
+
+For repeated identical browser or camera submissions within 30 seconds, the Spring capture boundary returns the existing session instead of creating a duplicate. Within one image, a student can be claimed only once.
 
 Inspect durable queues:
 

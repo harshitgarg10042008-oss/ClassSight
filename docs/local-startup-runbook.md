@@ -95,7 +95,11 @@ MINIO_SECRET_KEY=minioadmin
 MINIO_BUCKET=classsight-captures
 RABBITMQ_USER=classsight
 RABBITMQ_PASSWORD=classsight_rabbit_password
+QUALITY_POSE_CHECKS_ENABLED=false
+EDGE_CROP_ENABLED=false
 ```
+
+The existing recognition threshold remains `ATTENDANCE_RECOGNITION_THRESHOLD=0.6`. Recognition returns `RECOGNIZED`, `UNKNOWN`, `LOW_CONFIDENCE`, or `RECAPTURE_REQUIRED`; only the first state is an automatic face match. Pose/occlusion checks are opt-in, and edge-crop encoding is opt-in because the full-frame path remains the accuracy-safe default. Successful consented enrollments are retained as multiple student references, and FastAPI caches vectors by student and content fingerprint.
 
 Do not use the example JWT or database credentials for a public deployment. They are intended only for local development.
 
@@ -232,7 +236,9 @@ Open [http://localhost:3000](http://localhost:3000), then:
 6. Mark each review item as Present or Absent.
 7. Select **Finalize attendance**.
 
-The Next.js app keeps the JWT in memory and sends it in the `Authorization` header. It does not store the token in localStorage.
+The Next.js app keeps the JWT in memory and sends it in the `Authorization` header. It does not store the token in localStorage. Each review row shows the recognition state, confidence, and quality warning. `UNKNOWN`, `LOW_CONFIDENCE`, and `RECAPTURE_REQUIRED` rows remain available for manual review instead of being silently finalized as present.
+
+Repeated identical browser or RTSP captures within 30 seconds return the existing session instead of creating a second attendance session. Within one classroom photo, a student is claimed at most once.
 
 To verify the page without a browser:
 
@@ -247,6 +253,7 @@ The normal stack uses synchronous recognition. To enable the additive asynchrono
 ```bash
 sed -i 's/^RECOGNITION_MODE=.*/RECOGNITION_MODE=async/' .env
 sed -i 's/^RABBITMQ_WORKER_ENABLED=.*/RABBITMQ_WORKER_ENABLED=true/' .env
+sed -i 's/^EDGE_CROP_ENABLED=.*/EDGE_CROP_ENABLED=false/' .env
 ```
 
 If `RABBITMQ_WORKER_ENABLED` is not already present, append it:
@@ -280,6 +287,7 @@ To return to the safe default synchronous mode:
 ```bash
 sed -i 's/^RECOGNITION_MODE=.*/RECOGNITION_MODE=sync/' .env
 sed -i 's/^RABBITMQ_WORKER_ENABLED=.*/RABBITMQ_WORKER_ENABLED=false/' .env
+sed -i 's/^EDGE_CROP_ENABLED=.*/EDGE_CROP_ENABLED=false/' .env
 sudo docker compose up -d backend-spring face-service-fastapi
 ```
 

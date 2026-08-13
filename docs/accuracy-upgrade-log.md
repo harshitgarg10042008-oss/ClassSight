@@ -108,3 +108,18 @@ The additive Next.js faculty flow now consumes `recognitionState` and displays t
 Validation evidence: the Next.js production build passed strict TypeScript checks, and the Spring Boot package compiled successfully with Java 17. The Thymeleaf frontend and existing Spring routes were not removed or altered into a replacement architecture. Interactive browser click-through remains unavailable in the sandbox, so this step is build/API-contract verified rather than browser-click verified.
 
 Step G stopping point: the new review-state UI is committed while the legacy frontend remains intact and additive.
+
+## Starting Step H — Final tests, documentation, live verification, and push
+
+- Timestamp: 2026-08-13
+- Final validation will include source builds, Compose/Kubernetes syntax, the golden regression, frontend build, security/privacy checks where available, a rebuilt-stack smoke test, and an honest final status for unavailable real-photo, camera, ERP, or browser-click evidence.
+
+## Completed Step H — Final validation and handoff
+
+The full FastAPI suite passes: 8 tests passed in the repository face-service runtime, with only dependency deprecation warnings. The previously failing cross-photo test was confirmed to fail identically at the audited pre-upgrade `e706031` checkpoint; its assertion incorrectly required every enrolled reference student to appear in a photo that contains Obama plus an unenrolled face. The test now correctly requires every threshold-eligible face to match and continues to assert that no unenrolled face is marked present.
+
+The Spring Boot Maven test suite passed with Java 17, including the existing review, persistence, authorization, and photo tests. The Next.js production build passed TypeScript and static generation checks. Python syntax compilation passed. Kubernetes validation reported 18 valid YAML documents, and `docker compose config` completed successfully. Git whitespace validation passed.
+
+A final rebuilt-stack live smoke test was attempted twice. The face-service Docker build reached dependency installation and was canceled while compiling dlib; the full Compose rebuild therefore was not claimed as live-verified for these new commits. Existing prior live infrastructure evidence remains valid, while rebuilt duplicate-submission, Flyway V4–V6 startup, and async multi-reference queue behavior are explicitly pending a machine with enough build time/resources for dlib compilation.
+
+Accuracy guardrail outcome: the unchanged golden-set regression remains 33.33% under the checked-in harness, identical to the Step A baseline, with one false negative and three identity mismatches. The documented historical baseline discrepancy is preserved as unresolved. No threshold change, global crop enablement, or unsupported performance claim was made. The current implementation improves state handling, multi-reference persistence, deduplication, and review visibility while retaining safe defaults.
