@@ -104,3 +104,29 @@ This stage will add persisted sync records and audit transitions around the loca
 ## Stage 18 status
 
 IN PROGRESS.
+
+
+## Completed Stage 18 — sync states, retry, idempotency, and audit trail
+
+**Completed:** 2026-08-13T10:35:00+00:00
+
+Postgres created `erp_sync_records` and `erp_sync_audits`. Live ADMIN tests against finalized session `1` produced the following evidence:
+
+1. `POST /admin/erp/sync?simulateFailure=true` returned HTTP 200 with `status=FAILED`, `attemptCount=1`, and `SIMULATED_FAILURE_INJECTION`. Postgres showed one persisted sync record and two audit rows: `PENDING → SYNCING` and `SYNCING → FAILED`.
+2. Retrying with `POST /admin/erp/sync` returned HTTP 200 with `status=SYNCED`, `attemptCount=2`, and a real local CSV path `/app/exports/attendance-20260813-095111.csv`.
+3. Repeating the same request returned HTTP 200 with `idempotentNoOp=true`, `status=SYNCED`, and the attempt count remained `2`; no new CSV was created and no new transition audit was added.
+4. Postgres showed one sync record, `status=SYNCED`, `attempt_count=2`, and four total audit rows. The generated CSV contained the same two Postgres-derived attendance rows.
+
+All FAILED behavior above is a simulated test injection; no real ERP outage is being claimed.
+
+**Stage 18 status: SUCCEEDED.**
+
+## Starting Stage 19 — mock ERP/sandbox scenarios
+
+**Started:** 2026-08-13T10:37:00+00:00
+
+This stage will add a distinct mock provider and explicit scenario selection for SUCCESS, DUPLICATE, INVALID_STUDENT, TIMEOUT, and PARTIAL_SUCCESS. The mock path will remain separate from the local CSV provider and will be labeled test-only.
+
+## Stage 19 status
+
+IN PROGRESS.
