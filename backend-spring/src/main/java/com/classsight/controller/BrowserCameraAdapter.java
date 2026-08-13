@@ -14,6 +14,8 @@ import com.classsight.repository.RoomRepository;
 import com.classsight.repository.SubjectRepository;
 import com.classsight.repository.UserRepository;
 import com.classsight.service.AttendanceSessionService;
+import com.classsight.service.DiskMultipartFile;
+import com.classsight.service.RtspCameraAdapter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -26,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.nio.file.Path;
 
 @RestController
 @RequestMapping("/capture")
@@ -60,6 +63,9 @@ public class BrowserCameraAdapter {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RtspCameraAdapter rtspCameraAdapter;
 
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Map<String, Object>> uploadCaptureMultipart(
@@ -149,6 +155,46 @@ public class BrowserCameraAdapter {
         } catch (Exception e) {
             logger.error("Error processing capture", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to process capture: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping(value = "/from-camera", consumes = "application/json")
+    public ResponseEntity<Map<String, Object>> captureFromCamera(@RequestBody Map<String, Long> payload, Authentication authentication) {
+        try {
+            Long roomId = payload.get("roomId");
+            Long cameraId = payload.get("cameraId");
+            Long assignmentId = payload.get("assignmentId");
+            if (roomId == null || cameraId == null || assignmentId == null) return ResponseEntity.badRequest().body(Map.of("error", "roomId, cameraId, and assignmentId are required"));
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User faculty = userRepository.findByUsername(userDetails.getUsername()).orElseThrow(() -> new RuntimeException("Faculty user not found"));
+            FacultySubjectAssignment assignment = assignmentRepository.findById(assignmentId).orElse(null);
+            Room room = roomRepository.findById(roomId).orElse(null);
+            Camera camera = cameraRepository.findById(cameraId).orElse(null);
+            if (assignment == null || room == null || camera == null) return ResponseEntity.badRequest().body(Map.of("error", "Invalid room, camera, or assignment"));
+            RtspCameraAdapter.FrameResult frame = rtspCameraAdapter.captureFrame(cameraId);
+            if (!frame.success()) return ResponseEntity.status(502).body(Map.of("error", frame.message(), "cameraId", cameraId, "latencyMs", frame.latencyMs()));
+            AttendanceSession session = attendanceSessionService.createSession(faculty, room, camera, assignment.getSubject(), assignment.getClassSection());
+            DiskMultipartFile diskFrame = new DiskMultipartFile(Path.of(frame.path()), "image/jpeg");
+            String capturedPhotoPath = capturePhotoStorageService.store(session.getId(), diskFrame);
+            attendanceSessionService.setCapturedPhotoPath(session.getId(), capturedPhotoPath);
+            attendanceSessionService.transitionToCaptured(session.getId());
+            AttendanceSession processed = attendanceRecognitionService.processCapturedSession(session.getId(), diskFrame);
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("source", "RTSP_ADAPTER");
+            response.put("sessionId", processed.getId());
+            response.put("sessionStatus", processed.getStatus().toString());
+            response.put("attendanceRecordCount", processed.getAttendanceRecords().size());
+            response.put("capturedPhotoPath", processed.getCapturedPhotoPath());
+            response.put("frameWidth", frame.width());
+            response.put("frameHeight", frame.height());
+            response.put("frameBytes", frame.bytes());
+            response.put("frameLatencyMs", frame.latencyMs());
+            response.put("reviewUrl", "/api/attendance-sessions/" + processed.getId() + "/review");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error processing camera-sourced capture", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to process camera capture: " + e.getMessage()));
         }
     }
 

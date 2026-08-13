@@ -273,3 +273,42 @@ The new `/capture/from-camera` endpoint will invoke `RtspCameraAdapter.captureFr
 ## Stage 25 status
 
 IN PROGRESS.
+
+
+## Completed Stage 25 — Phase 3 end-to-end verification
+
+**Completed:** 2026-08-13T14:00:00+00:00
+
+The detailed walkthrough is in `docs/phase3-demo-walkthrough.md`. A fresh owner-teacher session called `POST /capture/from-camera` with room `1`, camera `1`, and assignment `1`. The live response was HTTP 200 with `source=RTSP_ADAPTER`, session `2`, status `REVIEW_REQUIRED`, frame dimensions 640 × 360, frame size 16,749 bytes, and adapter latency 5,638 ms.
+
+The unchanged recognition/review path created two review records with `No enrolled face match`. The owner teacher submitted ABSENT decisions for both students; the review endpoint returned HTTP 200 with `status=FINALIZED` and `unresolvedReviewCount=0`. Postgres confirmed session `2` FINALIZED, both records ABSENT, review status complete, and `reviewed_by=2`. The persisted host JPEG and `/review/photo` response were both 16,749 bytes with identical SHA-256 `edaab3c209a066a8f38c3717e55a0a7157baf0886542fc63b88a0fb98b003ff4`.
+
+A stale teacher cookie initially returned HTTP 403; a fresh login corrected this. A first post-verification SQL query used the wrong column name and was corrected to `reviewed_by`; neither was a product failure.
+
+**Stage 25 status: SUCCEEDED WITH SIMULATED STREAM.**
+
+## Overnight run complete
+
+### Fully succeeded
+
+- Stage A investigation: ranked all-identity distances and modern/archival comparison completed; findings remain provisional and no production thresholds changed.
+- Stages 17–20: local CSV ERP export, persisted sync state, retry/idempotency, mock scenarios, and live Phase 2 walkthrough completed.
+- Stage 21: isolated RTSP capture completed with a simulated GStreamer source.
+- Stage 22: ADMIN camera management, encrypted credential persistence, connection testing, and 403 authorization completed.
+- Stage 23: camera-agnostic RTSP adapter and real frame capture completed.
+- Stage 24: persisted ONLINE/OFFLINE/ONLINE health monitoring and failover completed.
+- Stage 25: RTSP adapter → unchanged recognition/review/finalization flow completed.
+
+### Blocked or limited
+
+- No real IP camera was available. Stages 21–25 are verified against a local simulated RTSP stream only.
+- FFmpeg’s own RTSP listen mode failed with connection refused; GStreamer was installed as the documented workaround.
+- ONVIF/NVR discovery and vendor-specific credential behavior remain interface/future work.
+- The original Stage A identity-confusion issue remains unresolved at production scale. The current evidence supports a high-priority review-safety investigation and does not justify threshold changes.
+
+### Human decisions for daylight review
+
+1. Confirm the real ERP/SIS vendor, API/import contract, authentication model, and student-ID mapping before replacing the local CSV provider.
+2. Supply a real 30+ person back-of-room classroom capture for recognition validation and decide whether a margin-based safety rule is needed after representative testing.
+3. Supply a real IP camera or RTSP URL and credential policy before treating camera integration as production-ready.
+4. Decide whether camera health intervals, frame retention, credential-key rotation, and a user-facing camera dashboard should be production defaults.
