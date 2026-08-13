@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.nio.file.Path;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -140,6 +141,10 @@ public class AttendanceRecognitionService {
         logger.info("Attendance session {} processed: {} students, status {}, threshold {}",
                 sessionId, enrolledStudents.size(), saved.getStatus(), distanceThreshold);
         return saved;
+    }
+
+    public AttendanceSession processCapturedSession(Long sessionId, Path imagePath) {
+        return processCapturedSession(sessionId, new DiskMultipartFile(imagePath, "image/jpeg"));
     }
 
     private Map<String, Object> callRecognition(MultipartFile image, List<Student> enrolledStudents) {

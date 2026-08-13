@@ -7,6 +7,7 @@ import com.classsight.repository.CameraRepository;
 import com.classsight.repository.RoomRepository;
 import com.classsight.service.CameraCredentialService;
 import com.classsight.service.RtspFrameProbeService;
+import com.classsight.service.RtspCameraAdapter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -22,13 +23,16 @@ public class AdminCameraController {
     private final RoomRepository roomRepository;
     private final CameraCredentialService credentialService;
     private final RtspFrameProbeService probeService;
+    private final RtspCameraAdapter frameAdapter;
 
     public AdminCameraController(CameraRepository cameraRepository, RoomRepository roomRepository,
-                                 CameraCredentialService credentialService, RtspFrameProbeService probeService) {
+                                 CameraCredentialService credentialService, RtspFrameProbeService probeService,
+                                 RtspCameraAdapter frameAdapter) {
         this.cameraRepository = cameraRepository;
         this.roomRepository = roomRepository;
         this.credentialService = credentialService;
         this.probeService = probeService;
+        this.frameAdapter = frameAdapter;
     }
 
     @GetMapping
@@ -61,6 +65,15 @@ public class AdminCameraController {
             if (request.getCredentials() != null) camera.setCredentialsCiphertext(credentialService.encrypt(request.getCredentials()));
             return ResponseEntity.ok(cameraRepository.save(camera));
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/{id}/capture-frame")
+    public ResponseEntity<?> captureFrame(@PathVariable Long id) {
+        RtspCameraAdapter.FrameResult result = frameAdapter.captureFrame(id);
+        return result.success() ? ResponseEntity.ok(Map.of(
+                "cameraId", id, "success", true, "message", result.message(), "latencyMs", result.latencyMs(),
+                "width", result.width(), "height", result.height(), "bytes", result.bytes(), "path", result.path()))
+                : ResponseEntity.status(502).body(Map.of("cameraId", id, "success", false, "message", result.message(), "latencyMs", result.latencyMs()));
     }
 
     @PostMapping("/{id}/test-connection")

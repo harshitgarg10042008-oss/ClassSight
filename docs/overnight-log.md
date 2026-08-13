@@ -229,3 +229,26 @@ The adapter layer will expose camera-agnostic `captureFrame(cameraId)` behavior 
 ## Stage 23 status
 
 IN PROGRESS.
+
+
+## Completed Stage 23 — RTSP adapter layer
+
+**Completed:** 2026-08-13T13:00:00+00:00
+
+Added the camera-agnostic `CameraFrameAdapter` contract and `RtspCameraAdapter`. The adapter is now the only application service invoking FFmpeg/RTSP for frame capture; ONVIF/NVR remain future interface options. The ADMIN endpoint `POST /admin/cameras/1/capture-frame` was live-tested against the Stage 21 simulated stream and returned HTTP 200: `success=true`, `width=640`, `height=360`, `bytes=16749`, `latencyMs=5591`, and path `/app/data/captures/camera-frames/camera-1-1786615714600.jpg`.
+
+The same frame was present on the host bind mount at `data/captures/camera-frames/camera-1-1786615714600.jpg`, recognized as a valid 640 × 360 JPEG, size **16,749 bytes**, SHA-256 `edaab3c209a066a8f38c3717e55a0a7157baf0886542fc63b88a0fb98b003ff4`. A teacher calling the adapter endpoint received **HTTP 403**.
+
+The attendance recognition flow was not changed and does not directly call RTSP code.
+
+**Stage 23 status: SUCCEEDED WITH SIMULATED STREAM.**
+
+## Starting Stage 24 — camera health monitoring and failover
+
+**Started:** 2026-08-13T13:02:00+00:00
+
+The existing connection-test logic persists `ONLINE`/`OFFLINE`, last check time, and error. This stage will add periodic health monitoring and verify status transitions live by stopping and restarting the simulated RTSP source.
+
+## Stage 24 status
+
+IN PROGRESS.
