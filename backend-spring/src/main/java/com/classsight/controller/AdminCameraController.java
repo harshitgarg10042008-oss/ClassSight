@@ -24,15 +24,17 @@ public class AdminCameraController {
     private final CameraCredentialService credentialService;
     private final RtspFrameProbeService probeService;
     private final RtspCameraAdapter frameAdapter;
+    private final com.classsight.service.CameraUrlValidator urlValidator;
 
     public AdminCameraController(CameraRepository cameraRepository, RoomRepository roomRepository,
                                  CameraCredentialService credentialService, RtspFrameProbeService probeService,
-                                 RtspCameraAdapter frameAdapter) {
+                                 RtspCameraAdapter frameAdapter, com.classsight.service.CameraUrlValidator urlValidator) {
         this.cameraRepository = cameraRepository;
         this.roomRepository = roomRepository;
         this.credentialService = credentialService;
         this.probeService = probeService;
         this.frameAdapter = frameAdapter;
+        this.urlValidator = urlValidator;
     }
 
     @GetMapping
@@ -42,6 +44,7 @@ public class AdminCameraController {
     public ResponseEntity<?> createCamera(@Valid @RequestBody CameraRequest request) {
         Optional<Room> roomOpt = roomRepository.findById(request.getRoomId());
         if (roomOpt.isEmpty()) return ResponseEntity.badRequest().body("Room not found");
+        urlValidator.validate(request.getStreamUrl());
         Camera camera = new Camera();
         camera.setName(request.getName());
         camera.setRoom(roomOpt.get());
@@ -61,7 +64,10 @@ public class AdminCameraController {
                 camera.setRoom(roomOpt.get());
             }
             if (request.getStatus() != null) camera.setStatus(request.getStatus());
-            if (request.getStreamUrl() != null) camera.setStreamUrl(request.getStreamUrl());
+            if (request.getStreamUrl() != null) {
+                urlValidator.validate(request.getStreamUrl());
+                camera.setStreamUrl(request.getStreamUrl());
+            }
             if (request.getCredentials() != null) camera.setCredentialsCiphertext(credentialService.encrypt(request.getCredentials()));
             return ResponseEntity.ok(cameraRepository.save(camera));
         }).orElse(ResponseEntity.notFound().build());

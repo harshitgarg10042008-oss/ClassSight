@@ -13,6 +13,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
@@ -24,14 +25,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .ignoringRequestMatchers("/auth/login"))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/actuator/**", "/auth/login", "/login", "/capture", "/*.html", "/css/**", "/js/**", "/images/**").permitAll()
+                .requestMatchers("/health", "/actuator/**", "/auth/login", "/login", "/*.html", "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/auth/me").authenticated()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/teacher/**").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers("/student/**").hasAnyRole("ADMIN", "TEACHER", "STUDENT")
+                .requestMatchers("/students/**", "/capture/**", "/capture").hasAnyRole("ADMIN", "TEACHER")
                 .requestMatchers("/api/attendance-sessions/**").hasAnyRole("ADMIN", "TEACHER")
                 .anyRequest().authenticated()
             )

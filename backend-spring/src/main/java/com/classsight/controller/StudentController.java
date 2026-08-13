@@ -33,6 +33,9 @@ public class StudentController {
     private UserRepository userRepository;
 
     @Autowired
+    private com.classsight.service.ImageUploadValidator imageUploadValidator;
+
+    @Autowired
     private RestTemplate restTemplate;
 
     @Value("${face-service.url}")
@@ -48,6 +51,7 @@ public class StudentController {
         long startTime = System.currentTimeMillis();
         
         try {
+            imageUploadValidator.validate(photo);
             if (!consentGiven) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -106,6 +110,8 @@ public class StudentController {
 
             return ResponseEntity.ok(result);
 
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", e.getMessage()));
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;

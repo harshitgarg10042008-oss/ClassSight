@@ -1,0 +1,7 @@
+# ClassSight Security Notes
+
+State-changing Spring requests are protected by Spring Security CSRF using an `XSRF-TOKEN` cookie and `X-XSRF-TOKEN` header. The `/csrf` endpoint returns the current token for authenticated browser clients; `/auth/login` is the bootstrap exception needed to obtain authentication. Enrollment and capture require ADMIN or TEACHER roles, review and analytics remain role restricted, and administrative CRUD/retention endpoints require ADMIN.
+
+Camera stream URLs are restricted to `rtsp://` and are rejected when the hostname is localhost, loopback, link-local, private/site-local, multicast, cloud metadata, or otherwise cannot be resolved. Camera credentials are encrypted with AES-GCM using the configured `classsight.camera.credential-key`. Automated key-versioned rotation is not implemented yet: changing the key without re-encrypting existing values would make them unreadable. Before production, an operator must export the original plaintext credentials from the authoritative camera inventory, pause camera writes, re-encrypt each credential with the new key through a controlled migration utility, verify camera access, then remove the old key. This manual process is a documented limitation, not a claim of automated rotation.
+
+Unexpected Spring API errors return a generic message without stack traces, database details, or filesystem paths. The face service similarly suppresses exception text for unexpected 500 responses while retaining aggregate operational logging.

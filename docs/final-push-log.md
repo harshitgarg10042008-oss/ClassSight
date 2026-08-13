@@ -118,3 +118,23 @@ A repository-wide biometric-log search found no raw image bytes or embedding vec
 There is no separate student enrollment Thymeleaf screen in the current application; the consent checkbox is therefore represented by the required API form field in the existing enrollment flow. A dedicated student-facing enrollment UI remains a documentation/UI follow-up.
 
 **Stage 26 status: SUCCEEDED WITH UI FOLLOW-UP.**
+
+## Starting Stage 27 — Security review and hardening
+**Started:** 2026-08-13T11:40:00Z
+
+Reviewed CSRF, upload handling, camera URL SSRF exposure, credential rotation, error leakage, and biometric endpoint authorization.
+
+## Completed Stage 27 — Security review and hardening
+**Completed:** 2026-08-13T11:50:00Z
+
+CSRF is now enabled with a cookie repository and `/csrf` token endpoint. Live evidence: `POST /admin/privacy/retention/run` with a valid admin bearer token but no CSRF token returned HTTP **403**. With a fresh token from `/csrf` sent in `X-XSRF-TOKEN`, the same request returned HTTP **200**. The first token test used a stale cookie and correctly remained 403; the clean-cookie repeat confirmed the valid-token path.
+
+Upload validation is shared by enrollment and multipart capture. A renamed text file sent to `/capture` returned HTTP **400** with `Upload must have an image content type`. A 16,000,000-byte upload returned HTTP **413** with `Uploaded file exceeds the configured size limit`. Direct FastAPI `/recognize` with the renamed text file returned HTTP **400** with an invalid-image detail, not 500. The FastAPI unexpected-error paths now use generic details rather than embedding exception text.
+
+An admin camera create attempt using `rtsp://127.0.0.1:8080/secret` returned HTTP **400** with `Camera stream host resolves to a private or local address`; no camera was persisted. Enrollment and capture are now explicitly restricted to ADMIN or TEACHER. An anonymous enrollment attempt returned HTTP **403**.
+
+A teacher-triggered missing review session request returned HTTP **404** with no stack trace, SQL, filesystem path, or internal exception detail in the response body. A credential-rotation review found AES-GCM encryption with one configured key and no decrypt/key-version workflow; the manual re-encryption limitation is documented in `docs/security.md` and is not presented as automated.
+
+The remaining scope limitation is that direct FastAPI service access is intended to be an internal service boundary; external deployment must keep port 8000 private behind the Spring service/network policy.
+
+**Stage 27 status: SUCCEEDED WITH MANUAL CREDENTIAL-ROTATION LIMITATION.**

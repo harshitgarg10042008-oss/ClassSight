@@ -67,6 +67,9 @@ public class BrowserCameraAdapter {
     @Autowired
     private RtspCameraAdapter rtspCameraAdapter;
 
+    @Autowired
+    private com.classsight.service.ImageUploadValidator imageUploadValidator;
+
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Map<String, Object>> uploadCaptureMultipart(
             @RequestParam("image") MultipartFile image,
@@ -79,6 +82,7 @@ public class BrowserCameraAdapter {
                 image.getSize(), image.getContentType(), roomId, cameraId, assignmentId);
         
         try {
+            imageUploadValidator.validate(image);
             // Extract faculty from authentication
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             User faculty = userRepository.findByUsername(userDetails.getUsername())
@@ -152,9 +156,11 @@ public class BrowserCameraAdapter {
                 
                 return ResponseEntity.ok(response);
             }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error processing capture", e);
-            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to process capture: " + e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to process capture"));
         }
     }
 

@@ -145,7 +145,7 @@ async def enroll(image: UploadFile = File(...)):
         raise
     except Exception as exc:
         logger.exception("Error processing enrollment")
-        raise HTTPException(status_code=500, detail=f"Internal error during enrollment: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal error during enrollment") from exc
 
 
 @app.post("/recognize", response_model=RecognitionResponse)
@@ -205,4 +205,4 @@ async def recognize(
         raise
     except Exception as exc:
         logger.exception("Error processing group recognition")
-        raise HTTPException(status_code=500, detail=f"Internal error during recognition: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Internal error during recognition") from exc
