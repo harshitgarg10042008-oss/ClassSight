@@ -252,3 +252,24 @@ The existing connection-test logic persists `ONLINE`/`OFFLINE`, last check time,
 ## Stage 24 status
 
 IN PROGRESS.
+
+
+## Completed Stage 24 — camera health monitoring and failover
+
+**Completed:** 2026-08-13T13:25:00+00:00
+
+Added scheduled health monitoring with Compose-configured 5-second interval and 5-second initial delay. Live Postgres evidence after starting the simulated RTSP stream showed camera `1` ONLINE with a fresh check timestamp. After stopping the stream, the monitor retained ONLINE briefly, then changed the camera to OFFLINE at `10:11:17.203` and persisted the connection-refused error. After restarting the same stream, the camera changed back to ONLINE at `10:11:27.747`, with `last_error` cleared.
+
+This demonstrates real persistence-backed failover behavior for the simulated source. No real IP camera outage was tested.
+
+**Stage 24 status: SUCCEEDED WITH SIMULATED STREAM.**
+
+## Starting Stage 25 — Phase 3 end-to-end verification
+
+**Started:** 2026-08-13T13:27:00+00:00
+
+The new `/capture/from-camera` endpoint will invoke `RtspCameraAdapter.captureFrame(cameraId)`, persist the returned frame through the existing capture-photo storage, and call the unchanged `AttendanceRecognitionService` path. The live flow will be tested with an actual RTSP frame, followed by review/finalization where recognition produces REVIEW_REQUIRED.
+
+## Stage 25 status
+
+IN PROGRESS.
