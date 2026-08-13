@@ -105,6 +105,10 @@ public class AttendanceReviewService {
         return sessionRepository.save(session);
     }
 
+    public void assertCanReview(Long sessionId, User actor) {
+        authorizedSession(sessionId, actor);
+    }
+
     private AttendanceSession authorizedSession(Long sessionId, User actor) {
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
