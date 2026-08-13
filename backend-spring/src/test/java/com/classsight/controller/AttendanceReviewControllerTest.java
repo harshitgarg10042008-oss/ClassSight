@@ -49,6 +49,30 @@ class AttendanceReviewControllerTest {
     }
 
     @Test
+    void nullExceptionMessageDoesNotCauseSecondaryNpe() throws Exception {
+        AttendanceReviewService reviewService = mock(AttendanceReviewService.class);
+        UserRepository userRepository = mock(UserRepository.class);
+        User owner = new User();
+        owner.setId(1L);
+        owner.setUsername("owner");
+        owner.setRole(User.Role.TEACHER);
+        when(userRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+        when(reviewService.getReview(eq(44L), eq(owner))).thenThrow(new IllegalArgumentException());
+
+        AttendanceReviewController controller = new AttendanceReviewController(reviewService, userRepository);
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new ReviewExceptionHandler())
+                .build();
+
+        mockMvc.perform(get("/api/attendance-sessions/44/review")
+                        .principal(() -> "owner")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error", is("BAD_REQUEST")))
+                .andExpect(jsonPath("$.message", is("IllegalArgumentException")));
+    }
+
+    @Test
     void ownerCanRenderCapturedPhoto() throws Exception {
         AttendanceReviewService reviewService = mock(AttendanceReviewService.class);
         UserRepository userRepository = mock(UserRepository.class);

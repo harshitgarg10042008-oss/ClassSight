@@ -70,3 +70,17 @@ Fresh-volume evidence: a new temporary Postgres 15 database started with no appl
 The Maven/package build succeeded. A Docker runtime-layer rebuild encountered a network stall while reinstalling Alpine FFmpeg, so the live migration verification used the already FFmpeg-capable Spring container with the newly built jar; this is an infrastructure-build limitation, not a Flyway migration failure. A full clean-clone image rebuild should be repeated when the Alpine mirror is responsive.
 
 **Item #4 status: SUCCEEDED WITH DOCKER BUILD LIMITATION.**
+
+## Starting Item #5 — Map.of nullable-field audit
+**Started:** 2026-08-13T11:16:00Z
+
+All production `Map.of` call sites were searched. The concrete nullable-message risk was in `ReviewExceptionHandler`, where `exception.getMessage()` could be null and cause a secondary `NullPointerException` while constructing the error response.
+
+## Completed Item #5 — Map.of nullable-field audit
+**Completed:** 2026-08-13T11:19:00Z
+
+`ReviewExceptionHandler` now builds error bodies with a null-tolerant `LinkedHashMap` and uses the exception class name when the exception message is null. The other inspected `Map.of` responses either use constants, validated non-null fields, or concatenate into a guaranteed non-null string. Camera probe/adapter failure paths were also reviewed; their failure messages are now expected to be non-null for normal error construction, while the review advice is protected independently.
+
+The focused live build test passed: `AttendanceReviewControllerTest` ran **4 tests, 0 failures, 0 errors**. The new regression covers an `IllegalArgumentException` with a null message and confirms HTTP 400 JSON with `error=BAD_REQUEST` and `message=IllegalArgumentException`. Existing 403 and photo tests also remained green.
+
+**Item #5 status: SUCCEEDED.**

@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -13,12 +14,19 @@ public class ReviewExceptionHandler {
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Map<String, String> forbidden(Exception exception) {
-        return Map.of("error", "FORBIDDEN", "message", exception.getMessage());
+        return response("FORBIDDEN", exception);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, String> badRequest(Exception exception) {
-        return Map.of("error", "BAD_REQUEST", "message", exception.getMessage());
+        return response("BAD_REQUEST", exception);
+    }
+
+    private Map<String, String> response(String error, Exception exception) {
+        Map<String, String> body = new LinkedHashMap<>();
+        body.put("error", error);
+        body.put("message", exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage());
+        return body;
     }
 }
