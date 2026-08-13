@@ -3,7 +3,7 @@ package com.classsight.entity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "cameras")
@@ -30,6 +30,19 @@ public class Camera {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "stream_url", length = 1024)
+    private String streamUrl;
+
+    @JsonIgnore
+    @Column(name = "credentials_ciphertext", length = 4096)
+    private String credentialsCiphertext;
+
+    @Column(name = "last_checked_at")
+    private LocalDateTime lastCheckedAt;
+
+    @Column(name = "last_error", length = 2000)
+    private String lastError;
 
     @PrePersist
     protected void onCreate() {
@@ -90,6 +103,15 @@ public class Camera {
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+
+    public String getStreamUrl() { return streamUrl; }
+    public void setStreamUrl(String streamUrl) { this.streamUrl = streamUrl; }
+    public String getCredentialsCiphertext() { return credentialsCiphertext; }
+    public void setCredentialsCiphertext(String credentialsCiphertext) { this.credentialsCiphertext = credentialsCiphertext; }
+    public LocalDateTime getLastCheckedAt() { return lastCheckedAt; }
+    public void setLastCheckedAt(LocalDateTime lastCheckedAt) { this.lastCheckedAt = lastCheckedAt; }
+    public String getLastError() { return lastError; }
+    public void setLastError(String lastError) { this.lastError = lastError; }
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;

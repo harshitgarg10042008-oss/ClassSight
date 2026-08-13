@@ -206,3 +206,26 @@ Stage 21 succeeded with a simulated RTSP stream, so Stage 22 may proceed. Existi
 ## Stage 22 status
 
 IN PROGRESS.
+
+
+## Completed Stage 22 — camera entity, ADMIN management, and room mapping
+
+**Completed:** 2026-08-13T12:35:00+00:00
+
+The existing Camera entity was extended with `streamUrl`, encrypted `credentialsCiphertext`, `lastCheckedAt`, and `lastError`. The Spring runtime image now includes FFmpeg. ADMIN camera update accepted `rtsp://127.0.0.1:8554/classsight` and a demo credential; Postgres confirmed `credentials_encrypted=t`, while the API response did not expose the raw credential.
+
+Live ADMIN `POST /admin/cameras/1/test-connection` against the running simulated stream returned HTTP 200 with `success=true`, `status=ONLINE`, `width=640`, `height=360`, `bytes=16749`, and `latencyMs=5682`. After stopping the stream and pointing the camera at unavailable port 8555, the same endpoint returned HTTP 200 with `success=false`, `status=OFFLINE`, `width=0`, `height=0`, `bytes=0`, `latencyMs=49`, and the actual FFmpeg connection-refused error. Postgres persisted the OFFLINE status, last check time, and error text.
+
+A teacher calling both `GET /admin/cameras` and `POST /admin/cameras/1/test-connection` received **HTTP 403**.
+
+**Stage 22 status: SUCCEEDED WITH SIMULATED STREAM.**
+
+## Starting Stage 23 — RTSP adapter layer
+
+**Started:** 2026-08-13T12:37:00+00:00
+
+The adapter layer will expose camera-agnostic `captureFrame(cameraId)` behavior using the tested RTSP probe. The attendance engine will not call FFmpeg or RTSP directly. ONVIF/NVR will remain interface-only as instructed.
+
+## Stage 23 status
+
+IN PROGRESS.

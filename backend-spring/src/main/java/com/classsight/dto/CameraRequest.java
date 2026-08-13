@@ -10,6 +10,8 @@ public class CameraRequest {
     @NotNull
     private Long roomId;
     private CameraStatus status;
+    private String streamUrl;
+    private String credentials;
 
     // Getters and Setters
     public String getName() { return name; }
@@ -18,4 +20,8 @@ public class CameraRequest {
     public void setRoomId(Long roomId) { this.roomId = roomId; }
     public CameraStatus getStatus() { return status; }
     public void setStatus(CameraStatus status) { this.status = status; }
+    public String getStreamUrl() { return streamUrl; }
+    public void setStreamUrl(String streamUrl) { this.streamUrl = streamUrl; }
+    public String getCredentials() { return credentials; }
+    public void setCredentials(String credentials) { this.credentials = credentials; }
 }
