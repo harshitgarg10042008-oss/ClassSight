@@ -40,7 +40,7 @@ public class AttendanceReviewService {
     @Transactional(readOnly = true)
     public Map<String, Object> getReview(Long sessionId, User actor) {
         AttendanceSession session = authorizedSession(sessionId, actor);
-        List<Map<String, Object>> records = reviewRecords(session);
+        List<Map<String, Object>> records = reviewRecords(session, true);
 
         Map<String, Object> response = new HashMap<>();
         response.put("sessionId", session.getId());
@@ -48,6 +48,7 @@ public class AttendanceReviewService {
         response.put("capturedPhotoPath", session.getCapturedPhotoPath());
         response.put("photoUrl", "/api/attendance-sessions/" + sessionId + "/review/photo");
         response.put("records", records);
+        response.put("allRecords", reviewRecords(session, false));
         Map<String, Object> quality = new HashMap<>();
         quality.put("blurScore", session.getBlurScore());
         quality.put("brightnessMean", session.getBrightnessMean());
@@ -130,10 +131,10 @@ public class AttendanceReviewService {
         return session;
     }
 
-    private List<Map<String, Object>> reviewRecords(AttendanceSession session) {
+    private List<Map<String, Object>> reviewRecords(AttendanceSession session, boolean onlyReview) {
         List<Map<String, Object>> result = new ArrayList<>();
         session.getAttendanceRecords().stream()
-                .filter(record -> record.getStatus() == AttendanceRecord.AttendanceStatus.REVIEW)
+                .filter(record -> !onlyReview || record.getStatus() == AttendanceRecord.AttendanceStatus.REVIEW)
                 .sorted(Comparator.comparing(record -> record.getStudent().getRollNumber()))
                 .forEach(record -> {
                     Map<String, Object> item = new HashMap<>();

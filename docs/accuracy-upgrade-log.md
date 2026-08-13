@@ -94,3 +94,17 @@ RabbitMQ was already implemented and feature-flagged from the infrastructure loo
 The default remains `RECOGNITION_MODE=sync` and `EDGE_CROP_ENABLED=false`. Async mode remains available for large or multi-face captures, while synchronous mode remains the compatible default for small captures. Spring compiled successfully with Java 17. Live queue processing against a rebuilt image is deferred to Step H because the currently running Compose containers predate this commit.
 
 Step F stopping point: async integration was extended without duplicating RabbitMQ infrastructure or changing the default production mode.
+
+## Starting Step G — Next.js faculty review-state UI
+
+- Timestamp: 2026-08-13
+- The Next.js faculty flow is already present and additive. This step will expose the new recognition state and quality warning fields while keeping the existing Spring/Thymeleaf routes untouched.
+
+
+## Completed Step G — Next.js faculty review-state UI
+
+The additive Next.js faculty flow now consumes `recognitionState` and displays the state, confidence, and quality warning for each student. The review API now provides `allRecords` for visibility of recognized and unresolved outcomes, while the original `records` field remains limited to pending review items so the existing finalization contract is unchanged. Capture-level quality warnings are shown above the review list, and the existing Processing/Completed polling behavior remains in place.
+
+Validation evidence: the Next.js production build passed strict TypeScript checks, and the Spring Boot package compiled successfully with Java 17. The Thymeleaf frontend and existing Spring routes were not removed or altered into a replacement architecture. Interactive browser click-through remains unavailable in the sandbox, so this step is build/API-contract verified rather than browser-click verified.
+
+Step G stopping point: the new review-state UI is committed while the legacy frontend remains intact and additive.
