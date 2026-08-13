@@ -99,6 +99,13 @@ public class AttendanceSessionService {
         return updateStatus(sessionId, AttendanceSession.SessionStatus.CAPTURED);
     }
 
+    public AttendanceSession setCapturedPhotoPath(Long sessionId, String photoPath) {
+        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        session.setCapturedPhotoPath(photoPath);
+        return attendanceSessionRepository.save(session);
+    }
+
     public AttendanceSession transitionToProcessing(Long sessionId) {
         return updateStatus(sessionId, AttendanceSession.SessionStatus.PROCESSING);
     }

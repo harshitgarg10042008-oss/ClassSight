@@ -41,6 +41,9 @@ public class BrowserCameraAdapter {
     private com.classsight.service.AttendanceRecognitionService attendanceRecognitionService;
 
     @Autowired
+    private com.classsight.service.CapturePhotoStorageService capturePhotoStorageService;
+
+    @Autowired
     private FacultySubjectAssignmentRepository assignmentRepository;
 
     @Autowired
@@ -107,9 +110,13 @@ public class BrowserCameraAdapter {
                 
                 logger.info("Created AttendanceSession with ID: {}, Status: OPEN", session.getId());
                 
-                // Transition to CAPTURED (photo saved)
+                // Persist the original bytes before recognition so review can render
+                // the exact captured image after this request completes.
+                String capturedPhotoPath = capturePhotoStorageService.store(session.getId(), image);
+                attendanceSessionService.setCapturedPhotoPath(session.getId(), capturedPhotoPath);
+
                 attendanceSessionService.transitionToCaptured(session.getId());
-                logger.info("Transitioned session {} to CAPTURED", session.getId());
+                logger.info("Transitioned session {} to CAPTURED; photo stored at {}", session.getId(), capturedPhotoPath);
                 
                 // The uploaded image is still available here, so process it before
                 // returning and persist one AttendanceRecord per enrolled student.
@@ -123,6 +130,8 @@ public class BrowserCameraAdapter {
                 response.put("sessionId", processedSession.getId());
                 response.put("sessionStatus", processedSession.getStatus().toString());
                 response.put("attendanceRecordCount", processedSession.getAttendanceRecords().size());
+                response.put("capturedPhotoPath", processedSession.getCapturedPhotoPath());
+                response.put("reviewUrl", "/api/attendance-sessions/" + processedSession.getId() + "/review");
                 response.put("size", image.getSize());
                 response.put("contentType", image.getContentType());
                 

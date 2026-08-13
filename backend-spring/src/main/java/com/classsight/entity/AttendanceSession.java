@@ -43,6 +43,9 @@ public class AttendanceSession {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    @Column(name = "captured_photo_path", length = 1024)
+    private String capturedPhotoPath;
+
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<AttendanceRecord> attendanceRecords = new HashSet<>();
 
@@ -144,6 +147,14 @@ public class AttendanceSession {
 
     public void setEndedAt(LocalDateTime endedAt) {
         this.endedAt = endedAt;
+    }
+
+    public String getCapturedPhotoPath() {
+        return capturedPhotoPath;
+    }
+
+    public void setCapturedPhotoPath(String capturedPhotoPath) {
+        this.capturedPhotoPath = capturedPhotoPath;
     }
 
     public Set<AttendanceRecord> getAttendanceRecords() {

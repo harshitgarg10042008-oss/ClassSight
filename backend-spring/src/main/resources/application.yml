@@ -27,6 +27,8 @@ face-service:
 attendance:
   recognition:
     threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
+  capture:
+    storage-path: ${ATTENDANCE_CAPTURE_STORAGE_PATH:./data/captures}
 
 logging:
   level:

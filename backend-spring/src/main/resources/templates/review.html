@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Review - ClassSight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: Inter, sans-serif; background: #0f172a; color: #f8fafc; }
+        .panel { background: rgba(30,41,59,.82); border: 1px solid rgba(148,163,184,.2); }
+        .selected { outline: 2px solid #34d399; background: rgba(16,185,129,.2); }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+<div class="max-w-6xl mx-auto space-y-6">
+    <header class="panel rounded-xl p-5 flex items-center justify-between">
+        <div>
+            <p class="text-sm text-slate-400">AttendanceSession manual review</p>
+            <h1 class="text-2xl font-bold">Review session <span th:text="${sessionId}"></span></h1>
+        </div>
+        <a href="/capture" class="text-slate-300 hover:text-white">Back to capture</a>
+    </header>
+
+    <div id="message" class="hidden rounded-lg p-4"></div>
+    <div id="loading" class="text-slate-300">Loading captured photo and review records...</div>
+
+    <main id="content" class="hidden grid lg:grid-cols-2 gap-6">
+        <section class="panel rounded-xl p-5">
+            <h2 class="text-lg font-semibold mb-4">Captured photo</h2>
+            <img id="captured-photo" class="w-full rounded-lg bg-black object-contain max-h-[620px]" alt="Captured classroom photo">
+            <p id="session-status" class="mt-3 text-sm text-slate-400"></p>
+        </section>
+
+        <section class="panel rounded-xl p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Records requiring review</h2>
+                <span id="record-count" class="text-sm text-amber-300"></span>
+            </div>
+            <div id="records" class="space-y-3"></div>
+            <button id="submit" class="mt-6 w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-3 font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+                Submit decisions and finalize session
+            </button>
+        </section>
+    </main>
+</div>
+<script th:inline="javascript">
+    const sessionId = /*[[${sessionId}]]*/ 0;
+    const choices = new Map();
+    const message = document.getElementById('message');
+
+    function showMessage(text, error = false) {
+        message.textContent = text;
+        message.className = `rounded-lg p-4 ${error ? 'bg-red-500/20 text-red-200 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'}`;
+        message.classList.remove('hidden');
+    }
+
+    function renderRecords(records) {
+        const container = document.getElementById('records');
+        document.getElementById('record-count').textContent = `${records.length} flagged`;
+        if (!records.length) {
+            container.innerHTML = '<p class="text-emerald-300">No records require review.</p>';
+            document.getElementById('submit').disabled = true;
+            return;
+        }
+        container.innerHTML = records.map(record => `
+            <div class="record rounded-lg border border-slate-700 p-4" data-student-id="${record.studentId}">
+                <div class="flex justify-between gap-3">
+                    <div>
+                        <p class="font-semibold">${record.studentName}</p>
+                        <p class="text-sm text-slate-400">${record.rollNumber} · ID ${record.studentId}</p>
+                    </div>
+                    <p class="text-sm text-amber-300">Confidence: ${record.confidenceScore == null ? 'no match' : Number(record.confidenceScore).toFixed(4)}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                    <button class="decision rounded-lg border border-emerald-500/50 py-2 text-emerald-300 hover:bg-emerald-500/20" data-decision="PRESENT">Mark Present</button>
+                    <button class="decision rounded-lg border border-rose-500/50 py-2 text-rose-300 hover:bg-rose-500/20" data-decision="ABSENT">Mark Absent</button>
+                </div>
+            </div>`).join('');
+        container.querySelectorAll('.decision').forEach(button => button.addEventListener('click', () => {
+            const card = button.closest('.record');
+            const studentId = Number(card.dataset.studentId);
+            choices.set(studentId, button.dataset.decision);
+            card.querySelectorAll('.decision').forEach(item => item.classList.remove('selected'));
+            button.classList.add('selected');
+            document.getElementById('submit').disabled = choices.size !== records.length;
+        }));
+    }
+
+    async function loadReview() {
+        const response = await fetch(`/api/attendance-sessions/${sessionId}/review`);
+        if (response.status === 403) throw new Error('You do not own this session and are not an administrator.');
+        if (!response.ok) throw new Error(`Could not load review (${response.status})`);
+        const review = await response.json();
+        document.getElementById('captured-photo').src = review.photoUrl;
+        document.getElementById('session-status').textContent = `Status: ${review.status}`;
+        renderRecords(review.records);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+    }
+
+    document.getElementById('submit').addEventListener('click', async () => {
+        const decisions = [...choices.entries()].map(([studentId, decision]) => ({ studentId, decision }));
+        const response = await fetch(`/api/attendance-sessions/${sessionId}/review`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisions })
+        });
+        if (response.status === 403) return showMessage('You are not authorized to review this session.', true);
+        if (!response.ok) return showMessage(`Review submission failed (${response.status})`, true);
+        const result = await response.json();
+        showMessage(`Saved. Session status: ${result.status}`);
+        document.getElementById('submit').disabled = true;
+    });
+
+    loadReview().catch(error => {
+        document.getElementById('loading').classList.add('hidden');
+        showMessage(error.message, true);
+    });
+</script>
+</body>
+</html>

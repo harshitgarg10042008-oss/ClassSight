@@ -83,7 +83,9 @@ public class AttendanceRecognitionService {
             record.setStudent(student);
 
             if (match == null) {
-                record.setStatus(AttendanceRecord.AttendanceStatus.ABSENT);
+                record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                requiresReview = true;
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
