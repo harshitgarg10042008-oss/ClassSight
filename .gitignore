@@ -1,0 +1,20 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python caches and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Java/Maven build output
+backend-spring/target/
+
+# Next.js local output
+frontend-next/node_modules/
+frontend-next/.next/
+
+# Runtime capture frames and generated local ERP exports
+data/captures/camera-frames/
+exports/*.csv
