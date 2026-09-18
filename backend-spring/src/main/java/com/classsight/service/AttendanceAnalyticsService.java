@@ -14,13 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class AttendanceAnalyticsService {
@@ -39,7 +38,8 @@ public class AttendanceAnalyticsService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> analytics(Long subjectId, Long classSectionId, LocalDate from, LocalDate to, User actor) {
+    public Map<String, Object> analytics(Long subjectId, Long classSectionId, LocalDate from, LocalDate to,
+            User actor) {
         authorize(subjectId, classSectionId, actor);
         LocalDate effectiveFrom = from == null ? LocalDate.of(1970, 1, 1) : from;
         LocalDate effectiveTo = to == null ? LocalDate.now() : to;
@@ -47,9 +47,10 @@ public class AttendanceAnalyticsService {
             throw new IllegalArgumentException("to must be on or after from");
         }
 
-        List<AttendanceSession> sessions = sessionRepository.findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
-                classSectionId, subjectId, AttendanceSession.SessionStatus.FINALIZED,
-                effectiveFrom.atStartOfDay(), effectiveTo.atTime(LocalTime.MAX));
+        List<AttendanceSession> sessions = sessionRepository
+                .findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
+                        classSectionId, subjectId, AttendanceSession.SessionStatus.FINALIZED,
+                        effectiveFrom.atStartOfDay(), effectiveTo.atTime(LocalTime.MAX));
 
         Map<Long, StudentSummary> summaries = new HashMap<>();
         for (AttendanceSession session : sessions) {
@@ -61,13 +62,14 @@ public class AttendanceAnalyticsService {
                 Student student = record.getStudent();
                 StudentSummary summary = summaries.computeIfAbsent(student.getId(), id -> new StudentSummary(student));
                 summary.total++;
-                if (record.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT) summary.present++;
+                if (record.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT)
+                    summary.present++;
             }
         }
 
         List<Map<String, Object>> students = summaries.values().stream()
                 .sorted(Comparator.comparing(item -> item.student.getRollNumber()))
-                .map(StudentSummary::toMap)
+                .map(summary -> Objects.requireNonNull(summary).toMap())
                 .toList();
         List<Map<String, Object>> defaulters = students.stream()
                 .filter(item -> ((BigDecimal) item.get("attendancePercentage")).doubleValue() < defaulterThreshold)
@@ -108,7 +110,8 @@ public class AttendanceAnalyticsService {
         }
 
         private Map<String, Object> toMap() {
-            BigDecimal percentage = total == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(present * 100.0 / total).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal percentage = total == 0 ? BigDecimal.ZERO
+                    : BigDecimal.valueOf(present * 100.0 / total).setScale(2, RoundingMode.HALF_UP);
             Map<String, Object> result = new HashMap<>();
             result.put("studentId", student.getId());
             result.put("rollNumber", student.getRollNumber());

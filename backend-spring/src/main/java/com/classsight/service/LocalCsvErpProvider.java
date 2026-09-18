@@ -14,12 +14,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,7 +31,7 @@ public class LocalCsvErpProvider implements ErpProvider {
     private final Path exportDirectory;
 
     public LocalCsvErpProvider(AttendanceSessionRepository sessionRepository,
-                               @Value("${classsight.erp.export-dir:exports}") String exportDirectory) {
+            @Value("${classsight.erp.export-dir:exports}") String exportDirectory) {
         this.sessionRepository = sessionRepository;
         this.exportDirectory = Paths.get(exportDirectory).toAbsolutePath().normalize();
     }
@@ -42,7 +40,8 @@ public class LocalCsvErpProvider implements ErpProvider {
     public ValidationResult validateMappings(List<Long> sessionIds) {
         List<AttendanceSession> sessions = loadSessions(sessionIds);
         List<String> errors = new ArrayList<>();
-        Set<Long> found = sessions.stream().map(AttendanceSession::getId).collect(Collectors.toSet());
+        Set<Long> found = sessions.stream().map(session -> Objects.requireNonNull(session).getId())
+                .collect(Collectors.toSet());
         for (Long id : sessionIds) {
             if (!found.contains(id)) {
                 errors.add("Session " + id + " was not found");
@@ -52,7 +51,8 @@ public class LocalCsvErpProvider implements ErpProvider {
         for (AttendanceSession session : sessions) {
             List<AttendanceRecord> records = sortedRecords(session);
             if (session.getStatus() != AttendanceSession.SessionStatus.FINALIZED) {
-                errors.add("Session " + session.getId() + " is " + session.getStatus() + "; only FINALIZED sessions can be exported");
+                errors.add("Session " + session.getId() + " is " + session.getStatus()
+                        + "; only FINALIZED sessions can be exported");
             }
             if (session.getSubject() == null || isBlank(session.getSubject().getName())) {
                 errors.add("Session " + session.getId() + " has no subject");
@@ -67,7 +67,8 @@ public class LocalCsvErpProvider implements ErpProvider {
                 }
                 if (record.getStatus() != AttendanceRecord.AttendanceStatus.PRESENT
                         && record.getStatus() != AttendanceRecord.AttendanceStatus.ABSENT) {
-                    errors.add("Session " + session.getId() + " record " + record.getId() + " has invalid export status " + record.getStatus());
+                    errors.add("Session " + session.getId() + " record " + record.getId()
+                            + " has invalid export status " + record.getStatus());
                 }
             }
         }
@@ -87,16 +88,20 @@ public class LocalCsvErpProvider implements ErpProvider {
             String filename = "attendance-" + java.time.LocalDateTime.now().format(FILE_TIME) + ".csv";
             Path output = exportDirectory.resolve(filename);
             if (Files.exists(output)) {
-                output = exportDirectory.resolve("attendance-" + java.time.LocalDateTime.now().format(FILE_TIME) + "-" + System.nanoTime() + ".csv");
+                output = exportDirectory.resolve("attendance-" + java.time.LocalDateTime.now().format(FILE_TIME) + "-"
+                        + System.nanoTime() + ".csv");
             }
             StringBuilder csv = new StringBuilder(HEADER);
             int rows = 0;
-            for (AttendanceSession session : sessions.stream().sorted(Comparator.comparing(AttendanceSession::getId)).toList()) {
+            for (AttendanceSession session : sessions.stream()
+                    .sorted(Comparator.comparing(item -> Objects.requireNonNull(item).getId())).toList()) {
                 String subject = session.getSubject().getName();
                 LocalDate date = sessionDate(session);
                 for (AttendanceRecord record : sortedRecords(session)) {
                     csv.append(record.getStudent().getId()).append(',')
-                            .append(csvValue(record.getStudent().getFirstName() + " " + record.getStudent().getLastName())).append(',')
+                            .append(csvValue(
+                                    record.getStudent().getFirstName() + " " + record.getStudent().getLastName()))
+                            .append(',')
                             .append(csvValue(subject)).append(',')
                             .append(date).append(',')
                             .append(record.getStatus()).append('\n');
@@ -104,7 +109,8 @@ public class LocalCsvErpProvider implements ErpProvider {
                 }
             }
             Files.writeString(output, csv.toString(), StandardCharsets.UTF_8);
-            return new ExportResult(true, "GENERATED_LOCAL_ONLY", "CSV generated locally; no ERP delivery was attempted", output, rows);
+            return new ExportResult(true, "GENERATED_LOCAL_ONLY",
+                    "CSV generated locally; no ERP delivery was attempted", output, rows);
         } catch (IOException ex) {
             return new ExportResult(false, "GENERATION_FAILED", ex.getMessage(), null, 0);
         }
@@ -117,9 +123,11 @@ public class LocalCsvErpProvider implements ErpProvider {
         }
         try {
             if (!Files.exists(exportPath) || !Files.isRegularFile(exportPath)) {
-                return new SubmissionStatus(false, "NOT_AVAILABLE", "Local export file is not available", exportPath, 0);
+                return new SubmissionStatus(false, "NOT_AVAILABLE", "Local export file is not available", exportPath,
+                        0);
             }
-            return new SubmissionStatus(true, "GENERATED_LOCAL_ONLY", "File exists locally; no ERP delivery was attempted", exportPath, Files.size(exportPath));
+            return new SubmissionStatus(true, "GENERATED_LOCAL_ONLY",
+                    "File exists locally; no ERP delivery was attempted", exportPath, Files.size(exportPath));
         } catch (IOException ex) {
             return new SubmissionStatus(false, "STATUS_CHECK_FAILED", ex.getMessage(), exportPath, 0);
         }
@@ -130,7 +138,7 @@ public class LocalCsvErpProvider implements ErpProvider {
     }
 
     private List<AttendanceSession> loadSessions(List<Long> sessionIds) {
-        return sessionRepository.findAllById(sessionIds);
+        return sessionRepository.findAllById(Objects.requireNonNull(sessionIds, "sessionIds"));
     }
 
     private List<AttendanceRecord> sortedRecords(AttendanceSession session) {
@@ -140,8 +148,10 @@ public class LocalCsvErpProvider implements ErpProvider {
     }
 
     private LocalDate sessionDate(AttendanceSession session) {
-        if (session.getStartedAt() != null) return session.getStartedAt().toLocalDate();
-        if (session.getCreatedAt() != null) return session.getCreatedAt().toLocalDate();
+        if (session.getStartedAt() != null)
+            return session.getStartedAt().toLocalDate();
+        if (session.getCreatedAt() != null)
+            return session.getCreatedAt().toLocalDate();
         return null;
     }
 
@@ -150,7 +160,8 @@ public class LocalCsvErpProvider implements ErpProvider {
     }
 
     private String csvValue(String value) {
-        if (value == null) return "";
+        if (value == null)
+            return "";
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }

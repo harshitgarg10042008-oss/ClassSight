@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/analytics")
@@ -26,8 +27,8 @@ public class AttendanceAnalyticsController {
     private final UserRepository userRepository;
 
     public AttendanceAnalyticsController(AttendanceAnalyticsService analyticsService,
-                                         AttendancePdfReportService pdfReportService,
-                                         UserRepository userRepository) {
+            AttendancePdfReportService pdfReportService,
+            UserRepository userRepository) {
         this.analyticsService = analyticsService;
         this.pdfReportService = pdfReportService;
         this.userRepository = userRepository;
@@ -40,7 +41,8 @@ public class AttendanceAnalyticsController {
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             Principal principal) {
-        return ResponseEntity.ok(analyticsService.analytics(subjectId, classSectionId, from, to, currentUser(principal)));
+        return ResponseEntity
+                .ok(analyticsService.analytics(subjectId, classSectionId, from, to, currentUser(principal)));
     }
 
     @GetMapping(value = "/attendance/report.pdf", produces = MediaType.APPLICATION_PDF_VALUE)
@@ -50,10 +52,11 @@ public class AttendanceAnalyticsController {
             @RequestParam(required = false) LocalDate from,
             @RequestParam(required = false) LocalDate to,
             Principal principal) {
-        Map<String, Object> analytics = analyticsService.analytics(subjectId, classSectionId, from, to, currentUser(principal));
+        Map<String, Object> analytics = analyticsService.analytics(subjectId, classSectionId, from, to,
+                currentUser(principal));
         byte[] pdf = pdfReportService.generate(analytics);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_PDF))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename("attendance-report.pdf").build().toString())
                 .body(pdf);

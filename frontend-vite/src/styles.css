@@ -1,2 +1,159 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700;800&display=swap');
-:root{font-family:Manrope,sans-serif;color:#14221f;background:radial-gradient(circle at 90% 5%,#d9f0e5,transparent 32%),#f7f8f3;font-synthesis:none}*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}button{border:0;border-radius:9px;padding:12px 17px;background:#e96c42;color:white;font-weight:800;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#e8eee9;color:#14221f}.shell{max-width:980px;margin:auto;padding:58px 22px 32px}.eyebrow{font:500 12px DM Mono,monospace;letter-spacing:.12em;color:#bd4a28}.lede{max-width:650px;color:#71807b;line-height:1.7}h1{font-size:clamp(38px,7vw,72px);line-height:1;margin:16px 0}h2{margin:8px 0 0}.status,.quality{border:1px solid #dce5df;border-left:4px solid #e96c42;background:#fff;padding:13px 15px;margin:22px 0;border-radius:8px}.quality{border-left-color:#2d946b}.flagged,.warning{color:#a3482d}.panel{background:#fff;border:1px solid #dce5df;border-radius:10px;padding:25px;box-shadow:0 18px 50px #14221f12}.form{display:grid;gap:18px;max-width:700px}label{display:grid;gap:8px;font-weight:700;font-size:13px}input,select{padding:12px;border:1px solid #dce5df;border-radius:8px;background:#fbfcf9}.actions{display:flex;gap:10px;flex-wrap:wrap}.preview{width:100%;max-height:420px;object-fit:cover;background:#14221f;border-radius:8px}.review-head{display:flex;justify-content:space-between;gap:16px;border-bottom:1px solid #dce5df;padding-bottom:18px;margin-bottom:18px}.records{display:grid;gap:10px;margin:20px 0}.record{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:15px;border:1px solid #dce5df;border-radius:8px}.record small{display:block;color:#71807b;margin-top:5px}.back{margin-left:10px}footer{color:#71807b;font-size:12px;margin-top:26px}@media(max-width:650px){.shell{padding:34px 15px}.record,.review-head{align-items:stretch;flex-direction:column}}
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700;800&display=swap");
+:root {
+  font-family: Manrope, sans-serif;
+  color: #14221f;
+  background:
+    radial-gradient(circle at 90% 5%, #d9f0e5, transparent 32%), #f7f8f3;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  border: 0;
+  border-radius: 9px;
+  padding: 12px 17px;
+  background: #e96c42;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.secondary {
+  background: #e8eee9;
+  color: #14221f;
+}
+.shell {
+  max-width: 980px;
+  margin: auto;
+  padding: 58px 22px 32px;
+}
+.eyebrow {
+  font:
+    500 12px DM Mono,
+    monospace;
+  letter-spacing: 0.12em;
+  color: #bd4a28;
+}
+.lede {
+  max-width: 650px;
+  color: #71807b;
+  line-height: 1.7;
+}
+h1 {
+  font-size: clamp(38px, 7vw, 72px);
+  line-height: 1;
+  margin: 16px 0;
+}
+h2 {
+  margin: 8px 0 0;
+}
+.status,
+.quality {
+  border: 1px solid #dce5df;
+  border-left: 4px solid #e96c42;
+  background: #fff;
+  padding: 13px 15px;
+  margin: 22px 0;
+  border-radius: 8px;
+}
+.quality {
+  border-left-color: #2d946b;
+}
+.flagged,
+.warning {
+  color: #a3482d;
+}
+.panel {
+  background: #fff;
+  border: 1px solid #dce5df;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 18px 50px #14221f12;
+}
+.form {
+  display: grid;
+  gap: 18px;
+  max-width: 700px;
+}
+label {
+  display: grid;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+input,
+select {
+  padding: 12px;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+  background: #fbfcf9;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.preview {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  background: #14221f;
+  border-radius: 8px;
+}
+.review-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #dce5df;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+}
+.records {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+.record {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #dce5df;
+  border-radius: 8px;
+}
+.record small {
+  display: block;
+  color: #71807b;
+  margin-top: 5px;
+}
+.back {
+  margin-left: 10px;
+}
+footer {
+  color: #71807b;
+  font-size: 12px;
+  margin-top: 26px;
+}
+@media (max-width: 650px) {
+  .shell {
+    padding: 34px 15px;
+  }
+  .record,
+  .review-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

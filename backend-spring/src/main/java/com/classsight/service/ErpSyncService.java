@@ -9,9 +9,9 @@ import com.classsight.repository.ErpSyncRecordRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class ErpSyncService {
@@ -22,10 +22,10 @@ public class ErpSyncService {
     private final MockErpProvider mockProvider;
 
     public ErpSyncService(AttendanceSessionRepository sessionRepository,
-                          ErpSyncRecordRepository syncRepository,
-                          ErpSyncAuditRepository auditRepository,
-                          LocalCsvErpProvider provider,
-                          MockErpProvider mockProvider) {
+            ErpSyncRecordRepository syncRepository,
+            ErpSyncAuditRepository auditRepository,
+            LocalCsvErpProvider provider,
+            MockErpProvider mockProvider) {
         this.sessionRepository = sessionRepository;
         this.syncRepository = syncRepository;
         this.auditRepository = auditRepository;
@@ -35,8 +35,9 @@ public class ErpSyncService {
 
     @Transactional
     public SyncResult exportOne(Long sessionId, String actor, boolean simulateFailure) {
-        AttendanceSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session " + sessionId + " was not found"));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = sessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session " + requiredSessionId + " was not found"));
         ErpSyncRecord record = syncRepository.findBySessionId(sessionId).orElseGet(() -> {
             ErpSyncRecord created = new ErpSyncRecord();
             created.setSession(session);
@@ -45,42 +46,50 @@ public class ErpSyncService {
             return syncRepository.save(created);
         });
         if (record.getStatus() == ErpSyncRecord.SyncStatus.SYNCED && !simulateFailure) {
-            return new SyncResult(sessionId, record.getStatus().name(), true, true, record.getExportPath(), record.getAttemptCount(), "Already synced; idempotent no-op");
+            return new SyncResult(sessionId, record.getStatus().name(), true, true, record.getExportPath(),
+                    record.getAttemptCount(), "Already synced; idempotent no-op");
         }
-        transition(record, ErpSyncRecord.SyncStatus.SYNCING, actor, simulateFailure ? "Simulated failure injection requested" : "Local export started");
+        transition(record, ErpSyncRecord.SyncStatus.SYNCING, actor,
+                simulateFailure ? "Simulated failure injection requested" : "Local export started");
         record.setAttemptCount(record.getAttemptCount() + 1);
         record.setLastError(null);
         syncRepository.save(record);
         if (simulateFailure) {
             record.setLastError("SIMULATED_FAILURE_INJECTION");
-            transition(record, ErpSyncRecord.SyncStatus.FAILED, actor, "Simulated failure; no external ERP call was made");
+            transition(record, ErpSyncRecord.SyncStatus.FAILED, actor,
+                    "Simulated failure; no external ERP call was made");
             syncRepository.save(record);
-            return new SyncResult(sessionId, record.getStatus().name(), false, false, null, record.getAttemptCount(), record.getLastError());
+            return new SyncResult(sessionId, record.getStatus().name(), false, false, null, record.getAttemptCount(),
+                    record.getLastError());
         }
         ErpProvider.ExportResult export = provider.submitAttendance(List.of(sessionId));
         if (!export.generated()) {
             record.setLastError(export.message());
             transition(record, ErpSyncRecord.SyncStatus.FAILED, actor, export.message());
             syncRepository.save(record);
-            return new SyncResult(sessionId, record.getStatus().name(), false, false, null, record.getAttemptCount(), export.message());
+            return new SyncResult(sessionId, record.getStatus().name(), false, false, null, record.getAttemptCount(),
+                    export.message());
         }
         record.setExportPath(export.path().toString());
         transition(record, ErpSyncRecord.SyncStatus.SYNCED, actor, export.message());
         syncRepository.save(record);
-        return new SyncResult(sessionId, record.getStatus().name(), false, true, record.getExportPath(), record.getAttemptCount(), export.message());
+        return new SyncResult(sessionId, record.getStatus().name(), false, true, record.getExportPath(),
+                record.getAttemptCount(), export.message());
     }
 
     @Transactional
     public List<SyncResult> export(List<Long> sessionIds, String actor, boolean simulateFailure) {
         List<SyncResult> results = new ArrayList<>();
-        for (Long sessionId : sessionIds) results.add(exportOne(sessionId, actor, simulateFailure));
+        for (Long sessionId : sessionIds)
+            results.add(exportOne(sessionId, actor, simulateFailure));
         return results;
     }
 
     @Transactional
     public SyncResult mockScenario(Long sessionId, String actor, MockErpProvider.Scenario scenario) {
-        AttendanceSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session " + sessionId + " was not found"));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = sessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session " + requiredSessionId + " was not found"));
         ErpSyncRecord record = syncRepository.findBySessionId(sessionId).orElseGet(() -> {
             ErpSyncRecord created = new ErpSyncRecord();
             created.setSession(session);
@@ -89,7 +98,9 @@ public class ErpSyncService {
             return syncRepository.save(created);
         });
         if (scenario == MockErpProvider.Scenario.DUPLICATE && record.getStatus() == ErpSyncRecord.SyncStatus.SYNCED) {
-            return new SyncResult(sessionId, record.getStatus().name(), true, true, record.getExportPath(), record.getAttemptCount(), "Mock ERP duplicate scenario: persisted SYNCED record was not resubmitted");
+            return new SyncResult(sessionId, record.getStatus().name(), true, true, record.getExportPath(),
+                    record.getAttemptCount(),
+                    "Mock ERP duplicate scenario: persisted SYNCED record was not resubmitted");
         }
         MockErpProvider.Result result = mockProvider.run(scenario);
         String previous = record.getStatus() == null ? null : record.getStatus().name();
@@ -105,14 +116,19 @@ public class ErpSyncService {
         audit.setActor(actor);
         audit.setNote("MOCK_SCENARIO=" + scenario.name() + ": " + result.message());
         auditRepository.save(audit);
-        return new SyncResult(sessionId, result.status().name(), false, result.successful(), record.getExportPath(), record.getAttemptCount(), result.message());
+        return new SyncResult(sessionId, result.status().name(), false, result.successful(), record.getExportPath(),
+                record.getAttemptCount(), result.message());
     }
 
     @Transactional(readOnly = true)
-    public List<ErpSyncRecord> list() { return syncRepository.findAll(); }
+    public List<ErpSyncRecord> list() {
+        return syncRepository.findAll();
+    }
 
     @Transactional(readOnly = true)
-    public List<ErpSyncAudit> audit(Long recordId) { return auditRepository.findBySyncRecordIdOrderByTransitionedAtAsc(recordId); }
+    public List<ErpSyncAudit> audit(Long recordId) {
+        return auditRepository.findBySyncRecordIdOrderByTransitionedAtAsc(recordId);
+    }
 
     private void transition(ErpSyncRecord record, ErpSyncRecord.SyncStatus next, String actor, String note) {
         String previous = record.getStatus() == null ? null : record.getStatus().name();
@@ -128,5 +144,6 @@ public class ErpSyncService {
     }
 
     public record SyncResult(Long sessionId, String status, boolean idempotentNoOp, boolean successful,
-                             String exportPath, int attemptCount, String message) {}
+            String exportPath, int attemptCount, String message) {
+    }
 }

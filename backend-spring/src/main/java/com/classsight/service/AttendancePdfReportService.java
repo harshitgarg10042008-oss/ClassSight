@@ -11,17 +11,13 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
 public class AttendancePdfReportService {
-
-    private final AttendanceAnalyticsService analyticsService;
-
-    public AttendancePdfReportService(AttendanceAnalyticsService analyticsService) {
-        this.analyticsService = analyticsService;
-    }
 
     public byte[] generate(Map<String, Object> analytics) {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -42,8 +38,8 @@ public class AttendancePdfReportService {
             for (String heading : List.of("Student", "Roll", "Present", "Sessions", "Attendance %", "Defaulter")) {
                 table.addCell(new Phrase(heading));
             }
-            List<Map<String, Object>> defaulters = (List<Map<String, Object>>) analytics.get("defaulters");
-            List<Map<String, Object>> students = (List<Map<String, Object>>) analytics.get("students");
+            List<Map<String, Object>> defaulters = mapList(analytics.get("defaulters"));
+            List<Map<String, Object>> students = mapList(analytics.get("students"));
             for (Map<String, Object> student : students) {
                 table.addCell(String.valueOf(student.get("studentName")));
                 table.addCell(String.valueOf(student.get("rollNumber")));
@@ -69,5 +65,22 @@ public class AttendancePdfReportService {
         } catch (DocumentException | IOException e) {
             throw new IllegalStateException("Could not generate attendance PDF", e);
         }
+    }
+
+    private List<Map<String, Object>> mapList(Object value) {
+        if (!(value instanceof List<?> list))
+            return List.of();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> raw))
+                continue;
+            Map<String, Object> converted = new HashMap<>();
+            for (Map.Entry<?, ?> entry : raw.entrySet()) {
+                if (entry.getKey() instanceof String key)
+                    converted.put(key, entry.getValue());
+            }
+            result.add(converted);
+        }
+        return result;
     }
 }

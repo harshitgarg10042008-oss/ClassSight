@@ -60,7 +60,34 @@ class AttendanceReviewServiceTest {
         assertEquals(AttendanceRecord.AttendanceStatus.PRESENT, record.getStatus());
         assertEquals(AttendanceRecord.ReviewStatus.APPROVED, record.getReviewStatus());
         assertEquals(1L, record.getReviewedBy());
-        System.out.println("ACTUAL_REVIEW_SUBMIT_STATUS=" + result.getStatus() + " RECORD_STATUS=" + record.getStatus() + " REVIEW_STATUS=" + record.getReviewStatus());
+        System.out.println("ACTUAL_REVIEW_SUBMIT_STATUS=" + result.getStatus() + " RECORD_STATUS=" + record.getStatus()
+                + " REVIEW_STATUS=" + record.getReviewStatus());
+    }
+
+    @Test
+    void unresolvedReviewCannotFinalizeWithoutExplicitDecision() {
+        AttendanceSessionRepository repository = Mockito.mock(AttendanceSessionRepository.class);
+        AttendanceReviewService service = new AttendanceReviewService(repository);
+        User owner = user(1L, "owner", User.Role.TEACHER);
+        Student student = student(8L, "S-8");
+        AttendanceSession session = new AttendanceSession();
+        session.setId(45L);
+        session.setFaculty(owner);
+        session.setStatus(AttendanceSession.SessionStatus.REVIEW_REQUIRED);
+        AttendanceRecord record = new AttendanceRecord();
+        record.setSession(session);
+        record.setStudent(student);
+        record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+        record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+        session.getAttendanceRecords().add(record);
+        Mockito.when(repository.findById(45L)).thenReturn(Optional.of(session));
+        Mockito.when(repository.save(session)).thenReturn(session);
+
+        AttendanceSession result = service.submitReview(45L, owner, List.of());
+
+        assertEquals(AttendanceSession.SessionStatus.REVIEW_REQUIRED, result.getStatus());
+        assertEquals(AttendanceRecord.AttendanceStatus.REVIEW, record.getStatus());
+        assertEquals(AttendanceRecord.ReviewStatus.PENDING, record.getReviewStatus());
     }
 
     @Test

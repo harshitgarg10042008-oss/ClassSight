@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/attendance-sessions/{sessionId}/review")
@@ -50,7 +52,7 @@ public class AttendanceReviewController {
         AttendanceReviewService.PhotoFile photo = reviewService.getPhoto(sessionId, currentUser(authentication));
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
-                .contentType(photo.mediaType())
+                .contentType(Objects.requireNonNull(photo.mediaType()))
                 .body(photo.resource());
     }
 
@@ -60,15 +62,26 @@ public class AttendanceReviewController {
             Principal authentication,
             @RequestBody Map<String, Object> payload) {
         Object rawDecisions = payload.get("decisions");
-        List<Map<String, Object>> decisions = rawDecisions instanceof List<?> list
-                ? list.stream().filter(Map.class::isInstance).map(item -> (Map<String, Object>) item).toList()
-                : Collections.emptyList();
+        List<Map<String, Object>> decisions = new ArrayList<>();
+        if (rawDecisions instanceof List<?> list) {
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> raw))
+                    continue;
+                Map<String, Object> decision = new HashMap<>();
+                for (Map.Entry<?, ?> entry : raw.entrySet()) {
+                    if (entry.getKey() instanceof String key)
+                        decision.put(key, entry.getValue());
+                }
+                decisions.add(decision);
+            }
+        }
         AttendanceSession session = reviewService.submitReview(sessionId, currentUser(authentication), decisions);
         return ResponseEntity.ok(Map.of(
                 "sessionId", session.getId(),
                 "status", session.getStatus().toString(),
                 "unresolvedReviewCount", session.getAttendanceRecords().stream()
-                        .filter(record -> record.getStatus() == com.classsight.entity.AttendanceRecord.AttendanceStatus.REVIEW)
+                        .filter(record -> record
+                                .getStatus() == com.classsight.entity.AttendanceRecord.AttendanceStatus.REVIEW)
                         .count()));
     }
 }

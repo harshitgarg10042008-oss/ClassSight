@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -34,17 +35,20 @@ public class AttendanceSessionService {
     @Autowired
     private UserRepository userRepository;
 
-    public Optional<AttendanceSession> findRecentDuplicate(User faculty, byte[] imageBytes, Room room, Camera camera, Subject subject, ClassSection classSection) {
+    public Optional<AttendanceSession> findRecentDuplicate(User faculty, byte[] imageBytes, Room room, Camera camera,
+            Subject subject, ClassSection classSection) {
         String fingerprint = captureFingerprint(faculty, room, camera, subject, classSection, imageBytes);
         return attendanceSessionRepository.findFirstByCaptureFingerprintAndCreatedAtAfterOrderByCreatedAtDesc(
                 fingerprint, LocalDateTime.now().minusSeconds(30));
     }
 
-    public String captureFingerprint(User faculty, Room room, Camera camera, Subject subject, ClassSection classSection, byte[] imageBytes) {
+    public String captureFingerprint(User faculty, Room room, Camera camera, Subject subject, ClassSection classSection,
+            byte[] imageBytes) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             String context = String.join(":", String.valueOf(faculty.getId()), String.valueOf(room.getId()),
-                    String.valueOf(camera.getId()), String.valueOf(subject.getId()), String.valueOf(classSection.getId()));
+                    String.valueOf(camera.getId()), String.valueOf(subject.getId()),
+                    String.valueOf(classSection.getId()));
             digest.update(context.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest.digest(imageBytes));
         } catch (NoSuchAlgorithmException e) {
@@ -52,22 +56,24 @@ public class AttendanceSessionService {
         }
     }
 
-    public AttendanceSession createSession(User faculty, Room room, Camera camera, 
-                                           Subject subject, ClassSection classSection) {
-        logger.info("createSession called with faculty: {} (ID: {}), room: {}, camera: {}, subject: {}, class: {}", 
-                faculty != null ? faculty.getUsername() : "null", 
+    public AttendanceSession createSession(User faculty, Room room, Camera camera,
+            Subject subject, ClassSection classSection) {
+        logger.info("createSession called with faculty: {} (ID: {}), room: {}, camera: {}, subject: {}, class: {}",
+                faculty != null ? faculty.getUsername() : "null",
                 faculty != null ? faculty.getId() : "null",
                 room != null ? room.getName() : "null",
                 camera != null ? camera.getName() : "null",
                 subject != null ? subject.getName() : "null",
                 classSection != null ? classSection.getName() : "null");
-        
+
         // Reload faculty entity to ensure it's attached to current persistence context
-        User attachedFaculty = userRepository.findById(faculty.getId())
-                .orElseThrow(() -> new RuntimeException("Faculty not found with ID: " + faculty.getId()));
-        
+        User requiredFaculty = Objects.requireNonNull(faculty, "faculty");
+        Long facultyId = Objects.requireNonNull(requiredFaculty.getId(), "faculty.id");
+        User attachedFaculty = userRepository.findById(facultyId)
+                .orElseThrow(() -> new RuntimeException("Faculty not found with ID: " + facultyId));
+
         logger.info("Reloaded faculty: {} (ID: {})", attachedFaculty.getUsername(), attachedFaculty.getId());
-        
+
         AttendanceSession session = new AttendanceSession();
         session.setFaculty(attachedFaculty);
         session.setRoom(room);
@@ -76,19 +82,20 @@ public class AttendanceSessionService {
         session.setClassSection(classSection);
         session.setStatus(AttendanceSession.SessionStatus.OPEN);
         session.setStartedAt(LocalDateTime.now());
-        
-        logger.info("Session object before save - faculty: {}, room: {}, camera: {}", 
+
+        logger.info("Session object before save - faculty: {}, room: {}, camera: {}",
                 session.getFaculty(), session.getRoom(), session.getCamera());
-        
+
         AttendanceSession savedSession = attendanceSessionRepository.save(session);
-        
-        logger.info("Session saved with ID: {}, faculty ID: {}", savedSession.getId(), savedSession.getFaculty() != null ? savedSession.getFaculty().getId() : "null");
-        
+
+        logger.info("Session saved with ID: {}, faculty ID: {}", savedSession.getId(),
+                savedSession.getFaculty() != null ? savedSession.getFaculty().getId() : "null");
+
         return savedSession;
     }
 
     public Optional<AttendanceSession> getSessionById(Long id) {
-        return attendanceSessionRepository.findById(id);
+        return attendanceSessionRepository.findById(Objects.requireNonNull(id, "id"));
     }
 
     public Optional<AttendanceSession> getLatestSessionByFaculty(User faculty) {
@@ -100,20 +107,21 @@ public class AttendanceSessionService {
     }
 
     public AttendanceSession updateStatus(Long sessionId, AttendanceSession.SessionStatus newStatus) {
-        Optional<AttendanceSession> sessionOpt = attendanceSessionRepository.findById(sessionId);
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        Optional<AttendanceSession> sessionOpt = attendanceSessionRepository.findById(requiredSessionId);
         if (sessionOpt.isEmpty()) {
-            throw new IllegalArgumentException("Session not found with id: " + sessionId);
+            throw new IllegalArgumentException("Session not found with id: " + requiredSessionId);
         }
-        
+
         AttendanceSession session = sessionOpt.get();
         session.setStatus(newStatus);
-        
-        if (newStatus == AttendanceSession.SessionStatus.FINALIZED || 
-            newStatus == AttendanceSession.SessionStatus.CANCELLED ||
-            newStatus == AttendanceSession.SessionStatus.FAILED) {
+
+        if (newStatus == AttendanceSession.SessionStatus.FINALIZED ||
+                newStatus == AttendanceSession.SessionStatus.CANCELLED ||
+                newStatus == AttendanceSession.SessionStatus.FAILED) {
             session.setEndedAt(LocalDateTime.now());
         }
-        
+
         return attendanceSessionRepository.save(session);
     }
 
@@ -122,15 +130,17 @@ public class AttendanceSessionService {
     }
 
     public AttendanceSession setCaptureFingerprint(Long sessionId, String fingerprint) {
-        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = attendanceSessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + requiredSessionId));
         session.setCaptureFingerprint(fingerprint);
         return attendanceSessionRepository.save(session);
     }
 
     public AttendanceSession setCapturedPhotoPath(Long sessionId, String photoPath) {
-        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = attendanceSessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + requiredSessionId));
         session.setCapturedPhotoPath(photoPath);
         return attendanceSessionRepository.save(session);
     }

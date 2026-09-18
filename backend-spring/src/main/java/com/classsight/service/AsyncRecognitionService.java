@@ -1,33 +1,35 @@
 package com.classsight.service;
 
 import com.classsight.entity.AttendanceSession;
+import com.classsight.entity.RecognitionJob;
 import com.classsight.repository.AttendanceSessionRepository;
-import org.springframework.scheduling.annotation.Async;
+import com.classsight.repository.RecognitionJobRepository;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Path;
+import java.util.Objects;
 
 @Service
 public class AsyncRecognitionService {
     private final AttendanceSessionRepository sessionRepository;
-    private final AttendanceRecognitionService recognitionService;
+    private final RecognitionJobRepository jobRepository;
+    private final RecognitionJobProcessor processor;
 
     public AsyncRecognitionService(AttendanceSessionRepository sessionRepository,
-                                   AttendanceRecognitionService recognitionService) {
+            RecognitionJobRepository jobRepository, RecognitionJobProcessor processor) {
         this.sessionRepository = sessionRepository;
-        this.recognitionService = recognitionService;
+        this.jobRepository = jobRepository;
+        this.processor = processor;
     }
 
-    @Async
-    public void enqueue(Long sessionId, String objectKey) {
-        try {
-            recognitionService.processCapturedSession(sessionId, Path.of(objectKey));
-        } catch (RuntimeException ex) {
-            sessionRepository.findById(sessionId).ifPresent(session -> {
-                session.setStatus(AttendanceSession.SessionStatus.FAILED);
-                sessionRepository.save(session);
-            });
-        }
+    public RecognitionJob enqueue(Long sessionId, String objectKey) {
+        AttendanceSession session = sessionRepository.findById(Objects.requireNonNull(sessionId, "sessionId"))
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+        RecognitionJob job = new RecognitionJob();
+        job.setSession(session);
+        job.setObjectKey(Objects.requireNonNull(objectKey, "objectKey"));
+        job.setStatus(RecognitionJob.Status.QUEUED);
+        RecognitionJob saved = jobRepository.save(job);
+        processor.process(saved.getId(), sessionId, objectKey);
+        return saved;
     }
 }
-

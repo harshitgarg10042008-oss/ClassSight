@@ -10,6 +10,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
+import java.util.Objects;
 
 @Configuration
 @EnableRabbit
@@ -20,18 +21,50 @@ public class RabbitConfig {
     public static final String RESULT_QUEUE = "classsight.recognition.result";
     public static final String DEAD_LETTER_QUEUE = "classsight.recognition.dead";
 
-    @Bean public DirectExchange captureExchange() { return new DirectExchange(CAPTURE_EXCHANGE, true, false); }
-    @Bean public DirectExchange recognitionExchange() { return new DirectExchange(RECOGNITION_EXCHANGE, true, false); }
-    @Bean public Queue captureQueue() { return new Queue(CAPTURE_QUEUE, true); }
-    @Bean public Queue resultQueue() { return new Queue(RESULT_QUEUE, true); }
-    @Bean public Queue deadLetterQueue() { return new Queue(DEAD_LETTER_QUEUE, true); }
-    @Bean public Binding captureBinding() { return BindingBuilder.bind(captureQueue()).to(captureExchange()).with("capture.request"); }
-    @Bean public Binding resultBinding() { return BindingBuilder.bind(resultQueue()).to(recognitionExchange()).with("recognition.result"); }
-    @Bean public Jackson2JsonMessageConverter rabbitMessageConverter() { return new Jackson2JsonMessageConverter(); }
-    @Bean public RabbitTemplate rabbitTemplate(ConnectionFactory factory, Jackson2JsonMessageConverter converter) {
-        RabbitTemplate template = new RabbitTemplate(factory);
-        template.setMessageConverter(converter);
+    @Bean
+    public DirectExchange captureExchange() {
+        return new DirectExchange(CAPTURE_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public DirectExchange recognitionExchange() {
+        return new DirectExchange(RECOGNITION_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue captureQueue() {
+        return new Queue(CAPTURE_QUEUE, true);
+    }
+
+    @Bean
+    public Queue resultQueue() {
+        return new Queue(RESULT_QUEUE, true);
+    }
+
+    @Bean
+    public Queue deadLetterQueue() {
+        return new Queue(DEAD_LETTER_QUEUE, true);
+    }
+
+    @Bean
+    public Binding captureBinding() {
+        return BindingBuilder.bind(captureQueue()).to(captureExchange()).with("capture.request");
+    }
+
+    @Bean
+    public Binding resultBinding() {
+        return BindingBuilder.bind(resultQueue()).to(recognitionExchange()).with("recognition.result");
+    }
+
+    @Bean
+    public Jackson2JsonMessageConverter rabbitMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    @Bean
+    public RabbitTemplate rabbitTemplate(ConnectionFactory factory, Jackson2JsonMessageConverter converter) {
+        RabbitTemplate template = new RabbitTemplate(Objects.requireNonNull(factory));
+        template.setMessageConverter(Objects.requireNonNull(converter));
         return template;
     }
 }
-

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/admin/students")
@@ -32,7 +33,8 @@ public class AdminStudentController {
         if (studentRepository.existsByRollNumber(request.getRollNumber())) {
             return ResponseEntity.badRequest().body("A student with this roll number already exists");
         }
-        ClassSection section = classSectionRepository.findById(request.getClassSectionId()).orElse(null);
+        ClassSection section = classSectionRepository
+                .findById(Objects.requireNonNull(request.getClassSectionId(), "classSectionId")).orElse(null);
         if (section == null) {
             return ResponseEntity.badRequest().body("ClassSection not found");
         }

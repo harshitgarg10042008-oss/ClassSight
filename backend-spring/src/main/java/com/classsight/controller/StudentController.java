@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.springframework.http.*;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -20,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/students")
@@ -54,9 +57,9 @@ public class StudentController {
             @RequestParam("photo") MultipartFile photo,
             @RequestParam(name = "consentGiven", defaultValue = "false") boolean consentGiven,
             Principal authentication) {
-        
+
         long startTime = System.currentTimeMillis();
-        
+
         try {
             imageUploadValidator.validate(photo);
             if (!consentGiven) {
@@ -68,24 +71,24 @@ public class StudentController {
             Student student = studentRepository.findByRollNumber(rollNumber)
                     .orElseThrow(() -> new RuntimeException("Student not found with roll number: " + rollNumber));
 
-                if (phase1Enabled) {
+            if (phase1Enabled) {
                 List<Double> embedding = phase1SFaceService.enrollFace(photo);
                 phase1SFaceService.persistSFaceEmbedding(student, embedding);
                 User actor = userRepository.findByUsername(authentication.getName())
-                    .orElseThrow(() -> new IllegalStateException("Authenticated enrolling user not found"));
+                        .orElseThrow(() -> new IllegalStateException("Authenticated enrolling user not found"));
                 student.setConsentGiven(true);
                 student.setConsentedAt(java.time.LocalDateTime.now());
                 student.setConsentedBy(actor);
                 studentRepository.save(student);
                 return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Student enrolled successfully with SFace",
-                    "rollNumber", student.getRollNumber(),
-                    "studentId", student.getId(),
-                    "embeddingSize", embedding.size()));
-                }
+                        "status", "success",
+                        "message", "Student enrolled successfully with SFace",
+                        "rollNumber", student.getRollNumber(),
+                        "studentId", student.getId(),
+                        "embeddingSize", embedding.size()));
+            }
 
-                // Prepare request to the legacy face service while Phase 1 is disabled.
+            // Prepare request to the legacy face service while Phase 1 is disabled.
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
@@ -97,16 +100,20 @@ public class StudentController {
             // Call face service /enroll endpoint
             String enrollUrl = faceServiceUrl + "/enroll";
             logger.info("Calling face service at: {}", enrollUrl);
-            
-            ResponseEntity<Map> response = restTemplate.postForEntity(enrollUrl, requestEntity, Map.class);
-            
+
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    enrollUrl, Objects.requireNonNull(org.springframework.http.HttpMethod.POST), requestEntity,
+                    new ParameterizedTypeReference<>() {
+                    });
+
             if (response.getStatusCode() != HttpStatus.OK) {
                 return ResponseEntity.status(response.getStatusCode())
                         .body(response.getBody());
             }
 
-            Map<String, Object> faceResponse = response.getBody();
-            List<Double> embedding = (List<Double>) faceResponse.get("embedding");
+            Map<String, Object> faceResponse = Objects.requireNonNull(response.getBody(),
+                    "Face service returned no response body");
+            List<Double> embedding = embeddingFrom(faceResponse, "embedding");
             String message = (String) faceResponse.get("message");
 
             // Store embedding in student record
@@ -140,15 +147,18 @@ public class StudentController {
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            
-            logger.error("✗ Enrollment failed for student: {} after {} ms. Status: {}, Error: {}", rollNumber, duration, e.getStatusCode(), e.getResponseBodyAsString());
-            
+
+            logger.error("✗ Enrollment failed for student: {} after {} ms. Status: {}, Error: {}", rollNumber, duration,
+                    e.getStatusCode(), e.getResponseBodyAsString());
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             try {
                 // Try to parse the JSON response from FastAPI
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                Map<String, Object> fastapiError = mapper.readValue(e.getResponseBodyAsString(), Map.class);
+                Map<String, Object> fastapiError = mapper.readValue(e.getResponseBodyAsString(),
+                        new TypeReference<Map<String, Object>>() {
+                        });
                 if (fastapiError.containsKey("detail")) {
                     error.put("message", fastapiError.get("detail"));
                 } else {
@@ -158,19 +168,20 @@ public class StudentController {
                 error.put("message", e.getResponseBodyAsString());
             }
             error.put("enrollmentTimeMs", duration);
-            
+
             return ResponseEntity.status(e.getStatusCode()).body(error);
         } catch (Exception e) {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            
-            logger.error("✗ Enrollment failed for student: {} after {} ms. Error: {}", rollNumber, duration, e.getMessage());
-            
+
+            logger.error("✗ Enrollment failed for student: {} after {} ms. Error: {}", rollNumber, duration,
+                    e.getMessage());
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", e.getMessage());
             error.put("enrollmentTimeMs", duration);
-            
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
@@ -180,7 +191,7 @@ public class StudentController {
      *
      * The faculty/admin records a short video (~10 s) of the student slowly
      * turning their head left and right, covering the 5 head positions and
-     * varying lighting described in the paper.  This endpoint extracts up to
+     * varying lighting described in the paper. This endpoint extracts up to
      * 30 face embeddings from the video and stores each as a separate row in
      * student_face_embeddings — one embedding per frame sample.
      *
@@ -216,20 +227,23 @@ public class StudentController {
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("video", video.getResource());
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    faceServiceUrl + "/enroll-video", new HttpEntity<>(body, headers), Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    faceServiceUrl + "/enroll-video", Objects.requireNonNull(org.springframework.http.HttpMethod.POST),
+                    new HttpEntity<>(body, headers), new ParameterizedTypeReference<>() {
+                    });
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
             }
 
-            Map<String, Object> faceResponse = response.getBody();
-            @SuppressWarnings("unchecked")
-            List<List<Double>> embeddings = (List<List<Double>>) faceResponse.get("embeddings");
+            Map<String, Object> faceResponse = Objects.requireNonNull(response.getBody(),
+                    "Face service returned no response body");
+            List<List<Double>> embeddings = embeddingsFrom(faceResponse, "embeddings");
             if (embeddings == null || embeddings.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
-                        "message", "No face embeddings extracted from video. Ensure the student's face is clearly visible."));
+                        "message",
+                        "No face embeddings extracted from video. Ensure the student's face is clearly visible."));
             }
 
             // Store each frame embedding as a separate row (paper §2.4: ~30 images/student)
@@ -262,8 +276,11 @@ public class StudentController {
             Map<String, Object> result = new HashMap<>();
             result.put("status", belowTarget ? "warning" : "success");
             result.put("message", belowTarget
-                    ? String.format("Only %d embeddings extracted (target ≥30 for paper accuracy). Re-record with more head movement.", addedEmbeddings.size())
-                    : String.format("%d face embeddings stored from video (paper target: ≥30).", addedEmbeddings.size()));
+                    ? String.format(
+                            "Only %d embeddings extracted (target ≥30 for paper accuracy). Re-record with more head movement.",
+                            addedEmbeddings.size())
+                    : String.format("%d face embeddings stored from video (paper target: ≥30).",
+                            addedEmbeddings.size()));
             result.put("rollNumber", student.getRollNumber());
             result.put("studentId", student.getId());
             result.put("embeddingsStored", addedEmbeddings.size());
@@ -279,7 +296,9 @@ public class StudentController {
             error.put("status", "error");
             try {
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                Map<String, Object> detail = mapper.readValue(e.getResponseBodyAsString(), Map.class);
+                Map<String, Object> detail = mapper.readValue(e.getResponseBodyAsString(),
+                        new TypeReference<Map<String, Object>>() {
+                        });
                 error.put("message", detail.getOrDefault("detail", e.getResponseBodyAsString()));
             } catch (Exception ex) {
                 error.put("message", e.getResponseBodyAsString());
@@ -321,22 +340,25 @@ public class StudentController {
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("image", photo.getResource());
-            ResponseEntity<Map> response = restTemplate.postForEntity(
-                    faceServiceUrl + "/enroll-frame", new HttpEntity<>(body, headers), Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    faceServiceUrl + "/enroll-frame", Objects.requireNonNull(org.springframework.http.HttpMethod.POST),
+                    new HttpEntity<>(body, headers), new ParameterizedTypeReference<>() {
+                    });
 
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 return ResponseEntity.status(response.getStatusCode()).body(response.getBody());
             }
-            Map<String, Object> faceResponse = response.getBody();
-            @SuppressWarnings("unchecked")
-            List<Double> embedding = (List<Double>) faceResponse.get("embedding");
+            Map<String, Object> faceResponse = Objects.requireNonNull(response.getBody(),
+                    "Face service returned no response body");
+            List<Double> embedding = embeddingFrom(faceResponse, "embedding");
 
             if (replace) {
                 student.getFaceEmbeddings().clear();
                 student.setFaceEmbedding(embedding);
             }
             student.addFaceEmbedding(embedding);
-            if (student.getFaceEmbedding() == null) student.setFaceEmbedding(embedding);
+            if (student.getFaceEmbedding() == null)
+                student.setFaceEmbedding(embedding);
 
             com.classsight.entity.User actor = userRepository.findByUsername(authentication.getName())
                     .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
@@ -359,5 +381,35 @@ public class StudentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     Map.of("status", "error", "message", e.getMessage(), "enrollmentTimeMs", duration));
         }
+    }
+
+    private List<Double> embeddingFrom(Map<String, Object> response, String field) {
+        Object raw = response.get(field);
+        if (!(raw instanceof List<?> values) || values.isEmpty()) {
+            throw new IllegalStateException("Face service response did not contain " + field);
+        }
+        List<Double> embedding = new ArrayList<>();
+        for (Object value : values) {
+            if (!(value instanceof Number number)) {
+                throw new IllegalStateException("Face service returned a non-numeric " + field);
+            }
+            embedding.add(number.doubleValue());
+        }
+        return embedding;
+    }
+
+    private List<List<Double>> embeddingsFrom(Map<String, Object> response, String field) {
+        Object raw = response.get(field);
+        if (!(raw instanceof List<?> values))
+            return List.of();
+        List<List<Double>> embeddings = new ArrayList<>();
+        for (Object value : values) {
+            if (!(value instanceof List<?>)) {
+                throw new IllegalStateException("Face service returned an invalid " + field);
+            }
+            Map<String, Object> wrapper = Map.of("embedding", value);
+            embeddings.add(embeddingFrom(wrapper, "embedding"));
+        }
+        return embeddings;
     }
 }

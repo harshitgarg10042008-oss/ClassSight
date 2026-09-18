@@ -14,6 +14,9 @@ backend-spring/target/
 # Next.js local output
 frontend-vite/node_modules/
 frontend-vite/dist/
+frontend-vite/*.tsbuildinfo
+frontend-vite/vite.config.js
+frontend-vite/vite.config.d.ts
 
 # Runtime capture frames and generated local ERP exports
 data/captures/camera-frames/

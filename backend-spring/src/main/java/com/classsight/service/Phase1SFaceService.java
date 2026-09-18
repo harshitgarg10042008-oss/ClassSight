@@ -276,6 +276,7 @@ public class Phase1SFaceService {
     }
 
     public record SFaceFaceMatch(int faceIndex, Long studentId, String rollNumber, double confidenceScore,
+            double cosineSimilarity,
             String confidenceLabel, boolean matched, double faceSizeRatio, List<String> qualityWarnings,
             String recognitionState, int frameConfirmations) {
         public static SFaceFaceMatch match(int faceIndex, StudentReference candidate, double cosine, double ratio,
@@ -283,17 +284,18 @@ public class Phase1SFaceService {
             String label = cosine >= 0.80 ? "HIGH" : cosine >= 0.65 ? "MEDIUM" : "LOW";
             List<String> warnings = new ArrayList<>(globalWarnings);
             return new SFaceFaceMatch(faceIndex, candidate.studentId(), candidate.rollNumber(),
-                    normalizeConfidence(cosine), label, true, ratio, warnings, "RECOGNIZED", 1);
+                    normalizeConfidence(cosine), cosine, label, true, ratio, warnings, "RECOGNIZED", 1);
         }
 
         public static SFaceFaceMatch noMatch(int faceIndex, double ratio, List<String> globalWarnings) {
             List<String> warnings = new ArrayList<>(globalWarnings);
-            return new SFaceFaceMatch(faceIndex, null, null, 0.0, "LOW", false, ratio, warnings, "LOW_CONFIDENCE", 0);
+            return new SFaceFaceMatch(faceIndex, null, null, 0.0, 0.0, "LOW", false, ratio, warnings, "LOW_CONFIDENCE",
+                    0);
         }
 
         public static SFaceFaceMatch unknown(int faceIndex, double ratio, List<String> globalWarnings) {
             List<String> warnings = new ArrayList<>(globalWarnings);
-            return new SFaceFaceMatch(faceIndex, null, null, 0.0, "UNKNOWN", false, ratio, warnings, "UNKNOWN", 0);
+            return new SFaceFaceMatch(faceIndex, null, null, 0.0, 0.0, "UNKNOWN", false, ratio, warnings, "UNKNOWN", 0);
         }
 
         private static double normalizeConfidence(double cosine) {

@@ -32,10 +32,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.nio.file.Path;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 public class AttendanceRecognitionService {
@@ -72,17 +71,17 @@ public class AttendanceRecognitionService {
 
     @Transactional
     public AttendanceSession processCapturedSession(Long sessionId, MultipartFile image) {
-        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = attendanceSessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + requiredSessionId));
 
         session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
         List<Student> enrolledStudents = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
-        Map<Long, Student> studentsById = enrolledStudents.stream()
-                .collect(Collectors.toMap(Student::getId, Function.identity()));
+        validateUniqueStudentIds(enrolledStudents);
 
         Map<String, Object> recognition = phase1Enabled
-            ? recognizeWithSFace(image, enrolledStudents)
-            : callRecognition(image, enrolledStudents);
+                ? recognizeWithSFace(image, enrolledStudents)
+                : callRecognition(image, enrolledStudents);
         List<Map<String, Object>> matches = readMatches(recognition);
         Map<String, Object> quality = readQuality(recognition);
         boolean qualityPassed = Boolean.TRUE.equals(quality.get("quality_passed"));
@@ -106,27 +105,31 @@ public class AttendanceRecognitionService {
                 record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                 record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                 record.setRecognitionState("UNKNOWN");
-                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
+                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match"
+                        : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
                 requiresReview = true;
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
                 boolean matched = phase1Enabled
-                    ? Boolean.TRUE.equals(match.get("matched"))
-                    : Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
+                        ? Boolean.TRUE.equals(match.get("matched"))
+                        : Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
                 record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
                 // Manhattan distance and confidence label (paper §2.3)
                 record.setManhattanDistance(decimalValue(match.get("manhattan_distance")));
                 record.setConfidenceLabel(String.valueOf(match.getOrDefault("confidence_label", "UNKNOWN")));
-                boolean stateRequiresRecapture = "RECAPTURE_REQUIRED".equals(String.valueOf(match.getOrDefault("recognition_state", "")));
-                record.setRecognitionState(String.valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
+                boolean stateRequiresRecapture = "RECAPTURE_REQUIRED"
+                        .equals(String.valueOf(match.getOrDefault("recognition_state", "")));
+                record.setRecognitionState(String
+                        .valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
                 List<String> faceWarnings = stringList(match.get("quality_warnings"));
                 List<String> warnings = mergeWarnings(globalQualityWarnings, faceWarnings);
                 if (!matched) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
-                    record.setQualityWarning(warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
+                    record.setQualityWarning(
+                            warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
                     requiresReview = true;
                 } else if (!qualityPassed || stateRequiresRecapture) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
@@ -145,10 +148,6 @@ public class AttendanceRecognitionService {
 
         // Keep the local variable explicit: the map is also a guard against an
         // unexpected FastAPI match for a student outside this ClassSection.
-        if (studentsById.size() != enrolledStudents.size()) {
-            throw new IllegalStateException("Duplicate student IDs found in ClassSection");
-        }
-
         session.setStatus(requiresReview
                 ? AttendanceSession.SessionStatus.REVIEW_REQUIRED
                 : AttendanceSession.SessionStatus.FINALIZED);
@@ -162,15 +161,18 @@ public class AttendanceRecognitionService {
         return saved;
     }
 
-    /** Applies a recognition response produced by either the synchronous HTTP path or RabbitMQ worker. */
+    /**
+     * Applies a recognition response produced by either the synchronous HTTP path
+     * or RabbitMQ worker.
+     */
     @Transactional
     public AttendanceSession processRecognitionResult(Long sessionId, Map<String, Object> recognition) {
-        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = attendanceSessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + requiredSessionId));
         session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
         List<Student> enrolledStudents = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
-        Map<Long, Student> studentsById = enrolledStudents.stream()
-                .collect(Collectors.toMap(Student::getId, Function.identity()));
+        validateUniqueStudentIds(enrolledStudents);
         List<Map<String, Object>> matches = readMatches(recognition);
         Map<String, Object> quality = readQuality(recognition);
         boolean qualityPassed = Boolean.TRUE.equals(quality.get("quality_passed"));
@@ -192,7 +194,8 @@ public class AttendanceRecognitionService {
                 record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                 record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
                 record.setRecognitionState("UNKNOWN");
-                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
+                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match"
+                        : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
                 requiresReview = true;
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
@@ -203,14 +206,17 @@ public class AttendanceRecognitionService {
                 // Manhattan distance and confidence label (paper §2.3)
                 record.setManhattanDistance(decimalValue(match.get("manhattan_distance")));
                 record.setConfidenceLabel(String.valueOf(match.getOrDefault("confidence_label", "UNKNOWN")));
-                boolean stateRequiresRecapture = "RECAPTURE_REQUIRED".equals(String.valueOf(match.getOrDefault("recognition_state", "")));
-                record.setRecognitionState(String.valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
+                boolean stateRequiresRecapture = "RECAPTURE_REQUIRED"
+                        .equals(String.valueOf(match.getOrDefault("recognition_state", "")));
+                record.setRecognitionState(String
+                        .valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
                 List<String> faceWarnings = stringList(match.get("quality_warnings"));
                 List<String> warnings = mergeWarnings(globalQualityWarnings, faceWarnings);
                 if (!matched) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
-                    record.setQualityWarning(warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
+                    record.setQualityWarning(
+                            warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
                     requiresReview = true;
                 } else if (!qualityPassed || stateRequiresRecapture) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
@@ -219,13 +225,14 @@ public class AttendanceRecognitionService {
                     requiresReview = true;
                 } else {
                     record.setStatus(AttendanceRecord.AttendanceStatus.PRESENT);
-                    if (!warnings.isEmpty()) record.setQualityWarning(String.join("; ", warnings));
+                    if (!warnings.isEmpty())
+                        record.setQualityWarning(String.join("; ", warnings));
                 }
             }
             session.getAttendanceRecords().add(record);
         }
-        if (studentsById.size() != enrolledStudents.size()) throw new IllegalStateException("Duplicate student IDs found in ClassSection");
-        session.setStatus(requiresReview ? AttendanceSession.SessionStatus.REVIEW_REQUIRED : AttendanceSession.SessionStatus.FINALIZED);
+        session.setStatus(requiresReview ? AttendanceSession.SessionStatus.REVIEW_REQUIRED
+                : AttendanceSession.SessionStatus.FINALIZED);
         session.setEndedAt(java.time.LocalDateTime.now());
         return attendanceSessionRepository.save(session);
     }
@@ -237,25 +244,26 @@ public class AttendanceRecognitionService {
     /**
      * Multi-frame session recognition with de-duplication (paper §2.5).
      *
-     * Accepts a list of images captured over time during a class session, sends them
+     * Accepts a list of images captured over time during a class session, sends
+     * them
      * to the face service /recognize-stream endpoint, which accumulates recognized
      * student IDs across all frames and returns one aggregated match per student.
      * This is the primary path for reaching the paper's 97.5% accuracy — a single
      * snapshot will miss students who are poorly angled or occluded in that frame.
      *
      * ACCURACY CAVEAT (paper §4): Best results require close-range captures
-     * (browser webcam or mobile camera).  Wide-angle CCTV at distance will yield
+     * (browser webcam or mobile camera). Wide-angle CCTV at distance will yield
      * lower accuracy than the paper's published numbers.
      */
     @Transactional
     public AttendanceSession processMultiFrameSession(Long sessionId, List<MultipartFile> frames) {
-        AttendanceSession session = attendanceSessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + sessionId));
+        Long requiredSessionId = Objects.requireNonNull(sessionId, "sessionId");
+        AttendanceSession session = attendanceSessionRepository.findById(requiredSessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + requiredSessionId));
         session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
 
         List<Student> enrolledStudents = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
-        Map<Long, Student> studentsById = enrolledStudents.stream()
-                .collect(Collectors.toMap(Student::getId, Function.identity()));
+        validateUniqueStudentIds(enrolledStudents);
 
         // Encode frames as base64 strings for the JSON body
         List<String> frameB64 = new ArrayList<>();
@@ -278,15 +286,16 @@ public class AttendanceRecognitionService {
             item.put("embedding", student.getFaceEmbedding());
             item.put("embeddings", embeddingsFor(student));
             return item;
-        }).filter(item -> item.get("embedding") != null || (item.get("embeddings") instanceof List<?> refs && !refs.isEmpty())).toList();
+        }).filter(item -> item.get("embedding") != null
+                || (item.get("embeddings") instanceof List<?> refs && !refs.isEmpty())).toList();
 
         // Call /recognize-stream
         Map<String, Object> streamResult = callStreamRecognition(frameB64, studentsPayload);
 
-        // The stream endpoint returns aggregated per-student matches (already de-duplicated).
+        // The stream endpoint returns aggregated per-student matches (already
+        // de-duplicated).
         // Build a studentId → match map from the response.
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> streamMatches = (List<Map<String, Object>>) streamResult.getOrDefault("matches", List.of());
+        List<Map<String, Object>> streamMatches = readMatches(streamResult);
         Map<Long, Map<String, Object>> matchByStudentId = new HashMap<>();
         for (Map<String, Object> m : streamMatches) {
             Object sid = m.get("student_id");
@@ -319,11 +328,13 @@ public class AttendanceRecognitionService {
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
                 record.setManhattanDistance(decimalValue(match.get("manhattan_distance")));
                 record.setConfidenceLabel(String.valueOf(match.getOrDefault("confidence_label", "UNKNOWN")));
-                record.setRecognitionState(String.valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
+                record.setRecognitionState(String
+                        .valueOf(match.getOrDefault("recognition_state", matched ? "RECOGNIZED" : "LOW_CONFIDENCE")));
                 if (!matched) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
-                    record.setQualityWarning("Low-confidence match across " + match.getOrDefault("frame_confirmations", 1) + " frame(s)");
+                    record.setQualityWarning("Low-confidence match across "
+                            + match.getOrDefault("frame_confirmations", 1) + " frame(s)");
                     requiresReview = true;
                 } else {
                     record.setStatus(AttendanceRecord.AttendanceStatus.PRESENT);
@@ -332,9 +343,6 @@ public class AttendanceRecognitionService {
             session.getAttendanceRecords().add(record);
         }
 
-        if (studentsById.size() != enrolledStudents.size()) {
-            throw new IllegalStateException("Duplicate student IDs found in ClassSection");
-        }
         session.setStatus(requiresReview
                 ? AttendanceSession.SessionStatus.REVIEW_REQUIRED
                 : AttendanceSession.SessionStatus.FINALIZED);
@@ -345,7 +353,8 @@ public class AttendanceRecognitionService {
         return saved;
     }
 
-    private Map<String, Object> callStreamRecognition(List<String> frameB64, List<Map<String, Object>> studentsPayload) {
+    private Map<String, Object> callStreamRecognition(List<String> frameB64,
+            List<Map<String, Object>> studentsPayload) {
         try {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("frames", frameB64);
@@ -357,9 +366,10 @@ public class AttendanceRecognitionService {
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     faceServiceUrl + "/recognize-stream",
-                    HttpMethod.POST,
+                    Objects.requireNonNull(HttpMethod.POST),
                     new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers),
-                    new ParameterizedTypeReference<>() {});
+                    new ParameterizedTypeReference<>() {
+                    });
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 throw new IllegalStateException("Face service /recognize-stream returned " + response.getStatusCode());
             }
@@ -381,7 +391,8 @@ public class AttendanceRecognitionService {
                 item.put("embedding", student.getFaceEmbedding());
                 item.put("embeddings", embeddingsFor(student));
                 return item;
-            }).filter(item -> item.get("embedding") != null || (item.get("embeddings") instanceof List<?> references && !references.isEmpty())).toList();
+            }).filter(item -> item.get("embedding") != null
+                    || (item.get("embeddings") instanceof List<?> references && !references.isEmpty())).toList();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -392,7 +403,7 @@ public class AttendanceRecognitionService {
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     faceServiceUrl + "/recognize",
-                    HttpMethod.POST,
+                    Objects.requireNonNull(HttpMethod.POST),
                     new HttpEntity<>(body, headers),
                     new ParameterizedTypeReference<>() {
                     });
@@ -410,11 +421,12 @@ public class AttendanceRecognitionService {
 
     private Map<String, Object> recognizeWithSFace(MultipartFile image, List<Student> enrolledStudents) {
         try {
-            List<Phase1SFaceService.StudentReference> references = enrolledStudents.stream()
-                    .filter(student -> student.getFaceEmbeddingSface() != null
-                            && !student.getFaceEmbeddingSface().isEmpty())
-                    .map(phase1SFaceService::buildReference)
-                    .toList();
+            List<Phase1SFaceService.StudentReference> references = new ArrayList<>();
+            for (Student student : enrolledStudents) {
+                if (student.getFaceEmbeddingSface() != null && !student.getFaceEmbeddingSface().isEmpty()) {
+                    references.add(phase1SFaceService.buildReference(student));
+                }
+            }
             Phase1SFaceService.SFaceRecognitionResponse response = phase1SFaceService.recognize(image, references);
             Map<String, Object> result = new HashMap<>();
             List<Map<String, Object>> matches = response.matches().stream().map(match -> {
@@ -450,11 +462,11 @@ public class AttendanceRecognitionService {
     private List<List<Double>> embeddingsFor(Student student) {
         List<List<Double>> embeddings = new java.util.ArrayList<>();
         if (student.getFaceEmbeddings() != null) {
-            student.getFaceEmbeddings().stream()
-                    .map(com.classsight.entity.StudentFaceEmbedding::getEmbedding)
-                    .filter(java.util.Objects::nonNull)
-                    .filter(embedding -> embedding.size() == 128)
-                    .forEach(embeddings::add);
+            student.getFaceEmbeddings().forEach(reference -> {
+                List<Double> embedding = reference.getEmbedding();
+                if (embedding != null && embedding.size() == 128)
+                    embeddings.add(embedding);
+            });
         }
         if (embeddings.isEmpty() && student.getFaceEmbedding() != null && student.getFaceEmbedding().size() == 128) {
             embeddings.add(student.getFaceEmbedding());
@@ -462,18 +474,17 @@ public class AttendanceRecognitionService {
         return embeddings;
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> readQuality(Map<String, Object> recognition) {
         Object rawQuality = recognition.get("quality");
         if (!(rawQuality instanceof Map<?, ?> map)) {
             throw new IllegalStateException("Face service response did not include quality metrics");
         }
-        return (Map<String, Object>) map;
+        return stringKeyedMap(map);
     }
 
-    @SuppressWarnings("unchecked")
     private List<String> stringList(Object value) {
-        if (!(value instanceof List<?> list)) return new java.util.ArrayList<>();
+        if (!(value instanceof List<?> list))
+            return new java.util.ArrayList<>();
         return list.stream().filter(String.class::isInstance).map(String.class::cast).toList();
     }
 
@@ -487,16 +498,36 @@ public class AttendanceRecognitionService {
         return new java.util.ArrayList<>(unique);
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> readMatches(Map<String, Object> recognition) {
         Object rawMatches = recognition.get("matches");
-        if (!(rawMatches instanceof List<?>)) {
+        if (!(rawMatches instanceof List<?> matches)) {
             throw new IllegalStateException("Face service response did not include matches");
         }
-        return ((List<?>) rawMatches).stream()
-                .filter(Map.class::isInstance)
-                .map(item -> (Map<String, Object>) item)
-                .toList();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Object item : matches) {
+            if (item instanceof Map<?, ?> map)
+                result.add(stringKeyedMap(map));
+        }
+        return result;
+    }
+
+    private Map<String, Object> stringKeyedMap(Map<?, ?> source) {
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : source.entrySet()) {
+            if (entry.getKey() instanceof String key)
+                result.put(key, entry.getValue());
+        }
+        return result;
+    }
+
+    private void validateUniqueStudentIds(List<Student> students) {
+        Set<Long> ids = new HashSet<>();
+        for (Student student : students) {
+            Student nonNullStudent = Objects.requireNonNull(student, "enrolled student");
+            Long id = Objects.requireNonNull(nonNullStudent.getId(), "enrolled student id");
+            if (!ids.add(id))
+                throw new IllegalStateException("Duplicate student IDs found in ClassSection");
+        }
     }
 
     private Map<String, Object> findMatchForStudent(

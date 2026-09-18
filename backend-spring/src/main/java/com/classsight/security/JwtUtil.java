@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.Objects;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -25,11 +26,11 @@ public class JwtUtil {
     }
 
     public String getUsernameFromToken(String token) {
-        return getClaimFromToken(token, Claims::getSubject);
+        return getClaimFromToken(token, claims -> Objects.requireNonNull(claims).getSubject());
     }
 
     public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
+        return getClaimFromToken(token, claims -> Objects.requireNonNull(claims).getExpiration());
     }
 
     public <T> T getClaimFromToken(String token, Function<Claims, T> claimsResolver) {

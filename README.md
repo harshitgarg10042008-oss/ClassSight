@@ -8,20 +8,20 @@ ClassSight is a classroom attendance platform built around a Spring Boot API, Po
 
 ## Technology stack
 
-| Layer | Technology | Role |
-|---|---|---|
-| Faculty frontend | React, Vite, TypeScript, CSS | Room selection, browser camera capture, polling review, confidence/quality display, and finalization on port `3000`. |
-| Existing frontend | Spring Boot MVC, Thymeleaf, server-rendered pages | Existing login, room, subject, capture, review, analytics, and administrative pages. These pages remain in place. |
-| Application backend | Java 17, Spring Boot 3.x, Spring Security, Spring Data JPA | Authentication, authorization, attendance sessions, review decisions, analytics, ERP export, camera management, retention, and REST APIs. |
-| Database | PostgreSQL 15 | Users, rooms, cameras, students, embeddings, classes, assignments, attendance sessions, records, audit data, and ERP sync state. |
-| Database migrations | Flyway | Versioned schema migrations and Hibernate schema validation. |
-| Recognition libraries | OpenCV Java bindings, YuNet, SFace | Detection, SFace embedding generation, cosine similarity, and quality signals. |
-| Capture storage | Local filesystem through `StorageService` | Durable captured-photo storage under `data/captures`. |
-| Media/camera support | FFmpeg, RTSP camera adapter | Camera-frame extraction and browser/RTSP capture support. |
-| ERP integration | Local CSV provider | Provisional local export and persisted sync workflow; no real ERP vendor delivery is configured. |
-| Packaging and runtime | Docker, Docker Compose | Local orchestration of Spring Boot, PostgreSQL, and the Vite frontend. |
-| Testing and analysis | Maven, pytest, Python scripts, golden-set regression, benchmark scripts | Unit tests, API tests, recognition regressions, performance measurement, migration verification, and the edge-detection spike. |
-| Local Kubernetes assets | Kubernetes YAML manifests, k3s/k3d-compatible layout | Local-only deployment attempt; cloud deployment is not included. |
+| Layer                   | Technology                                                              | Role                                                                                                                                      |
+| ----------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Faculty frontend        | React, Vite, TypeScript, CSS                                            | Room selection, browser camera capture, polling review, confidence/quality display, and finalization on port `3000`.                      |
+| Existing frontend       | Spring Boot MVC, Thymeleaf, server-rendered pages                       | Existing login, room, subject, capture, review, analytics, and administrative pages. These pages remain in place.                         |
+| Application backend     | Java 17, Spring Boot 3.x, Spring Security, Spring Data JPA              | Authentication, authorization, attendance sessions, review decisions, analytics, ERP export, camera management, retention, and REST APIs. |
+| Database                | PostgreSQL 15                                                           | Users, rooms, cameras, students, embeddings, classes, assignments, attendance sessions, records, audit data, and ERP sync state.          |
+| Database migrations     | Flyway                                                                  | Versioned schema migrations and Hibernate schema validation.                                                                              |
+| Recognition libraries   | OpenCV Java bindings, YuNet, SFace                                      | Detection, SFace embedding generation, cosine similarity, and quality signals.                                                            |
+| Capture storage         | Local filesystem through `StorageService`                               | Durable captured-photo storage under `data/captures`.                                                                                     |
+| Media/camera support    | FFmpeg, RTSP camera adapter                                             | Camera-frame extraction and browser/RTSP capture support.                                                                                 |
+| ERP integration         | Local CSV provider                                                      | Provisional local export and persisted sync workflow; no real ERP vendor delivery is configured.                                          |
+| Packaging and runtime   | Docker, Docker Compose                                                  | Local orchestration of Spring Boot, PostgreSQL, and the Vite frontend.                                                                    |
+| Testing and analysis    | Maven, pytest, Python scripts, golden-set regression, benchmark scripts | Unit tests, API tests, recognition regressions, performance measurement, migration verification, and the edge-detection spike.            |
+| Local Kubernetes assets | Kubernetes YAML manifests, k3s/k3d-compatible layout                    | Local-only deployment attempt; cloud deployment is not included.                                                                          |
 
 ## Current architecture
 
@@ -63,13 +63,13 @@ ClassSight/
 
 Install the following before starting the stack:
 
-| Requirement | Recommended version |
-|---|---|
+| Requirement    | Recommended version                                  |
+| -------------- | ---------------------------------------------------- |
 | Docker Desktop | Current release with Linux containers and Compose v2 |
-| Git | Current release |
-| Java | 17 or newer for local Spring development |
-| Node.js | 20 or newer for local Vite development |
-| Maven | 3.9 or use the included CI/container toolchain |
+| Git            | Current release                                      |
+| Java           | 17 or newer for local Spring development             |
+| Node.js        | 20 or newer for local Vite development               |
+| Maven          | 3.9 or use the included CI/container toolchain       |
 
 Docker Desktop is the only required runtime for the normal local start. Java, Maven, Python, and Node.js are provided inside the service images for the Compose path.
 
@@ -101,17 +101,17 @@ When SFace is enabled, place `face_detection_yunet_2023mar.onnx` and `face_recog
 
 ## Local services and URLs
 
-| Service | URL/port | Purpose |
-|---|---|---|
-| Next.js faculty frontend | [http://localhost:3000](http://localhost:3000) | New additive faculty flow. |
-| Spring Boot application | [http://localhost:8080/login](http://localhost:8080/login) | Existing Thymeleaf application and REST API. |
-| Spring health | `http://localhost:8080/health` | Backend readiness check. |
-| FastAPI health | `http://localhost:8000/health` | Recognition-service readiness check. |
-| PostgreSQL | `localhost:5432` | Application database. |
-| RabbitMQ AMQP | `localhost:5672` | Asynchronous recognition transport. |
-| RabbitMQ management | [http://localhost:15672](http://localhost:15672) | Queue inspection. |
-| MinIO S3 API | `http://localhost:9000` | Captured-photo object storage. |
-| MinIO console | [http://localhost:9001](http://localhost:9001) | Bucket/object inspection. |
+| Service                  | URL/port                                                   | Purpose                                      |
+| ------------------------ | ---------------------------------------------------------- | -------------------------------------------- |
+| Next.js faculty frontend | [http://localhost:3000](http://localhost:3000)             | New additive faculty flow.                   |
+| Spring Boot application  | [http://localhost:8080/login](http://localhost:8080/login) | Existing Thymeleaf application and REST API. |
+| Spring health            | `http://localhost:8080/health`                             | Backend readiness check.                     |
+| FastAPI health           | `http://localhost:8000/health`                             | Recognition-service readiness check.         |
+| PostgreSQL               | `localhost:5432`                                           | Application database.                        |
+| RabbitMQ AMQP            | `localhost:5672`                                           | Asynchronous recognition transport.          |
+| RabbitMQ management      | [http://localhost:15672](http://localhost:15672)           | Queue inspection.                            |
+| MinIO S3 API             | `http://localhost:9000`                                    | Captured-photo object storage.               |
+| MinIO console            | [http://localhost:9001](http://localhost:9001)             | Bucket/object inspection.                    |
 
 Check all Compose services with:
 
@@ -126,12 +126,12 @@ docker compose logs --tail=100 frontend-vite
 
 The seeded development credentials are:
 
-| Account | Username | Password | Role |
-|---|---|---|---|
-| Administrator | `admin` | `admin123` | Administrative CRUD, ERP, retention, and camera operations. |
-| Faculty | `teacher` | `teacher123` | Faculty capture, enrollment, review, and attendance operations. |
-| MinIO | `minioadmin` | `minioadmin` | Local object-storage console/API access. |
-| RabbitMQ | `classsight` | `classsight_rabbit_password` | Local AMQP and management access. |
+| Account       | Username     | Password                     | Role                                                            |
+| ------------- | ------------ | ---------------------------- | --------------------------------------------------------------- |
+| Administrator | `admin`      | `admin123`                   | Administrative CRUD, ERP, retention, and camera operations.     |
+| Faculty       | `teacher`    | `teacher123`                 | Faculty capture, enrollment, review, and attendance operations. |
+| MinIO         | `minioadmin` | `minioadmin`                 | Local object-storage console/API access.                        |
+| RabbitMQ      | `classsight` | `classsight_rabbit_password` | Local AMQP and management access.                               |
 
 Change all example credentials and the JWT secret before any non-local deployment.
 
@@ -139,23 +139,23 @@ Change all example credentials and the JWT secret before any non-local deploymen
 
 Copy `.env.example` to `.env` and adjust values only when needed. The most important settings are:
 
-| Variable | Default | Meaning |
-|---|---|---|
-| `RECOGNITION_MODE` | `sync` | `sync` preserves the existing blocking recognition flow; `async` uses RabbitMQ. |
-| `RABBITMQ_WORKER_ENABLED` | `false` | Enables the FastAPI RabbitMQ worker when set to `true`. |
-| `ATTENDANCE_CAPTURE_STORAGE_BACKEND` | `minio` | Selects the object-storage-backed capture implementation. |
-| `MINIO_BUCKET` | `classsight-captures` | MinIO bucket for captured photos. |
-| `ATTENDANCE_RECOGNITION_THRESHOLD` | `0.6` | Existing recognition threshold; infrastructure work does not change it. |
-| `QUALITY_BLUR_THRESHOLD` | `30.0` | Image-quality blur threshold. |
-| `QUALITY_MIN_BRIGHTNESS` | `35.0` | Minimum accepted image brightness. |
-| `QUALITY_MAX_BRIGHTNESS` | `220.0` | Maximum accepted image brightness. |
-| `QUALITY_MIN_LIVENESS_TEXTURE` | `2.5` | Minimum texture signal used by the existing liveness proxy. |
-| `QUALITY_MIN_FACE_SIZE_RATIO` | `0.0005` | Minimum detected face-area ratio. |
-| `QUALITY_POSE_CHECKS_ENABLED` | `false` | Enables optional roll and landmark/occlusion warnings; keep disabled until representative pose fixtures are validated. |
-| `QUALITY_MAX_ROLL_DEGREES` | `25.0` | Maximum allowed roll when pose checks are enabled. |
-| `EDGE_CROP_ENABLED` | `false` | Opt-in padded face-crop encoding for HTTP and RabbitMQ recognition; full-frame mode remains the safe default. |
-| `EDGE_CROP_PADDING` | `0.20` | Relative padding around each detected face crop. |
-| `EDGE_CROP_MAX_DIMENSION` | `0` | Optional crop dimension cap; `0` preserves the crop resolution. |
+| Variable                             | Default               | Meaning                                                                                                                |
+| ------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `RECOGNITION_MODE`                   | `sync`                | `sync` preserves the existing blocking recognition flow; `async` uses RabbitMQ.                                        |
+| `RABBITMQ_WORKER_ENABLED`            | `false`               | Enables the FastAPI RabbitMQ worker when set to `true`.                                                                |
+| `ATTENDANCE_CAPTURE_STORAGE_BACKEND` | `minio`               | Selects the object-storage-backed capture implementation.                                                              |
+| `MINIO_BUCKET`                       | `classsight-captures` | MinIO bucket for captured photos.                                                                                      |
+| `ATTENDANCE_RECOGNITION_THRESHOLD`   | `0.6`                 | Existing recognition threshold; infrastructure work does not change it.                                                |
+| `QUALITY_BLUR_THRESHOLD`             | `30.0`                | Image-quality blur threshold.                                                                                          |
+| `QUALITY_MIN_BRIGHTNESS`             | `35.0`                | Minimum accepted image brightness.                                                                                     |
+| `QUALITY_MAX_BRIGHTNESS`             | `220.0`               | Maximum accepted image brightness.                                                                                     |
+| `QUALITY_MIN_LIVENESS_TEXTURE`       | `2.5`                 | Minimum texture signal used by the existing liveness proxy.                                                            |
+| `QUALITY_MIN_FACE_SIZE_RATIO`        | `0.0005`              | Minimum detected face-area ratio.                                                                                      |
+| `QUALITY_POSE_CHECKS_ENABLED`        | `false`               | Enables optional roll and landmark/occlusion warnings; keep disabled until representative pose fixtures are validated. |
+| `QUALITY_MAX_ROLL_DEGREES`           | `25.0`                | Maximum allowed roll when pose checks are enabled.                                                                     |
+| `EDGE_CROP_ENABLED`                  | `false`               | Opt-in padded face-crop encoding for HTTP and RabbitMQ recognition; full-frame mode remains the safe default.          |
+| `EDGE_CROP_PADDING`                  | `0.20`                | Relative padding around each detected face crop.                                                                       |
+| `EDGE_CROP_MAX_DIMENSION`            | `0`                   | Optional crop dimension cap; `0` preserves the crop resolution.                                                        |
 
 ## Authentication and API security
 
@@ -333,13 +333,13 @@ The current project still has several deliberate limitations. The recognition-pe
 
 ## Documentation index
 
-| Document | Purpose |
-|---|---|
-| [PRIVACY.md](PRIVACY.md) | Privacy and retention policy. |
-| [docs/architecture.md](docs/architecture.md) | Component architecture and system boundaries. |
-| [docs/security.md](docs/security.md) | Authentication, authorization, CSRF, and security behavior. |
-| [docs/camera-deployment.md](docs/camera-deployment.md) | RTSP camera deployment guidance. |
-| [docs/erp-mapping.md](docs/erp-mapping.md) | Provisional ERP adapter boundary. |
-| [docs/known-limitations.md](docs/known-limitations.md) | Unresolved production limitations. |
-| [docs/infra-upgrade-log.md](docs/infra-upgrade-log.md) | Evidence and status for the five infrastructure upgrades. |
-| [k8s/classsight.yaml](k8s/classsight.yaml) | Local-only Kubernetes manifests. |
+| Document                                               | Purpose                                                     |
+| ------------------------------------------------------ | ----------------------------------------------------------- |
+| [PRIVACY.md](PRIVACY.md)                               | Privacy and retention policy.                               |
+| [docs/architecture.md](docs/architecture.md)           | Component architecture and system boundaries.               |
+| [docs/security.md](docs/security.md)                   | Authentication, authorization, CSRF, and security behavior. |
+| [docs/camera-deployment.md](docs/camera-deployment.md) | RTSP camera deployment guidance.                            |
+| [docs/erp-mapping.md](docs/erp-mapping.md)             | Provisional ERP adapter boundary.                           |
+| [docs/known-limitations.md](docs/known-limitations.md) | Unresolved production limitations.                          |
+| [docs/infra-upgrade-log.md](docs/infra-upgrade-log.md) | Evidence and status for the five infrastructure upgrades.   |
+| [k8s/classsight.yaml](k8s/classsight.yaml)             | Local-only Kubernetes manifests.                            |

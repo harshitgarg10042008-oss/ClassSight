@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/admin/subjects")
@@ -31,31 +32,39 @@ public class AdminSubjectController {
         Subject subject = new Subject();
         subject.setCode(request.getCode());
         subject.setName(request.getName());
-        if (request.getDescription() != null) subject.setDescription(request.getDescription());
-        if (request.getActive() != null) subject.setActive(request.getActive());
+        if (request.getDescription() != null)
+            subject.setDescription(request.getDescription());
+        if (request.getActive() != null)
+            subject.setActive(request.getActive());
 
-        return ResponseEntity.ok(subjectRepository.save(subject));
+        return ResponseEntity.ok(subjectRepository.save(Objects.requireNonNull(subject)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Subject> updateSubject(@PathVariable Long id, @Valid @RequestBody SubjectRequest request) {
-        return subjectRepository.findById(id).map(subject -> {
-            if (request.getCode() != null) subject.setCode(request.getCode());
-            if (request.getName() != null) subject.setName(request.getName());
-            if (request.getDescription() != null) subject.setDescription(request.getDescription());
-            if (request.getActive() != null) subject.setActive(request.getActive());
-            
-            return ResponseEntity.ok(subjectRepository.save(subject));
+        return subjectRepository.findById(Objects.requireNonNull(id, "id")).map(subject -> {
+            if (request.getCode() != null)
+                subject.setCode(request.getCode());
+            if (request.getName() != null)
+                subject.setName(request.getName());
+            if (request.getDescription() != null)
+                subject.setDescription(request.getDescription());
+            if (request.getActive() != null)
+                subject.setActive(request.getActive());
+
+            return ResponseEntity.ok(subjectRepository.save(Objects.requireNonNull(subject)));
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteSubject(@PathVariable Long id) {
-        if (!subjectRepository.existsById(id)) return ResponseEntity.notFound().build();
-        if (assignmentRepository.existsBySubjectId(id)) {
+        Long requiredId = Objects.requireNonNull(id, "id");
+        if (!subjectRepository.existsById(requiredId))
+            return ResponseEntity.notFound().build();
+        if (assignmentRepository.existsBySubjectId(requiredId)) {
             return ResponseEntity.status(409).body("Subject cannot be deleted while assignments reference it");
         }
-        subjectRepository.deleteById(id);
+        subjectRepository.deleteById(requiredId);
         return ResponseEntity.noContent().build();
     }
 }

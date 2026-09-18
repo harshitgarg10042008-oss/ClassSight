@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class AttendanceReviewService {
@@ -32,7 +33,9 @@ public class AttendanceReviewService {
         this.storageService = storageService;
     }
 
-    /** Compatibility constructor for focused unit tests that exercise local storage. */
+    /**
+     * Compatibility constructor for focused unit tests that exercise local storage.
+     */
     public AttendanceReviewService(AttendanceSessionRepository sessionRepository) {
         this(sessionRepository, new CapturePhotoStorageService("./data/captures"));
     }
@@ -68,8 +71,10 @@ public class AttendanceReviewService {
         try {
             StorageService.StoredObject stored = storageService.read(session.getCapturedPhotoPath());
             String contentType = stored.contentType() == null
-                    ? MediaType.APPLICATION_OCTET_STREAM_VALUE : stored.contentType();
-            return new PhotoFile(new ByteArrayResource(stored.bytes()), MediaType.parseMediaType(contentType));
+                    ? MediaType.APPLICATION_OCTET_STREAM_VALUE
+                    : stored.contentType();
+            return new PhotoFile(new ByteArrayResource(Objects.requireNonNull(stored.bytes())),
+                    MediaType.parseMediaType(Objects.requireNonNull(contentType)));
         } catch (IOException e) {
             throw new IllegalStateException("Could not read captured photo", e);
         }
@@ -120,7 +125,7 @@ public class AttendanceReviewService {
     }
 
     private AttendanceSession authorizedSession(Long sessionId, User actor) {
-        AttendanceSession session = sessionRepository.findById(sessionId)
+        AttendanceSession session = sessionRepository.findById(Objects.requireNonNull(sessionId, "sessionId"))
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
         boolean admin = actor != null && actor.getRole() == User.Role.ADMIN;
         boolean owner = actor != null && session.getFaculty() != null
@@ -141,7 +146,8 @@ public class AttendanceReviewService {
                     item.put("recordId", record.getId());
                     item.put("studentId", record.getStudent().getId());
                     item.put("rollNumber", record.getStudent().getRollNumber());
-                    item.put("studentName", record.getStudent().getFirstName() + " " + record.getStudent().getLastName());
+                    item.put("studentName",
+                            record.getStudent().getFirstName() + " " + record.getStudent().getLastName());
                     item.put("confidenceScore", record.getConfidenceScore());
                     item.put("recognitionState", record.getRecognitionState());
                     item.put("status", record.getStatus().toString());

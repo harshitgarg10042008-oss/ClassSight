@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/admin/cameras")
@@ -27,8 +28,8 @@ public class AdminCameraController {
     private final com.classsight.service.CameraUrlValidator urlValidator;
 
     public AdminCameraController(CameraRepository cameraRepository, RoomRepository roomRepository,
-                                 CameraCredentialService credentialService, RtspFrameProbeService probeService,
-                                 RtspCameraAdapter frameAdapter, com.classsight.service.CameraUrlValidator urlValidator) {
+            CameraCredentialService credentialService, RtspFrameProbeService probeService,
+            RtspCameraAdapter frameAdapter, com.classsight.service.CameraUrlValidator urlValidator) {
         this.cameraRepository = cameraRepository;
         this.roomRepository = roomRepository;
         this.credentialService = credentialService;
@@ -38,12 +39,15 @@ public class AdminCameraController {
     }
 
     @GetMapping
-    public List<Camera> getAllCameras() { return cameraRepository.findAll(); }
+    public List<Camera> getAllCameras() {
+        return cameraRepository.findAll();
+    }
 
     @PostMapping
     public ResponseEntity<?> createCamera(@Valid @RequestBody CameraRequest request) {
-        Optional<Room> roomOpt = roomRepository.findById(request.getRoomId());
-        if (roomOpt.isEmpty()) return ResponseEntity.badRequest().body("Room not found");
+        Optional<Room> roomOpt = roomRepository.findById(Objects.requireNonNull(request.getRoomId(), "roomId"));
+        if (roomOpt.isEmpty())
+            return ResponseEntity.badRequest().body("Room not found");
         urlValidator.validate(request.getStreamUrl());
         Camera camera = new Camera();
         camera.setName(request.getName());
@@ -51,32 +55,38 @@ public class AdminCameraController {
         camera.setStatus(request.getStatus() == null ? Camera.CameraStatus.ONLINE : request.getStatus());
         camera.setStreamUrl(request.getStreamUrl());
         camera.setCredentialsCiphertext(credentialService.encrypt(request.getCredentials()));
-        return ResponseEntity.ok(cameraRepository.save(camera));
+        return ResponseEntity.ok(cameraRepository.save(Objects.requireNonNull(camera)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateCamera(@PathVariable Long id, @Valid @RequestBody CameraRequest request) {
-        return cameraRepository.findById(id).map(camera -> {
-            if (request.getName() != null) camera.setName(request.getName());
+        return cameraRepository.findById(Objects.requireNonNull(id, "id")).map(camera -> {
+            if (request.getName() != null)
+                camera.setName(request.getName());
             if (request.getRoomId() != null) {
-                Optional<Room> roomOpt = roomRepository.findById(request.getRoomId());
-                if (roomOpt.isEmpty()) return ResponseEntity.badRequest().body("Room not found");
+                Optional<Room> roomOpt = roomRepository.findById(Objects.requireNonNull(request.getRoomId(), "roomId"));
+                if (roomOpt.isEmpty())
+                    return ResponseEntity.badRequest().body("Room not found");
                 camera.setRoom(roomOpt.get());
             }
-            if (request.getStatus() != null) camera.setStatus(request.getStatus());
+            if (request.getStatus() != null)
+                camera.setStatus(request.getStatus());
             if (request.getStreamUrl() != null) {
                 urlValidator.validate(request.getStreamUrl());
                 camera.setStreamUrl(request.getStreamUrl());
             }
-            if (request.getCredentials() != null) camera.setCredentialsCiphertext(credentialService.encrypt(request.getCredentials()));
-            return ResponseEntity.ok(cameraRepository.save(camera));
+            if (request.getCredentials() != null)
+                camera.setCredentialsCiphertext(credentialService.encrypt(request.getCredentials()));
+            return ResponseEntity.ok(cameraRepository.save(Objects.requireNonNull(camera)));
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteCamera(@PathVariable Long id) {
-        if (!cameraRepository.existsById(id)) return ResponseEntity.notFound().build();
-        cameraRepository.deleteById(id);
+        Long requiredId = Objects.requireNonNull(id, "id");
+        if (!cameraRepository.existsById(requiredId))
+            return ResponseEntity.notFound().build();
+        cameraRepository.deleteById(requiredId);
         return ResponseEntity.noContent().build();
     }
 
@@ -86,12 +96,13 @@ public class AdminCameraController {
         return result.success() ? ResponseEntity.ok(Map.of(
                 "cameraId", id, "success", true, "message", result.message(), "latencyMs", result.latencyMs(),
                 "width", result.width(), "height", result.height(), "bytes", result.bytes(), "path", result.path()))
-                : ResponseEntity.status(502).body(Map.of("cameraId", id, "success", false, "message", result.message(), "latencyMs", result.latencyMs()));
+                : ResponseEntity.status(502).body(Map.of("cameraId", id, "success", false, "message", result.message(),
+                        "latencyMs", result.latencyMs()));
     }
 
     @PostMapping("/{id}/test-connection")
     public ResponseEntity<?> testConnection(@PathVariable Long id) {
-        return cameraRepository.findById(id).map(camera -> {
+        return cameraRepository.findById(Objects.requireNonNull(id, "id")).map(camera -> {
             RtspFrameProbeService.ProbeResult result = probeService.probe(camera.getStreamUrl());
             camera.setLastCheckedAt(LocalDateTime.now());
             camera.setLastError(result.success() ? null : result.message());
@@ -106,8 +117,7 @@ public class AdminCameraController {
                     "width", result.width(),
                     "height", result.height(),
                     "bytes", result.bytes() == null ? 0 : result.bytes(),
-                    "checkedAt", camera.getLastCheckedAt().toString()
-            ));
+                    "checkedAt", camera.getLastCheckedAt().toString()));
         }).orElse(ResponseEntity.notFound().build());
     }
 }
