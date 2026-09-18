@@ -12,8 +12,8 @@ __pycache__/
 backend-spring/target/
 
 # Next.js local output
-frontend-next/node_modules/
-frontend-next/.next/
+frontend-vite/node_modules/
+frontend-vite/dist/
 
 # Runtime capture frames and generated local ERP exports
 data/captures/camera-frames/

@@ -1,73 +1,6 @@
-# The current Docker sandbox cannot reliably attach the Postgres container to
-# a user-defined bridge network. Host networking is therefore intentional here.
-# On a normal Docker host, remove network_mode and use service names instead.
 services:
-  frontend-next:
-    build:
-      context: ./frontend-next
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://backend-spring:8080}
-    depends_on:
-      backend-spring:
-        condition: service_healthy
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1:3000 | grep -q 'ClassSight'" ]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 15s
-
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address :9001
-    network_mode: host
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
-    volumes:
-      - minio-data:/data
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live" ]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
-  minio-init:
-    image: minio/mc:latest
-    network_mode: host
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: [ "/bin/sh", "-c" ]
-    command: >-
-      "mc alias set local http://127.0.0.1:9000 $${MINIO_ACCESS_KEY:-minioadmin} $${MINIO_SECRET_KEY:-minioadmin} && mc mb --ignore-existing local/$${MINIO_BUCKET:-classsight-captures}"
-    environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
-
-  rabbitmq:
-    image: rabbitmq:3.13-management-alpine
-    network_mode: host
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-classsight}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-classsight_rabbit_password}
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
   postgres:
     image: postgres:15-alpine
-    network_mode: host
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-classsight}
       POSTGRES_USER: ${POSTGRES_USER:-classsight}
@@ -75,109 +8,52 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-classsight} -d ${POSTGRES_DB:-classsight}" ]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-classsight} -d ${POSTGRES_DB:-classsight}"]
       interval: 5s
       timeout: 5s
       retries: 12
-      start_period: 10s
-
-  face-service-fastapi:
-    build:
-      context: ./face-service-fastapi
-      dockerfile: Dockerfile
-      network: host
-    network_mode: host
-    environment:
-      # Image quality gates
-      QUALITY_BLUR_THRESHOLD: ${QUALITY_BLUR_THRESHOLD:-30.0}
-      QUALITY_MIN_BRIGHTNESS: ${QUALITY_MIN_BRIGHTNESS:-35.0}
-      QUALITY_MAX_BRIGHTNESS: ${QUALITY_MAX_BRIGHTNESS:-220.0}
-      QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
-      QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
-      # Haar Cascade detector (paper §2.1 — scaleFactor=1.2 matches the paper's search-box zoom)
-      HAAR_SCALE_FACTOR: ${HAAR_SCALE_FACTOR:-1.2}
-      HAAR_MIN_NEIGHBORS: ${HAAR_MIN_NEIGHBORS:-5}
-      HAAR_MIN_SIZE: ${HAAR_MIN_SIZE:-30,30}
-      # Manhattan (L1) distance threshold (paper §2.3)
-      # FaceNet 128-d L1 distances range ~0-20. Tune after full 30-image enrollment.
-      # HIGH confidence < CONFIDENCE_HIGH_BOUND, MEDIUM < CONFIDENCE_MEDIUM_BOUND, else LOW.
-      MANHATTAN_DISTANCE_THRESHOLD: ${MANHATTAN_DISTANCE_THRESHOLD:-10.0}
-      CONFIDENCE_HIGH_BOUND: ${CONFIDENCE_HIGH_BOUND:-8.0}
-      CONFIDENCE_MEDIUM_BOUND: ${CONFIDENCE_MEDIUM_BOUND:-10.0}
-      # Video enrollment frame sampling (paper §2.4: ~30 images/student)
-      ENROLL_VIDEO_FRAME_INTERVAL: ${ENROLL_VIDEO_FRAME_INTERVAL:-5}
-      ENROLL_VIDEO_MAX_FRAMES: ${ENROLL_VIDEO_MAX_FRAMES:-30}
-      # RabbitMQ async worker
-      RABBITMQ_WORKER_ENABLED: ${RABBITMQ_WORKER_ENABLED:-false}
-      RABBITMQ_HOST: 127.0.0.1
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-classsight}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-classsight_rabbit_password}
-      MINIO_ENDPOINT: http://127.0.0.1:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
-    healthcheck:
-      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" ]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
 
   backend-spring:
     build:
       context: ./backend-spring
       dockerfile: Dockerfile
-      network: host
-    network_mode: host
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      POSTGRES_HOST: 127.0.0.1
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-classsight}
       POSTGRES_USER: ${POSTGRES_USER:-classsight}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-classsight_password}
-      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_here_change_in_production}
-      FACE_SERVICE_URL: http://127.0.0.1:${FACE_SERVICE_PORT:-8000}
-      ATTENDANCE_CAPTURE_STORAGE_BACKEND: minio
+      JWT_SECRET: ${JWT_SECRET:-change-this-local-secret}
+      ATTENDANCE_CAPTURE_STORAGE_BACKEND: local
       ATTENDANCE_CAPTURE_STORAGE_PATH: /app/data/captures
-      MINIO_ENDPOINT: http://127.0.0.1:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
-      MINIO_REGION: ${MINIO_REGION:-us-east-1}
-      # Manhattan distance threshold passed through to AttendanceRecognitionService
-      # Must match MANHATTAN_DISTANCE_THRESHOLD above.
-      ATTENDANCE_RECOGNITION_THRESHOLD: ${MANHATTAN_DISTANCE_THRESHOLD:-10.0}
-      RECOGNITION_MODE: ${RECOGNITION_MODE:-sync}
-      RABBITMQ_HOST: 127.0.0.1
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-classsight}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-classsight_rabbit_password}
-      ATTENDANCE_DEFAULTER_THRESHOLD: ${ATTENDANCE_DEFAULTER_THRESHOLD:-75}
-      CLASSSIGHT_ERP_EXPORT_DIR: /app/exports
-      CLASSSIGHT_CAMERA_HEALTH_INTERVAL_MS: ${CLASSSIGHT_CAMERA_HEALTH_INTERVAL_MS:-5000}
-      CLASSSIGHT_CAMERA_HEALTH_INITIAL_DELAY_MS: ${CLASSSIGHT_CAMERA_HEALTH_INITIAL_DELAY_MS:-5000}
+      RECOGNITION_MODE: ${RECOGNITION_MODE:-async}
+      CLASSSIGHT_PHASE1_ENABLED: ${CLASSSIGHT_PHASE1_ENABLED:-false}
+      CLASSSIGHT_MODEL_DIR: /app/models
     volumes:
       - ./data/captures:/app/data/captures
+      - ./models:/app/models:ro
       - ./exports:/app/exports
+    ports:
+      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
-      face-service-fastapi:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
     healthcheck:
-      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health | grep -q 'UP'" ]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health | grep -q 'UP'"]
       interval: 10s
       timeout: 5s
       retries: 18
       start_period: 30s
 
+  frontend-vite:
+    build:
+      context: ./frontend-vite
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      backend-spring:
+        condition: service_healthy
+
 volumes:
   postgres-data:
-  minio-data:
-  rabbitmq-data:

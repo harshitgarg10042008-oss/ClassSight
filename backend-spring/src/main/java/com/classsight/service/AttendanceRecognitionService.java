@@ -48,20 +48,26 @@ public class AttendanceRecognitionService {
     private final ObjectMapper objectMapper;
     private final String faceServiceUrl;
     private final double distanceThreshold;
+    private final Phase1SFaceService phase1SFaceService;
+    private final boolean phase1Enabled;
 
     public AttendanceRecognitionService(
             AttendanceSessionRepository attendanceSessionRepository,
             StudentRepository studentRepository,
             RestTemplate restTemplate,
             ObjectMapper objectMapper,
-            @Value("${face-service.url}") String faceServiceUrl,
-            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold) {
+            @Value("${face-service.url:http://127.0.0.1:8000}") String faceServiceUrl,
+            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold,
+            Phase1SFaceService phase1SFaceService,
+            @Value("${classsight.phase1.enabled:false}") boolean phase1Enabled) {
         this.attendanceSessionRepository = attendanceSessionRepository;
         this.studentRepository = studentRepository;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.faceServiceUrl = faceServiceUrl;
         this.distanceThreshold = distanceThreshold;
+        this.phase1SFaceService = phase1SFaceService;
+        this.phase1Enabled = phase1Enabled;
     }
 
     @Transactional
@@ -74,7 +80,9 @@ public class AttendanceRecognitionService {
         Map<Long, Student> studentsById = enrolledStudents.stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
 
-        Map<String, Object> recognition = callRecognition(image, enrolledStudents);
+        Map<String, Object> recognition = phase1Enabled
+            ? recognizeWithSFace(image, enrolledStudents)
+            : callRecognition(image, enrolledStudents);
         List<Map<String, Object>> matches = readMatches(recognition);
         Map<String, Object> quality = readQuality(recognition);
         boolean qualityPassed = Boolean.TRUE.equals(quality.get("quality_passed"));
@@ -103,7 +111,9 @@ public class AttendanceRecognitionService {
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
-                boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
+                boolean matched = phase1Enabled
+                    ? Boolean.TRUE.equals(match.get("matched"))
+                    : Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
                 record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
                 // Manhattan distance and confidence label (paper §2.3)
@@ -395,6 +405,45 @@ public class AttendanceRecognitionService {
         } catch (RuntimeException e) {
             logger.error("Face recognition failed for capture", e);
             throw new IllegalStateException("Face recognition failed: " + e.getMessage(), e);
+        }
+    }
+
+    private Map<String, Object> recognizeWithSFace(MultipartFile image, List<Student> enrolledStudents) {
+        try {
+            List<Phase1SFaceService.StudentReference> references = enrolledStudents.stream()
+                    .filter(student -> student.getFaceEmbeddingSface() != null
+                            && !student.getFaceEmbeddingSface().isEmpty())
+                    .map(phase1SFaceService::buildReference)
+                    .toList();
+            Phase1SFaceService.SFaceRecognitionResponse response = phase1SFaceService.recognize(image, references);
+            Map<String, Object> result = new HashMap<>();
+            List<Map<String, Object>> matches = response.matches().stream().map(match -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("student_id", match.studentId());
+                item.put("roll_number", match.rollNumber());
+                item.put("matched", match.matched());
+                item.put("confidence_score", match.confidenceScore());
+                item.put("confidence_label", match.confidenceLabel());
+                item.put("face_size_ratio", match.faceSizeRatio());
+                item.put("quality_warnings", match.qualityWarnings());
+                item.put("recognition_state", match.recognitionState());
+                item.put("frame_confirmations", match.frameConfirmations());
+                item.put("distance", 1.0 - match.confidenceScore());
+                return item;
+            }).toList();
+            result.put("matches", matches);
+            Map<String, Object> quality = new HashMap<>();
+            quality.put("warnings", response.quality().warnings());
+            double[] values = response.quality().quality();
+            quality.put("blur_score", values.length > 0 ? values[0] : 0.0);
+            quality.put("brightness_mean", values.length > 1 ? values[1] : 0.0);
+            quality.put("liveness_score", values.length > 2 ? values[2] : 0.0);
+            quality.put("face_size_ratio", values.length > 3 ? values[3] : 0.0);
+            quality.put("quality_passed", response.quality().qualityPassed());
+            result.put("quality", quality);
+            return result;
+        } catch (IOException e) {
+            throw new IllegalStateException("SFace recognition failed for capture", e);
         }
     }
 

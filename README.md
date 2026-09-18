@@ -1,6 +1,8 @@
 # ClassSight
 
-ClassSight is a classroom attendance platform that combines face recognition, attendance review, analytics, local ERP export, camera capture, object storage, and an additive faculty web interface. The current repository contains a Spring Boot API and server-rendered application, a FastAPI recognition service, a Next.js faculty flow, PostgreSQL persistence, MinIO object storage, and RabbitMQ-based asynchronous recognition.
+ClassSight is a classroom attendance platform built around a Spring Boot API, PostgreSQL, local capture storage, and a React/Vite faculty application. Recognition uses OpenCV YuNet plus SFace when `CLASSSIGHT_PHASE1_ENABLED=true`; the legacy recognition services remain in the repository only as a guarded migration fallback until the required golden-set comparison can run.
+
+> **Migration status:** the active Compose stack is `backend-spring`, `postgres`, and `frontend-vite`. YuNet and SFace ONNX assets are required in `models/` and are not checked into this repository. Existing students must be re-enrolled through `/students/{rollNumber}/enroll` with `consentGiven=true`; legacy FaceNet embeddings cannot be used by SFace.
 
 > **Local development note:** the current Docker Compose file intentionally uses host networking. Docker Desktop must be running in Linux-container mode, and the required host ports must be available. The production default remains synchronous recognition; RabbitMQ asynchronous recognition is feature-flagged.
 
@@ -8,42 +10,31 @@ ClassSight is a classroom attendance platform that combines face recognition, at
 
 | Layer | Technology | Role |
 |---|---|---|
-| Faculty frontend | Next.js 14, React 18, TypeScript, CSS | Additive room-selection, assignment-selection, capture, polling review, and finalization flow on port `3000`. |
+| Faculty frontend | React, Vite, TypeScript, CSS | Room selection, browser camera capture, polling review, confidence/quality display, and finalization on port `3000`. |
 | Existing frontend | Spring Boot MVC, Thymeleaf, server-rendered pages | Existing login, room, subject, capture, review, analytics, and administrative pages. These pages remain in place. |
 | Application backend | Java 17, Spring Boot 3.x, Spring Security, Spring Data JPA | Authentication, authorization, attendance sessions, review decisions, analytics, ERP export, camera management, retention, and REST APIs. |
 | Database | PostgreSQL 15 | Users, rooms, cameras, students, embeddings, classes, assignments, attendance sessions, records, audit data, and ERP sync state. |
 | Database migrations | Flyway | Versioned schema migrations and Hibernate schema validation. |
-| Recognition service | Python 3.11, FastAPI, Uvicorn | Image validation, quality/liveness checks, face detection, dlib/`face_recognition` embeddings, recognition, and RabbitMQ worker processing. |
-| Recognition libraries | `face_recognition`, dlib, OpenCV/Pillow-compatible image tooling | Face detection, embedding generation, crop processing, and image validation. |
-| Object storage | MinIO, S3-compatible API, AWS SDK for Java | Durable captured-photo storage in the `classsight-captures` bucket. |
-| Messaging | RabbitMQ 3.13 with management UI, Spring AMQP, Pika | Feature-flagged asynchronous capture-recognition transport with durable capture, result, and dead-letter queues. |
+| Recognition libraries | OpenCV Java bindings, YuNet, SFace | Detection, SFace embedding generation, cosine similarity, and quality signals. |
+| Capture storage | Local filesystem through `StorageService` | Durable captured-photo storage under `data/captures`. |
 | Media/camera support | FFmpeg, RTSP camera adapter | Camera-frame extraction and browser/RTSP capture support. |
 | ERP integration | Local CSV provider | Provisional local export and persisted sync workflow; no real ERP vendor delivery is configured. |
-| Packaging and runtime | Docker, Docker Compose | Local orchestration of the backend, recognition service, database, MinIO, RabbitMQ, and Next.js frontend. |
+| Packaging and runtime | Docker, Docker Compose | Local orchestration of Spring Boot, PostgreSQL, and the Vite frontend. |
 | Testing and analysis | Maven, pytest, Python scripts, golden-set regression, benchmark scripts | Unit tests, API tests, recognition regressions, performance measurement, migration verification, and the edge-detection spike. |
 | Local Kubernetes assets | Kubernetes YAML manifests, k3s/k3d-compatible layout | Local-only deployment attempt; cloud deployment is not included. |
 
 ## Current architecture
 
-The normal synchronous flow is:
+The active flow is:
 
 ```text
-Browser / Thymeleaf / Next.js
+Browser / React Vite
           |
           v
 Spring Boot API :8080
-     |       |        \
-     |       |         \-- PostgreSQL :5432
-     |       \------------ MinIO S3 API :9000
-     \-------------------- FastAPI recognition :8000
-```
-
-When asynchronous recognition is enabled, Spring stores the capture in MinIO and publishes a message to RabbitMQ. The FastAPI worker retrieves the MinIO object, runs the existing recognition algorithm, publishes the result, and Spring applies the existing attendance and review business rules.
-
-```text
-Spring Boot -> RabbitMQ capture queue -> FastAPI worker -> RabbitMQ result queue -> Spring Boot
-                         |                                      |
-                         +------------ MinIO object ------------+
+  |       |
+  |       \-- PostgreSQL :5432
+  \---------- local captures + OpenCV SFace
 ```
 
 ## Repository structure
@@ -55,16 +46,7 @@ ClassSight/
 │   ├── src/main/resources/         application.yml and migration resources
 │   ├── Dockerfile
 │   └── pom.xml
-├── face-service-fastapi/           FastAPI recognition and RabbitMQ worker
-│   ├── main.py
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── tests/
-├── frontend-next/                  Additive Next.js faculty flow
-│   ├── app/page.tsx                Login, selection, capture, polling review, finalization
-│   ├── app/globals.css             Frontend styling
-│   ├── package.json
-│   └── Dockerfile
+├── frontend-vite/                 React/Vite faculty flow
 ├── golden-set/                     Real recognition regression photos and regression runner
 ├── scripts/                        Migration, edge-spike, and Kubernetes validation utilities
 ├── k8s/                            Local-only Kubernetes manifests
@@ -85,7 +67,9 @@ Install the following before starting the stack:
 |---|---|
 | Docker Desktop | Current release with Linux containers and Compose v2 |
 | Git | Current release |
-| RAM | At least 8 GB recommended for the dlib-based FastAPI image build |
+| Java | 17 or newer for local Spring development |
+| Node.js | 20 or newer for local Vite development |
+| Maven | 3.9 or use the included CI/container toolchain |
 
 Docker Desktop is the only required runtime for the normal local start. Java, Maven, Python, and Node.js are provided inside the service images for the Compose path.
 
@@ -113,7 +97,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:8080/health && echo
 ```
 
-The first build may take several minutes because the FastAPI image installs dlib and other recognition dependencies.
+When SFace is enabled, place `face_detection_yunet_2023mar.onnx` and `face_recognition_sface_2021dec.onnx` in `models/`. Obtain them from the official OpenCV Zoo releases and verify their checksums before use.
 
 ## Local services and URLs
 
@@ -135,7 +119,7 @@ Check all Compose services with:
 docker compose ps
 docker compose logs --tail=100 backend-spring
 docker compose logs --tail=100 face-service-fastapi
-docker compose logs --tail=100 frontend-next
+docker compose logs --tail=100 frontend-vite
 ```
 
 ## Local credentials

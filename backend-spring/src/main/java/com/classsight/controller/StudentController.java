@@ -37,9 +37,15 @@ public class StudentController {
     private com.classsight.service.ImageUploadValidator imageUploadValidator;
 
     @Autowired
+    private com.classsight.service.Phase1SFaceService phase1SFaceService;
+
+    @Value("${classsight.phase1.enabled:false}")
+    private boolean phase1Enabled;
+
+    @Autowired
     private RestTemplate restTemplate;
 
-    @Value("${face-service.url}")
+    @Value("${face-service.url:http://127.0.0.1:8000}")
     private String faceServiceUrl;
 
     @PostMapping("/{rollNumber}/enroll")
@@ -62,7 +68,24 @@ public class StudentController {
             Student student = studentRepository.findByRollNumber(rollNumber)
                     .orElseThrow(() -> new RuntimeException("Student not found with roll number: " + rollNumber));
 
-            // Prepare request to face service
+                if (phase1Enabled) {
+                List<Double> embedding = phase1SFaceService.enrollFace(photo);
+                phase1SFaceService.persistSFaceEmbedding(student, embedding);
+                User actor = userRepository.findByUsername(authentication.getName())
+                    .orElseThrow(() -> new IllegalStateException("Authenticated enrolling user not found"));
+                student.setConsentGiven(true);
+                student.setConsentedAt(java.time.LocalDateTime.now());
+                student.setConsentedBy(actor);
+                studentRepository.save(student);
+                return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Student enrolled successfully with SFace",
+                    "rollNumber", student.getRollNumber(),
+                    "studentId", student.getId(),
+                    "embeddingSize", embedding.size()));
+                }
+
+                // Prepare request to the legacy face service while Phase 1 is disabled.
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 

@@ -26,17 +26,8 @@ spring:
     baseline-on-migrate: true
     baseline-version: 1
     locations: classpath:db/migration
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:classsight}
-    password: ${RABBITMQ_PASSWORD:classsight_rabbit_password}
-
 jwt:
   secret: ${JWT_SECRET:your_jwt_secret_here_change_in_production}
-
-face-service:
-  url: ${FACE_SERVICE_URL:http://localhost:8000}
 
 privacy:
   retention-days: ${PRIVACY_RETENTION_DAYS:30}
@@ -50,12 +41,6 @@ attendance:
   capture:
     backend: ${ATTENDANCE_CAPTURE_STORAGE_BACKEND:local}
     storage-path: ${ATTENDANCE_CAPTURE_STORAGE_PATH:./data/captures}
-    minio:
-      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
-      access-key: ${MINIO_ACCESS_KEY:minioadmin}
-      secret-key: ${MINIO_SECRET_KEY:minioadmin}
-      bucket: ${MINIO_BUCKET:classsight-captures}
-      region: ${MINIO_REGION:us-east-1}
   analytics:
     defaulter-threshold: ${ATTENDANCE_DEFAULTER_THRESHOLD:75}
 
