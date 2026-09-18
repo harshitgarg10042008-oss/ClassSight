@@ -6,15 +6,15 @@ services:
     build:
       context: ./frontend-next
       dockerfile: Dockerfile
-      network: host
-    network_mode: host
+    ports:
+      - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://backend-spring:8080}
     depends_on:
       backend-spring:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000 | grep -q 'ClassSight'"]
+      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1:3000 | grep -q 'ClassSight'" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -30,7 +30,7 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live" ]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -42,10 +42,9 @@ services:
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: [ "/bin/sh", "-c" ]
     command: >-
-      "mc alias set local http://127.0.0.1:9000 $${MINIO_ACCESS_KEY:-minioadmin} $${MINIO_SECRET_KEY:-minioadmin} &&
-      mc mb --ignore-existing local/$${MINIO_BUCKET:-classsight-captures}"
+      "mc alias set local http://127.0.0.1:9000 $${MINIO_ACCESS_KEY:-minioadmin} $${MINIO_SECRET_KEY:-minioadmin} && mc mb --ignore-existing local/$${MINIO_BUCKET:-classsight-captures}"
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
@@ -60,7 +59,7 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -76,7 +75,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-classsight} -d ${POSTGRES_DB:-classsight}"]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-classsight} -d ${POSTGRES_DB:-classsight}" ]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -89,11 +88,26 @@ services:
       network: host
     network_mode: host
     environment:
+      # Image quality gates
       QUALITY_BLUR_THRESHOLD: ${QUALITY_BLUR_THRESHOLD:-30.0}
       QUALITY_MIN_BRIGHTNESS: ${QUALITY_MIN_BRIGHTNESS:-35.0}
       QUALITY_MAX_BRIGHTNESS: ${QUALITY_MAX_BRIGHTNESS:-220.0}
       QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
       QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
+      # Haar Cascade detector (paper §2.1 — scaleFactor=1.2 matches the paper's search-box zoom)
+      HAAR_SCALE_FACTOR: ${HAAR_SCALE_FACTOR:-1.2}
+      HAAR_MIN_NEIGHBORS: ${HAAR_MIN_NEIGHBORS:-5}
+      HAAR_MIN_SIZE: ${HAAR_MIN_SIZE:-30,30}
+      # Manhattan (L1) distance threshold (paper §2.3)
+      # FaceNet 128-d L1 distances range ~0-20. Tune after full 30-image enrollment.
+      # HIGH confidence < CONFIDENCE_HIGH_BOUND, MEDIUM < CONFIDENCE_MEDIUM_BOUND, else LOW.
+      MANHATTAN_DISTANCE_THRESHOLD: ${MANHATTAN_DISTANCE_THRESHOLD:-10.0}
+      CONFIDENCE_HIGH_BOUND: ${CONFIDENCE_HIGH_BOUND:-8.0}
+      CONFIDENCE_MEDIUM_BOUND: ${CONFIDENCE_MEDIUM_BOUND:-10.0}
+      # Video enrollment frame sampling (paper §2.4: ~30 images/student)
+      ENROLL_VIDEO_FRAME_INTERVAL: ${ENROLL_VIDEO_FRAME_INTERVAL:-5}
+      ENROLL_VIDEO_MAX_FRAMES: ${ENROLL_VIDEO_MAX_FRAMES:-30}
+      # RabbitMQ async worker
       RABBITMQ_WORKER_ENABLED: ${RABBITMQ_WORKER_ENABLED:-false}
       RABBITMQ_HOST: 127.0.0.1
       RABBITMQ_PORT: 5672
@@ -104,7 +118,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      test: [ "CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -132,7 +146,9 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
-      ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-0.6}
+      # Manhattan distance threshold passed through to AttendanceRecognitionService
+      # Must match MANHATTAN_DISTANCE_THRESHOLD above.
+      ATTENDANCE_RECOGNITION_THRESHOLD: ${MANHATTAN_DISTANCE_THRESHOLD:-10.0}
       RECOGNITION_MODE: ${RECOGNITION_MODE:-sync}
       RABBITMQ_HOST: 127.0.0.1
       RABBITMQ_PORT: 5672
@@ -155,7 +171,7 @@ services:
       minio-init:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health | grep -q 'UP'"]
+      test: [ "CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/health | grep -q 'UP'" ]
       interval: 10s
       timeout: 5s
       retries: 18

@@ -15,7 +15,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -58,6 +58,25 @@ attendance:
       region: ${MINIO_REGION:us-east-1}
   analytics:
     defaulter-threshold: ${ATTENDANCE_DEFAULTER_THRESHOLD:75}
+
+classsight:
+  phase1:
+    enabled: ${CLASSSIGHT_PHASE1_ENABLED:false}
+    model-dir: ${CLASSSIGHT_MODEL_DIR:./models}
+    yunet-model: ${CLASSSIGHT_YUNET_MODEL:face_detection_yunet_2023mar.onnx}
+    sface-model: ${CLASSSIGHT_SFACE_MODEL:face_recognition_sface_2021dec.onnx}
+    confidence-threshold: ${CLASSSIGHT_SFACE_THRESHOLD:0.50}
+    detector-input-width: ${CLASSSIGHT_YUNET_WIDTH:320}
+    detector-input-height: ${CLASSSIGHT_YUNET_HEIGHT:320}
+    score-threshold: ${CLASSSIGHT_YUNET_SCORE_THRESHOLD:0.9}
+    nms-threshold: ${CLASSSIGHT_YUNET_NMS_THRESHOLD:0.3}
+    top-k: ${CLASSSIGHT_YUNET_TOP_K:5000}
+    quality:
+      blur-threshold: ${QUALITY_BLUR_THRESHOLD:30.0}
+      min-brightness: ${QUALITY_MIN_BRIGHTNESS:35.0}
+      max-brightness: ${QUALITY_MAX_BRIGHTNESS:220.0}
+      min-liveness-texture: ${QUALITY_MIN_LIVENESS_TEXTURE:2.5}
+      min-face-size-ratio: ${QUALITY_MIN_FACE_SIZE_RATIO:0.0005}
 
 logging:
   level:

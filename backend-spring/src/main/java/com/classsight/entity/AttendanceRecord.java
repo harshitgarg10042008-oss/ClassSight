@@ -39,6 +39,14 @@ public class AttendanceRecord {
     @Column(name = "recognition_state", length = 32)
     private String recognitionState;
 
+    /** Manhattan (L1) distance from the paper §2.3 matching step. Null when no candidate was found. */
+    @Column(name = "manhattan_distance")
+    private Double manhattanDistance;
+
+    /** Derived confidence label: HIGH / MEDIUM / LOW / UNKNOWN (paper §2.3 threshold bands). */
+    @Column(name = "confidence_label", length = 10)
+    private String confidenceLabel;
+
     @Column(name = "reviewed_by")
     private Long reviewedBy;
 
@@ -145,6 +153,22 @@ public class AttendanceRecord {
 
     public void setFaceSizeRatio(Double faceSizeRatio) {
         this.faceSizeRatio = faceSizeRatio;
+    }
+
+    public Double getManhattanDistance() {
+        return manhattanDistance;
+    }
+
+    public void setManhattanDistance(Double manhattanDistance) {
+        this.manhattanDistance = manhattanDistance;
+    }
+
+    public String getConfidenceLabel() {
+        return confidenceLabel;
+    }
+
+    public void setConfidenceLabel(String confidenceLabel) {
+        this.confidenceLabel = confidenceLabel;
     }
 
     public Long getReviewedBy() {

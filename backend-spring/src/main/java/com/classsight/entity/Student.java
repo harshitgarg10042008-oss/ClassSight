@@ -36,8 +36,14 @@ public class Student {
     @Column(name = "face_embedding")
     private List<Double> faceEmbedding;
 
+    @Column(name = "face_embedding_sface")
+    private List<Double> faceEmbeddingSface;
+
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<StudentFaceEmbedding> faceEmbeddings = new ArrayList<>();
+
+    @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<StudentFaceEmbeddingV2> faceEmbeddingsV2 = new ArrayList<>();
 
     @Column(name = "consent_given", nullable = false)
     private Boolean consentGiven = false;
@@ -131,11 +137,30 @@ public class Student {
         return faceEmbeddings;
     }
 
+    public List<Double> getFaceEmbeddingSface() {
+        return faceEmbeddingSface;
+    }
+
+    public void setFaceEmbeddingSface(List<Double> faceEmbeddingSface) {
+        this.faceEmbeddingSface = faceEmbeddingSface;
+    }
+
+    public List<StudentFaceEmbeddingV2> getFaceEmbeddingsV2() {
+        return faceEmbeddingsV2;
+    }
+
     public void addFaceEmbedding(List<Double> embedding) {
         StudentFaceEmbedding reference = new StudentFaceEmbedding();
         reference.setStudent(this);
         reference.setEmbedding(embedding);
         faceEmbeddings.add(reference);
+    }
+
+    public void addFaceEmbeddingV2(List<Double> embedding) {
+        StudentFaceEmbeddingV2 reference = new StudentFaceEmbeddingV2();
+        reference.setStudent(this);
+        reference.setEmbedding(embedding);
+        faceEmbeddingsV2.add(reference);
     }
 
     public Boolean getConsentGiven() {
