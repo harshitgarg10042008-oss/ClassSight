@@ -83,6 +83,11 @@ public class AttendanceRecognitionService {
         session.setQualityWarning(globalQualityWarnings.isEmpty() ? null : String.join("; ", globalQualityWarnings));
         Set<Long> seenStudentIds = new HashSet<>();
         boolean requiresReview = !qualityPassed;
+        boolean hasUnmatchedDetections = matches.stream().anyMatch(m -> {
+            boolean isMatched = Boolean.TRUE.equals(m.get("matched"));
+            Object sid = m.get("student_id");
+            return !isMatched || sid == null;
+        });
 
         session.getAttendanceRecords().clear();
         for (Student student : enrolledStudents) {
@@ -92,11 +97,18 @@ public class AttendanceRecognitionService {
             record.setStudent(student);
 
             if (match == null) {
-                record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
-                record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
-                record.setRecognitionState("UNKNOWN");
-                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
-                requiresReview = true;
+                if (!qualityPassed) {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                    record.setRecognitionState("UNKNOWN");
+                    record.setQualityWarning(globalQualityWarnings.isEmpty() ? "Image quality degraded" : String.join("; ", globalQualityWarnings));
+                    requiresReview = true;
+                } else {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.ABSENT);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.APPROVED);
+                    record.setRecognitionState("ABSENT");
+                    record.setQualityWarning(null);
+                }
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
@@ -119,12 +131,17 @@ public class AttendanceRecognitionService {
                     requiresReview = true;
                 } else {
                     record.setStatus(AttendanceRecord.AttendanceStatus.PRESENT);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.APPROVED);
                     if (!warnings.isEmpty()) {
                         record.setQualityWarning(String.join("; ", warnings));
                     }
                 }
             }
             session.getAttendanceRecords().add(record);
+        }
+
+        if (hasUnmatchedDetections) {
+            requiresReview = true;
         }
 
         // Keep the local variable explicit: the map is also a guard against an
@@ -166,6 +183,12 @@ public class AttendanceRecognitionService {
         session.setQualityWarning(globalQualityWarnings.isEmpty() ? null : String.join("; ", globalQualityWarnings));
         Set<Long> seenStudentIds = new HashSet<>();
         boolean requiresReview = !qualityPassed;
+        boolean hasUnmatchedDetections = matches.stream().anyMatch(m -> {
+            boolean isMatched = Boolean.TRUE.equals(m.get("matched"));
+            Object sid = m.get("student_id");
+            return !isMatched || sid == null;
+        });
+
         session.getAttendanceRecords().clear();
         for (Student student : enrolledStudents) {
             Map<String, Object> match = findMatchForStudent(matches, student.getId(), seenStudentIds);
@@ -173,11 +196,18 @@ public class AttendanceRecognitionService {
             record.setSession(session);
             record.setStudent(student);
             if (match == null) {
-                record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
-                record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
-                record.setRecognitionState("UNKNOWN");
-                record.setQualityWarning(globalQualityWarnings.isEmpty() ? "No enrolled face match" : String.join("; ", globalQualityWarnings) + "; No enrolled face match");
-                requiresReview = true;
+                if (!qualityPassed) {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
+                    record.setRecognitionState("UNKNOWN");
+                    record.setQualityWarning(globalQualityWarnings.isEmpty() ? "Image quality degraded" : String.join("; ", globalQualityWarnings));
+                    requiresReview = true;
+                } else {
+                    record.setStatus(AttendanceRecord.AttendanceStatus.ABSENT);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.APPROVED);
+                    record.setRecognitionState("ABSENT");
+                    record.setQualityWarning(null);
+                }
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
@@ -200,11 +230,17 @@ public class AttendanceRecognitionService {
                     requiresReview = true;
                 } else {
                     record.setStatus(AttendanceRecord.AttendanceStatus.PRESENT);
+                    record.setReviewStatus(AttendanceRecord.ReviewStatus.APPROVED);
                     if (!warnings.isEmpty()) record.setQualityWarning(String.join("; ", warnings));
                 }
             }
             session.getAttendanceRecords().add(record);
         }
+
+        if (hasUnmatchedDetections) {
+            requiresReview = true;
+        }
+
         if (studentsById.size() != enrolledStudents.size()) throw new IllegalStateException("Duplicate student IDs found in ClassSection");
         session.setStatus(requiresReview ? AttendanceSession.SessionStatus.REVIEW_REQUIRED : AttendanceSession.SessionStatus.FINALIZED);
         session.setEndedAt(java.time.LocalDateTime.now());
