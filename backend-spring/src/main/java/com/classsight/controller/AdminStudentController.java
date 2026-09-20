@@ -23,8 +23,8 @@ public class AdminStudentController {
     }
 
     @GetMapping
-    public List<Student> getAllStudents() {
-        return studentRepository.findAll();
+    public List<com.classsight.dto.StudentResponse> getAllStudents() {
+        return studentRepository.findAll().stream().map(com.classsight.dto.StudentResponse::new).toList();
     }
 
     @PostMapping

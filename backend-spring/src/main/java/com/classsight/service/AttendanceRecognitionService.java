@@ -45,6 +45,7 @@ public class AttendanceRecognitionService {
     private final ObjectMapper objectMapper;
     private final String faceServiceUrl;
     private final double distanceThreshold;
+    private final boolean edgeCropEnabled;
 
     public AttendanceRecognitionService(
             AttendanceSessionRepository attendanceSessionRepository,
@@ -52,13 +53,15 @@ public class AttendanceRecognitionService {
             RestTemplate restTemplate,
             ObjectMapper objectMapper,
             @Value("${face-service.url}") String faceServiceUrl,
-            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold) {
+            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold,
+            @Value("${attendance.recognition.edge-crop-enabled:false}") boolean edgeCropEnabled) {
         this.attendanceSessionRepository = attendanceSessionRepository;
         this.studentRepository = studentRepository;
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
         this.faceServiceUrl = faceServiceUrl;
         this.distanceThreshold = distanceThreshold;
+        this.edgeCropEnabled = edgeCropEnabled;
     }
 
     @Transactional
@@ -268,6 +271,9 @@ public class AttendanceRecognitionService {
             body.add("image", image.getResource());
             body.add("enrolled_students", objectMapper.writeValueAsString(payload));
             body.add("distance_threshold", String.valueOf(distanceThreshold));
+            body.add("edge_crop", String.valueOf(edgeCropEnabled));
+            logger.info("Calling recognition: threshold={}, edge_crop={}, enrolled={}",
+                    distanceThreshold, edgeCropEnabled, payload.size());
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     faceServiceUrl + "/recognize",

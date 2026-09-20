@@ -13,4 +13,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     Optional<Student> findByRollNumber(String rollNumber);
     boolean existsByRollNumber(String rollNumber);
     List<Student> findByClassSectionAndActiveTrue(ClassSection classSection);
+    /** Used by StudentController list endpoint to filter by section. */
+    List<Student> findByClassSectionId(Long classSectionId);
 }
+
