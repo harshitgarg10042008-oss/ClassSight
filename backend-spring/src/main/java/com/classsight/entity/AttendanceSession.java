@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+
 @Entity
 @Table(name = "attendance_sessions")
 public class AttendanceSession {
@@ -66,6 +67,14 @@ public class AttendanceSession {
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<AttendanceRecord> attendanceRecords = new HashSet<>();
+
+    /** Nullable link to the timetable class session (added in V7). Null for legacy sessions. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "class_session_id")
+    private ClassSession classSession;
+
+    @Column(name = "capture_phase", length = 50)
+    private String capturePhase = "SINGLE";
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -245,5 +254,21 @@ public class AttendanceSession {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public ClassSession getClassSession() {
+        return classSession;
+    }
+
+    public void setClassSession(ClassSession classSession) {
+        this.classSession = classSession;
+    }
+
+    public String getCapturePhase() {
+        return capturePhase != null ? capturePhase : "SINGLE";
+    }
+
+    public void setCapturePhase(String capturePhase) {
+        this.capturePhase = capturePhase;
     }
 }

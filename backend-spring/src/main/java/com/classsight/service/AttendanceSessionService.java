@@ -87,6 +87,13 @@ public class AttendanceSessionService {
         return savedSession;
     }
 
+    public void linkClassSession(Long sessionId, com.classsight.entity.ClassSession classSession) {
+        attendanceSessionRepository.findById(sessionId).ifPresent(s -> {
+            s.setClassSession(classSession);
+            attendanceSessionRepository.save(s);
+        });
+    }
+
     public Optional<AttendanceSession> getSessionById(Long id) {
         return attendanceSessionRepository.findById(id);
     }

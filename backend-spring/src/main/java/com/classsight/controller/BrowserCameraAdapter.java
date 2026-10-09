@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.nio.file.Path;
@@ -77,16 +78,20 @@ public class BrowserCameraAdapter {
     @Autowired
     private com.classsight.service.ImageUploadValidator imageUploadValidator;
 
+    @Autowired(required = false)
+    private com.classsight.repository.ClassSessionRepository classSessionRepository;
+
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Map<String, Object>> uploadCaptureMultipart(
             @RequestParam("image") MultipartFile image,
             @RequestParam(value = "roomId", required = false) Long roomId,
             @RequestParam(value = "cameraId", required = false) Long cameraId,
             @RequestParam(value = "assignmentId", required = false) Long assignmentId,
+            @RequestParam(value = "classSessionId", required = false) Long classSessionId,
             org.springframework.security.core.Authentication authentication) {
         
-        logger.info("Received capture via multipart. Size: {} bytes, ContentType: {}, RoomId: {}, CameraId: {}, AssignmentId: {}", 
-                image.getSize(), image.getContentType(), roomId, cameraId, assignmentId);
+        logger.info("Received capture via multipart. Size: {} bytes, ContentType: {}, RoomId: {}, CameraId: {}, AssignmentId: {}, ClassSessionId: {}", 
+                image.getSize(), image.getContentType(), roomId, cameraId, assignmentId, classSessionId);
         
         try {
             imageUploadValidator.validate(image);
@@ -141,6 +146,24 @@ public class BrowserCameraAdapter {
                         attendanceSessionService.captureFingerprint(faculty, room, camera, subject, classSection, imageBytes));
                 
                 logger.info("Created AttendanceSession with ID: {}, Status: OPEN", session.getId());
+                
+                // Phase 2/3: Link to ClassSession if available
+                if (classSessionRepository != null) {
+                    com.classsight.entity.ClassSession linkedClassSession = null;
+                    if (classSessionId != null) {
+                        linkedClassSession = classSessionRepository.findById(classSessionId).orElse(null);
+                    } else {
+                        List<com.classsight.entity.ClassSession> matches = classSessionRepository.findMatchingSessionsForCapture(
+                                java.time.LocalDate.now(), faculty.getId(), subject.getId(), room.getId());
+                        if (!matches.isEmpty()) {
+                            linkedClassSession = matches.get(0);
+                        }
+                    }
+                    if (linkedClassSession != null) {
+                        attendanceSessionService.linkClassSession(session.getId(), linkedClassSession);
+                        logger.info("Linked AttendanceSession {} to ClassSession {}", session.getId(), linkedClassSession.getId());
+                    }
+                }
                 
                 // Persist the original bytes before recognition so review can render
                 // the exact captured image after this request completes.

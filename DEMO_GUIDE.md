@@ -38,121 +38,89 @@ npm run dev
 
 ---
 
-## 2 · Login Credentials
+## 2 · Demo Roles & Credentials
 
-| Role | Username | Password |
-|------|----------|----------|
-| Teacher / Demo operator | `teacher` | `teacher123` |
-| Admin (if needed) | `admin` | `admin123` |
-
----
-
-## 3 · Bulk Enroll Students (before class starts)
-
-> Do this **5 minutes before** the demo begins.
-
-1. Click **"Student Enrollment"** tab
-2. Click **"Download CSV Template"** → save as `students.csv`
-3. Fill in real student roll numbers and names (or use the sample 5 rows)
-4. Name each photo file `<roll_number>.jpg` (e.g. `2501320100101.jpg`)
-5. Upload:
-   - **CSV file** → browse to `students.csv`
-   - **Photos** → select all `.jpg` files at once (Ctrl+A), OR zip them
-6. Click **"Start Bulk Enrollment"**
-7. Watch the per-row table — each row turns green ✅ or red ❌ with a diagnostic message
-8. Check the **Enrolled Students** roster — all enrolled students show "128-d Registered"
-
-> ⚠️ **If a row fails:** "Multiple faces detected" → retake photo with one face only.
-> ⚠️ **If a row fails:** "No face detected" → make sure the face is clearly visible and well-lit.
+| Role | Username | Password | Purpose |
+|------|----------|----------|---------|
+| **Teacher (Primary)** | `teacher` | `teacher123` | Main faculty attendance, period auto-selection, review |
+| **Teacher 2 (Leave Demo)** | `teacher2` | `teacher123` | Demonstrates faculty on approved leave / substitution |
+| **Teacher 3 (Substitute)** | `teacher3` | `teacher123` | Assigned as substitute teacher for class sessions |
+| **HOD / Admin** | `admin` | `admin123` | Approves leave, assigns substitute, views daily dashboard |
+| **Student** | `DEMO001` (or student user) | `password123` | Read-only attendance summary, timetable, disputes |
 
 ---
 
-## 4 · Taking Attendance (the live demo moment)
+## 3 · Comprehensive Live Demo Script (4 Scenarios)
 
-> This is the core demo. Keep it to ~60 seconds.
+### Scenario 1: Full-Class Attendance (All Students Present)
+1. Log in at `http://localhost:3000` as `teacher` (`teacher123`).
+2. Navigate to **"Take Attendance"**.
+3. Point webcam to full group of students. Click **"Snap Attendance Photo"** → **"Submit Capture & Recognize"**.
+4. **Observe:**
+   - Vectorized Hungarian matching matches all students in ~1.4s.
+   - All student cards show **PRESENT** (green badge).
+   - If zero ambiguous faces/warnings, the session **auto-finalizes** instantly to `FINALIZED`.
 
-1. Click **"Take Attendance"** tab
-2. **Step 01 — Select:**
-   - Room: `Room 101`
-   - Subject: `CS101 — Introduction to Computer Science · CS-2026-A`
-   - Click **"Continue to Photo Capture"**
-3. **Step 02 — Capture:**
-   - **Live Webcam** (default): wait for the camera preview to appear
-   - Position students in frame → click **"Snap Attendance Photo"**
-   - Preview thumbnail appears below
-   - Click **"Submit Capture & Recognize"**
-4. **Step 03 — Results:**
-   - Page polls every 1 second while recognition runs (usually 2–8 seconds)
-   - When complete: each student card shows PRESENT ✅ or ABSENT ❌
-   - Students not detected in the photo are automatically marked **ABSENT**
-   - If any cards need manual override → click Present/Absent buttons → **"Finalize Attendance Session"**
-   - If zero cards need review → session is **auto-finalized instantly** ✨
+### Scenario 2: Absent Student Detection & Verification
+1. Ask 3–5 students to step out of the camera view.
+2. Click **"Retake / New Capture"** and snap a new photo of the remaining students.
+3. Submit capture.
+4. **Observe:**
+   - Detected students show **PRESENT** (green).
+   - Students who stepped out are automatically detected and marked **ABSENT** (red badge).
+   - Denominator and attended counts update automatically without manual data entry.
+
+### Scenario 3: Timetable Module & Auto-Period Selection
+1. Return to the top of the **Take Attendance** tab (or refresh).
+2. **Observe:**
+   - The **Current Period Banner** automatically queries `/api/timetable/current-period`.
+   - The active period (e.g. `MATH101` or `CS101` in `Room 101`) is **automatically selected**.
+   - The capture window indicator displays:
+     - `CAPTURE WINDOW OPEN` if current time is within `[startTime - 5 min, endTime + 15 min grace]`.
+   - If outside normal period hours, a prompt requests a "Late Capture Reason" before unlocking webcam capture, logging an audit record.
+   - Click **"Quick Start Period"** to immediately begin capture without manual dropdown navigation.
+
+### Scenario 4: Teacher Leave, Substitution & Analytics Protection
+1. Log in (or switch tab) as `admin` (`admin123`).
+2. Open **Admin / HOD Dashboard** (`/api/timetable/dashboard/today`).
+3. View **"Teachers on Leave"**:
+   - Notice `teacher2` has approved leave scheduled.
+   - Associated sessions for `teacher2` are listed with status `CANCELLED` (reason: "Teacher on approved leave").
+4. **Assign a Substitute**:
+   - For an affected session, select **Assign Substitute** → choose `teacher3`.
+   - Status updates from `CANCELLED` to `SUBSTITUTED`.
+5. **Verify Analytics Denominator Protection**:
+   - Navigate to Analytics (`/api/analytics?subjectId=1&classSectionId=1`).
+   - Check the student percentages:
+     - Hard rule enforced: Cancelled sessions generate **0 absences** and do **NOT** count towards the lecture denominator.
+     - Student attendance percentage remains 100% (or unaffected by cancellations), proving the denominator fix.
 
 ---
 
-## 5 · What to Say During the Demo
-
-> Suggested talking points (30 seconds each):
-
-**On login:**
-> "Faculty log in with their credentials. Authentication is JWT — tokens stay in memory, never localStorage."
-
-**On enrollment:**
-> "Before a class term, the admin bulk-enrolls students with a CSV and photos. The system extracts a 128-dimensional facial embedding using dlib's HOG detector. We store embeddings, never raw photos of students."
-
-**On attendance:**
-> "The teacher takes one group photo of the class. Our Spring Boot backend sends it to a FastAPI recognition engine. Each face is matched against enrolled embeddings using Euclidean distance. Students whose faces aren't detected are automatically marked absent — zero manual effort."
-
-**On the results:**
-> "Only ambiguous cases bubble up for manual review. Cleanly recognized sessions auto-finalize in under 10 seconds."
-
----
-
-## 6 · Fallback Scenarios (if something goes wrong)
+## 4 · Fallback Scenarios (if something goes wrong)
 
 | Problem | Quick Fix |
 |---------|-----------|
-| Webcam not accessible | Switch to **"Upload Photo File"** mode — upload a pre-taken photo |
-| Backend 502 / connection refused | Check `docker compose ps` — restart stuck container: `docker compose restart backend-spring` |
-| Recognition returns all UNKNOWN | Verify students are enrolled (roster shows "128-d Registered"). Try with good lighting and closer photo |
-| Face service timeout | Photo may be too large — resize to < 2 MB before submitting |
-| Login rejected | Try `admin` / `admin123` as fallback credentials |
-| DB empty (no rooms/subjects) | Run `docker compose restart backend-spring` — DataSeeder runs on startup |
+| Webcam not accessible | Switch to **"Upload Photo File"** mode — upload a sample classroom image |
+| Backend 502 / connection refused | Check `docker compose ps` — run `docker compose restart backend-spring` |
+| Recognition returns all UNKNOWN | Check roster on Enrollment tab — verify student embeddings are seeded. |
+| Capture outside scheduled period | Enter any late capture note (e.g. "Lab rescheduled") to bypass the capture window |
+| Login rejected | Use `admin` / `admin123` or `teacher` / `teacher123` |
 
 ---
 
-## 7 · Recognition Performance Tips
-
-- **Optimal distance from camera:** 2–4 metres (not more than 6m)
-- **Lighting:** even, frontal — avoid strong backlighting from windows
-- **Number of students in frame:** system handles 30+ enrolled; **demo group in camera: 8–12** works best
-- **Photo quality:** any modern smartphone or webcam at 720p+ is sufficient
-- **Edge crop mode** (better accuracy for wide shots): set `EDGE_CROP_ENABLED=true` in `docker-compose.yml` for next restart
-
----
-
-## 8 · Stopping Services
-
-```powershell
-docker compose down
-# Or keep DB persistent and only stop app containers:
-docker compose stop backend-spring face-service-fastapi frontend-next
-```
-
----
-
-## Quick URLs
+## 5 · Quick URLs
 
 | Service | URL |
 |---------|-----|
-| **Frontend** | http://localhost:3000 |
-| **Backend API** | http://localhost:8080 |
+| **Frontend Web App** | http://localhost:3000 |
+| **Spring Boot API** | http://localhost:8080 |
 | **API Health** | http://localhost:8080/health |
-| **Face Service** | http://localhost:8000 |
-| **Face Health** | http://localhost:8000/health |
-| **MinIO Console** | http://localhost:9001 (admin: minioadmin / minioadmin) |
+| **FastAPI Face Engine** | http://localhost:8000/health |
+| **Today's Schedule & HOD Hub** | http://localhost:8080/api/timetable/dashboard/today |
+| **MinIO Storage** | http://localhost:9001 (minioadmin / minioadmin) |
 | **RabbitMQ Console** | http://localhost:15672 (classsight / classsight_rabbit_password) |
 
 ---
 
-*Last updated: 2026-09-20 · Version: Demo-Day P0 build*
+*Last updated: 2026-10-09 · Version: Live Demo Readiness Build*

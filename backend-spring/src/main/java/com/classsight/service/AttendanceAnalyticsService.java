@@ -6,6 +6,9 @@ import com.classsight.entity.Student;
 import com.classsight.entity.User;
 import com.classsight.repository.AttendanceSessionRepository;
 import com.classsight.repository.FacultySubjectAssignmentRepository;
+import com.classsight.entity.ClassSession;
+import com.classsight.repository.ClassSessionRepository;
+import com.classsight.repository.StudentLeaveRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -27,14 +30,35 @@ public class AttendanceAnalyticsService {
 
     private final AttendanceSessionRepository sessionRepository;
     private final FacultySubjectAssignmentRepository assignmentRepository;
+    private final ClassSessionRepository classSessionRepository;
+    private final StudentLeaveRepository studentLeaveRepository;
     private final double defaulterThreshold;
 
     public AttendanceAnalyticsService(
             AttendanceSessionRepository sessionRepository,
             FacultySubjectAssignmentRepository assignmentRepository,
             @Value("${attendance.analytics.defaulter-threshold:75}") double defaulterThreshold) {
+        this(sessionRepository, assignmentRepository, null, null, defaulterThreshold);
+    }
+
+    public AttendanceAnalyticsService(
+            AttendanceSessionRepository sessionRepository,
+            FacultySubjectAssignmentRepository assignmentRepository,
+            ClassSessionRepository classSessionRepository,
+            @Value("${attendance.analytics.defaulter-threshold:75}") double defaulterThreshold) {
+        this(sessionRepository, assignmentRepository, classSessionRepository, null, defaulterThreshold);
+    }
+
+    public AttendanceAnalyticsService(
+            AttendanceSessionRepository sessionRepository,
+            FacultySubjectAssignmentRepository assignmentRepository,
+            ClassSessionRepository classSessionRepository,
+            StudentLeaveRepository studentLeaveRepository,
+            @Value("${attendance.analytics.defaulter-threshold:75}") double defaulterThreshold) {
         this.sessionRepository = sessionRepository;
         this.assignmentRepository = assignmentRepository;
+        this.classSessionRepository = classSessionRepository;
+        this.studentLeaveRepository = studentLeaveRepository;
         this.defaulterThreshold = defaulterThreshold;
     }
 
@@ -47,18 +71,34 @@ public class AttendanceAnalyticsService {
             throw new IllegalArgumentException("to must be on or after from");
         }
 
-        List<AttendanceSession> sessions = sessionRepository.findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
+        List<AttendanceSession> rawSessions = sessionRepository.findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
                 classSectionId, subjectId, AttendanceSession.SessionStatus.FINALIZED,
                 effectiveFrom.atStartOfDay(), effectiveTo.atTime(LocalTime.MAX));
 
+        // Filter out any attendance sessions linked to CANCELLED class sessions
+        // (Hard rule: Cancelled sessions must NEVER count towards total lectures conducted)
+        List<AttendanceSession> sessions = rawSessions.stream()
+                .filter(s -> s.getClassSession() == null ||
+                        s.getClassSession().getStatus() != ClassSession.SessionStatus.CANCELLED)
+                .toList();
+
         Map<Long, StudentSummary> summaries = new HashMap<>();
         for (AttendanceSession session : sessions) {
+            LocalDate sessionDate = session.getStartedAt() != null ? session.getStartedAt().toLocalDate() : null;
             for (AttendanceRecord record : session.getAttendanceRecords()) {
                 if (record.getStatus() != AttendanceRecord.AttendanceStatus.PRESENT
                         && record.getStatus() != AttendanceRecord.AttendanceStatus.ABSENT) {
                     continue;
                 }
                 Student student = record.getStudent();
+                // Exclude session from student's denominator if student has approved leave (Medical or Duty/OD)
+                if (studentLeaveRepository != null && sessionDate != null) {
+                    List<com.classsight.entity.StudentLeave> approvedLeaves =
+                            studentLeaveRepository.findApprovedLeaveOnDate(student.getId(), sessionDate);
+                    if (!approvedLeaves.isEmpty()) {
+                        continue;
+                    }
+                }
                 StudentSummary summary = summaries.computeIfAbsent(student.getId(), id -> new StudentSummary(student));
                 summary.total++;
                 if (record.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT) summary.present++;
@@ -73,12 +113,23 @@ public class AttendanceAnalyticsService {
                 .filter(item -> ((BigDecimal) item.get("attendancePercentage")).doubleValue() < defaulterThreshold)
                 .toList();
 
+        long conductedClassSessions = 0;
+        long totalScheduledClassSessions = 0;
+        if (classSessionRepository != null) {
+            conductedClassSessions = classSessionRepository.countConductedSessions(
+                    subjectId, classSectionId, effectiveFrom, effectiveTo);
+            totalScheduledClassSessions = classSessionRepository.countTotalSessions(
+                    subjectId, classSectionId, effectiveFrom, effectiveTo);
+        }
+
         Map<String, Object> response = new HashMap<>();
         response.put("subjectId", subjectId);
         response.put("classSectionId", classSectionId);
         response.put("from", effectiveFrom.toString());
         response.put("to", effectiveTo.toString());
         response.put("finalizedSessionCount", sessions.size());
+        response.put("conductedSessionCount", conductedClassSessions > 0 ? conductedClassSessions : sessions.size());
+        response.put("totalScheduledSessions", totalScheduledClassSessions);
         response.put("defaulterThreshold", defaulterThreshold);
         response.put("students", students);
         response.put("defaulters", defaulters);
@@ -90,7 +141,7 @@ public class AttendanceAnalyticsService {
     }
 
     private void authorize(Long subjectId, Long classSectionId, User actor) {
-        boolean admin = actor != null && actor.getRole() == User.Role.ADMIN;
+        boolean admin = actor != null && (actor.getRole() == User.Role.ADMIN || actor.getRole() == User.Role.HOD);
         boolean assigned = actor != null && assignmentRepository
                 .existsByFacultyIdAndSubjectIdAndClassSectionIdAndActiveTrue(actor.getId(), subjectId, classSectionId);
         if (!admin && !assigned) {

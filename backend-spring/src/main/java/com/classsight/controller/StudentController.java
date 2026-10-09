@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/students")
@@ -397,5 +398,36 @@ public class StudentController {
             
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
+    }
+
+    /**
+     * DELETE /api/students/{id}/biometrics
+     * DPDP Act 2023 compliance: Deletes a student's biometric data on request.
+     */
+    @DeleteMapping("/{id}/biometrics")
+    public ResponseEntity<?> deleteBiometrics(@PathVariable Long id, Principal principal) {
+        Optional<Student> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "status", "error",
+                    "message", "Student not found with id: " + id
+            ));
+        }
+        Student student = studentOpt.get();
+        student.setFaceEmbedding(null);
+        if (student.getFaceEmbeddings() != null) {
+            student.getFaceEmbeddings().clear();
+        }
+        student.setConsentGiven(false);
+        student.setConsentedAt(null);
+        student.setConsentedBy(null);
+        studentRepository.save(student);
+        logger.info("Biometric data deleted for student {} (ID: {}) by user {}",
+                student.getRollNumber(), id, principal != null ? principal.getName() : "system");
+        return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Biometric data deleted successfully for student: " + student.getRollNumber(),
+                "studentId", id
+        ));
     }
 }

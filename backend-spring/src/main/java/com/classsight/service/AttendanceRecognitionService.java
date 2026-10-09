@@ -2,8 +2,10 @@ package com.classsight.service;
 
 import com.classsight.entity.AttendanceRecord;
 import com.classsight.entity.AttendanceSession;
+import com.classsight.entity.ClassSession;
 import com.classsight.entity.Student;
 import com.classsight.repository.AttendanceSessionRepository;
+import com.classsight.repository.StudentEnrollmentRepository;
 import com.classsight.repository.StudentRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,6 +48,8 @@ public class AttendanceRecognitionService {
     private final String faceServiceUrl;
     private final double distanceThreshold;
     private final boolean edgeCropEnabled;
+    private final TimetableService timetableService;
+    private final StudentEnrollmentRepository studentEnrollmentRepository;
 
     public AttendanceRecognitionService(
             AttendanceSessionRepository attendanceSessionRepository,
@@ -55,6 +59,33 @@ public class AttendanceRecognitionService {
             @Value("${face-service.url}") String faceServiceUrl,
             @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold,
             @Value("${attendance.recognition.edge-crop-enabled:false}") boolean edgeCropEnabled) {
+        this(attendanceSessionRepository, studentRepository, restTemplate, objectMapper,
+                faceServiceUrl, distanceThreshold, edgeCropEnabled, null, null);
+    }
+
+    public AttendanceRecognitionService(
+            AttendanceSessionRepository attendanceSessionRepository,
+            StudentRepository studentRepository,
+            RestTemplate restTemplate,
+            ObjectMapper objectMapper,
+            @Value("${face-service.url}") String faceServiceUrl,
+            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold,
+            @Value("${attendance.recognition.edge-crop-enabled:false}") boolean edgeCropEnabled,
+            TimetableService timetableService) {
+        this(attendanceSessionRepository, studentRepository, restTemplate, objectMapper,
+                faceServiceUrl, distanceThreshold, edgeCropEnabled, timetableService, null);
+    }
+
+    public AttendanceRecognitionService(
+            AttendanceSessionRepository attendanceSessionRepository,
+            StudentRepository studentRepository,
+            RestTemplate restTemplate,
+            ObjectMapper objectMapper,
+            @Value("${face-service.url}") String faceServiceUrl,
+            @Value("${attendance.recognition.threshold:0.6}") double distanceThreshold,
+            @Value("${attendance.recognition.edge-crop-enabled:false}") boolean edgeCropEnabled,
+            TimetableService timetableService,
+            StudentEnrollmentRepository studentEnrollmentRepository) {
         this.attendanceSessionRepository = attendanceSessionRepository;
         this.studentRepository = studentRepository;
         this.restTemplate = restTemplate;
@@ -62,6 +93,19 @@ public class AttendanceRecognitionService {
         this.faceServiceUrl = faceServiceUrl;
         this.distanceThreshold = distanceThreshold;
         this.edgeCropEnabled = edgeCropEnabled;
+        this.timetableService = timetableService;
+        this.studentEnrollmentRepository = studentEnrollmentRepository;
+    }
+
+    private List<Student> resolveEnrolledStudents(AttendanceSession session) {
+        if (studentEnrollmentRepository != null && session.getClassSection() != null && session.getSubject() != null) {
+            List<com.classsight.entity.StudentEnrollment> enrollments =
+                    studentEnrollmentRepository.findEnrolledStudents(session.getClassSection().getId(), session.getSubject().getId());
+            if (enrollments != null && !enrollments.isEmpty()) {
+                return enrollments.stream().map(com.classsight.entity.StudentEnrollment::getStudent).filter(Student::getActive).toList();
+            }
+        }
+        return studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
     }
 
     @Transactional
@@ -70,7 +114,7 @@ public class AttendanceRecognitionService {
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
 
         session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
-        List<Student> enrolledStudents = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
+        List<Student> enrolledStudents = resolveEnrolledStudents(session);
         Map<Long, Student> studentsById = enrolledStudents.stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
 
@@ -163,6 +207,17 @@ public class AttendanceRecognitionService {
         AttendanceSession saved = attendanceSessionRepository.save(session);
         logger.info("Attendance session {} processed: {} students, status {}, threshold {}",
                 sessionId, enrolledStudents.size(), saved.getStatus(), distanceThreshold);
+        // Phase 2: mark the linked class session as CONDUCTED when attendance is finalized
+        if (timetableService != null
+                && saved.getStatus() == AttendanceSession.SessionStatus.FINALIZED
+                && saved.getClassSession() != null) {
+            try {
+                timetableService.markConducted(saved.getClassSession());
+            } catch (Exception e) {
+                logger.warn("Could not mark class session {} as CONDUCTED: {}",
+                        saved.getClassSession().getId(), e.getMessage());
+            }
+        }
         return saved;
     }
 
@@ -172,7 +227,7 @@ public class AttendanceRecognitionService {
         AttendanceSession session = attendanceSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
         session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
-        List<Student> enrolledStudents = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection());
+        List<Student> enrolledStudents = resolveEnrolledStudents(session);
         Map<Long, Student> studentsById = enrolledStudents.stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
         List<Map<String, Object>> matches = readMatches(recognition);

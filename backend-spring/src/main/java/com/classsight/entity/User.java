@@ -55,8 +55,12 @@ public class User {
         updatedAt = LocalDateTime.now();
     }
 
+    @Column(name = "must_change_password")
+    private Boolean mustChangePassword = false;
+
     public enum Role {
         ADMIN,
+        HOD,
         TEACHER,
         STUDENT
     }
@@ -132,5 +136,13 @@ public class User {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Boolean getMustChangePassword() {
+        return mustChangePassword != null ? mustChangePassword : false;
+    }
+
+    public void setMustChangePassword(Boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 }

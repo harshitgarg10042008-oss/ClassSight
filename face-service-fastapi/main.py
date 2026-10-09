@@ -11,6 +11,7 @@ import json
 import logging
 import math
 import os
+import threading
 import time
 
 try:
@@ -514,6 +515,34 @@ async def enroll(image: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="No face detected in the image")
         if face_count > 1:
             raise HTTPException(status_code=400, detail=f"Multiple faces detected ({face_count}). Please provide an image with exactly one face.")
+
+        # Phase 4 Enrollment Quality Gate: reject blurry, too dark, tilted, or small faces
+        quality_gate_enabled = os.getenv("ENROLLMENT_QUALITY_GATE_ENABLED", "true").lower() == "true"
+        if quality_gate_enabled:
+            quality = _quality_metrics(image_array, face_locations)
+            top, right, bottom, left = face_locations[0]
+            face_h = max(0, bottom - top)
+            face_w = max(0, right - left)
+            img_area = image_array.shape[0] * image_array.shape[1]
+            face_ratio = (face_h * face_w) / float(img_area) if img_area > 0 else 0.0
+
+            rejection_reasons = []
+            if quality.blur_score < BLUR_THRESHOLD:
+                rejection_reasons.append(f"Image is too blurry (blur score {quality.blur_score:.1f} < threshold {BLUR_THRESHOLD:.1f})")
+            if quality.mean_brightness < MIN_BRIGHTNESS:
+                rejection_reasons.append(f"Image is too dark (brightness {quality.mean_brightness:.1f} < threshold {MIN_BRIGHTNESS:.1f})")
+            elif quality.mean_brightness > MAX_BRIGHTNESS:
+                rejection_reasons.append(f"Image is overexposed (brightness {quality.mean_brightness:.1f} > threshold {MAX_BRIGHTNESS:.1f})")
+            if face_ratio < 0.02:
+                rejection_reasons.append(f"Face is too small in the frame ({face_ratio * 100:.1f}% of image, min 2% required)")
+
+            pose_warnings = _pose_quality_warnings(image_array, face_locations[0])
+            if pose_warnings:
+                rejection_reasons.extend(pose_warnings)
+
+            if rejection_reasons:
+                raise HTTPException(status_code=400, detail="Enrollment photo rejected by quality gate: " + "; ".join(rejection_reasons))
+
         face_encodings = face_recognition.face_encodings(image_array, face_locations, num_jitters=1, model="small")
         if not face_encodings:
             raise HTTPException(status_code=400, detail="Failed to generate face embedding")
