@@ -1,4 +1,4 @@
-# ClassSight — 5-Minute Demo Guide (Operator Cheat Sheet)
+# ClassSight — 10-Minute Demo Guide (Operator Cheat Sheet)
 
 > **Read this top-to-bottom before the demo. Keep this file open during the demo.**
 
@@ -9,7 +9,7 @@
 | # | Check | Command / Action |
 |---|-------|-----------------|
 | 1 | Docker Desktop running | Taskbar tray — whale icon must be green |
-| 2 | All services healthy | `docker compose ps` → all containers `Up (healthy)` |
+| 2 | All services healthy | `docker compose up -d --build; docker compose ps` |
 | 3 | DB seeded (Room 101, CS101) | Log in at `http://localhost:3000` → "Select" step shows Room 101 |
 | 4 | At least 5 students enrolled | Enrollment tab → roster shows ≥ 5 rows with "128-d Registered" |
 | 5 | Frontend accessible | `http://localhost:3000` loads ClassSight page |
@@ -57,7 +57,7 @@ npm run dev
 2. Navigate to **"Take Attendance"**.
 3. Point webcam to full group of students. Click **"Snap Attendance Photo"** → **"Submit Capture & Recognize"**.
 4. **Observe:**
-   - Vectorized Hungarian matching matches all students in ~1.4s.
+   - Matching returns per-student confidence and recognition state.
    - All student cards show **PRESENT** (green badge).
    - If zero ambiguous faces/warnings, the session **auto-finalizes** instantly to `FINALIZED`.
 
@@ -106,6 +106,24 @@ npm run dev
 | Recognition returns all UNKNOWN | Check roster on Enrollment tab — verify student embeddings are seeded. |
 | Capture outside scheduled period | Enter any late capture note (e.g. "Lab rescheduled") to bypass the capture window |
 | Login rejected | Use `admin` / `admin123` or `teacher` / `teacher123` |
+
+### Quick Class Enrollment
+
+Before taking attendance, open **Enrollment → Quick Class Enrollment**:
+
+1. Upload a consented class photo and check the mandatory consent box.
+2. Review the numbered `Demo-01`, `Demo-02`, … detections and remove false
+   detections.
+3. Select **Enroll Demo Faces**. The app creates demo roster entries using the
+   existing consented enrollment pipeline.
+4. Use **Single Student** later when replacing a demo label with a real name and
+   roll number.
+
+For a clean repeat, run `.\scripts\Reset-DemoData.ps1` from PowerShell. It only
+removes students using the `Demo-*` / `DEMO-*` naming convention.
+
+The current measured four-face fixture detection was approximately 674ms after
+the 1024px safety resize. No 30-face before/after benchmark has been claimed.
 
 ---
 

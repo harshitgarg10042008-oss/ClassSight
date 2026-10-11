@@ -435,6 +435,12 @@ function TeacherPage({ authFetch, getCsrf }: {
             </div>
           </div>
           {review?.quality?.warning && <div className="alert alert-warn">⚠️ {review.quality.warning}</div>}
+          {all.length > 0 && <div className="stat-grid" style={{ marginBottom:20 }}>
+            <div className="stat-card blue"><div className="stat-value">{all.length}</div><div className="stat-label">Faces / roster</div></div>
+            <div className="stat-card green"><div className="stat-value">{all.filter(r => r.recognitionState === 'MATCHED' || r.status === 'PRESENT').length}</div><div className="stat-label">Recognized</div></div>
+            <div className="stat-card red"><div className="stat-value">{all.filter(r => r.status === 'ABSENT').length}</div><div className="stat-label">Absent</div></div>
+            <div className="stat-card amber"><div className="stat-value">{all.filter(r => r.recognitionState === 'UNKNOWN' || r.status === 'REVIEW').length}</div><div className="stat-label">Unknown / review</div></div>
+          </div>}
           {all.length > 0 ? (<>
             <div className="records-list">
               {all.map(rec => {
