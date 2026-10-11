@@ -23,6 +23,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/students")
+@SuppressWarnings("null")
 public class StudentController {
 
     private static final Logger logger = LoggerFactory.getLogger(StudentController.class);
@@ -77,7 +78,8 @@ public class StudentController {
             @RequestParam(name = "consentGiven", defaultValue = "false") boolean consentGiven,
             Principal authentication) {
         if (!consentGiven) {
-            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Biometric consent is required"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "Biometric consent is required"));
         }
         try {
             imageUploadValidator.validate(photo);
@@ -95,8 +97,7 @@ public class StudentController {
             return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "message", "Student enrolled successfully",
-                    "student", new com.classsight.dto.StudentResponse(student)
-            ));
+                    "student", new com.classsight.dto.StudentResponse(student)));
         } catch (Exception e) {
             logger.error("Single enrollment failed for {}: {}", rollNumber, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("status", "error", "message", e.getMessage()));
@@ -122,7 +123,8 @@ public class StudentController {
             if (photoFiles != null) {
                 for (MultipartFile file : photoFiles) {
                     String original = file.getOriginalFilename();
-                    if (original == null) continue;
+                    if (original == null)
+                        continue;
                     if (original.toLowerCase().endsWith(".zip")) {
                         extractZipPhotos(file.getBytes(), photoMap);
                     } else {
@@ -136,7 +138,8 @@ public class StudentController {
             String csvContent = new String(csvFile.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
             String[] lines = csvContent.split("\\r?\\n");
             if (lines.length <= 1) {
-                return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "CSV is empty or missing data rows"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("status", "error", "message", "CSV is empty or missing data rows"));
             }
 
             List<Map<String, Object>> results = new java.util.ArrayList<>();
@@ -148,9 +151,11 @@ public class StudentController {
 
             for (int i = startIdx; i < lines.length; i++) {
                 String line = lines[i].trim();
-                if (line.isBlank()) continue;
+                if (line.isBlank())
+                    continue;
                 String[] cols = line.split(",");
-                if (cols.length < 2) continue;
+                if (cols.length < 2)
+                    continue;
 
                 String roll = cols[0].trim();
                 String name = cols[1].trim();
@@ -202,7 +207,8 @@ public class StudentController {
 
         } catch (Exception e) {
             logger.error("Bulk enrollment error", e);
-            return ResponseEntity.internalServerError().body(Map.of("status", "error", "message", "Bulk import failed: " + e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("status", "error", "message", "Bulk import failed: " + e.getMessage()));
         }
     }
 
@@ -243,11 +249,15 @@ public class StudentController {
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         String enrollUrl = faceServiceUrl + "/enroll";
         try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(enrollUrl, requestEntity, Map.class);
+            ResponseEntity<?> response = restTemplate.postForEntity(enrollUrl, requestEntity, Map.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 throw new RuntimeException("Face service returned " + response.getStatusCode());
             }
-            Map<String, Object> faceResponse = response.getBody();
+            if (!(response.getBody() instanceof Map<?, ?> rawFaceResponse)) {
+                throw new RuntimeException("Face service returned an invalid enrollment response");
+            }
+            Map<String, Object> faceResponse = new java.util.HashMap<>();
+            rawFaceResponse.forEach((key, value) -> faceResponse.put(String.valueOf(key), value));
             @SuppressWarnings("unchecked")
             List<Double> embedding = (List<Double>) faceResponse.get("embedding");
             if (embedding == null || embedding.isEmpty()) {
@@ -259,14 +269,17 @@ public class StudentController {
             try {
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 Map<?, ?> err = mapper.readValue(resp, Map.class);
-                if (err.containsKey("detail")) throw new RuntimeException(String.valueOf(err.get("detail")));
-            } catch (Exception ignored) {}
+                if (err.containsKey("detail"))
+                    throw new RuntimeException(String.valueOf(err.get("detail")));
+            } catch (Exception ignored) {
+            }
             throw new RuntimeException(resp.isBlank() ? e.getStatusText() : resp);
         }
     }
 
     private void extractZipPhotos(byte[] zipBytes, Map<String, byte[]> photoMap) throws java.io.IOException {
-        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(new java.io.ByteArrayInputStream(zipBytes))) {
+        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(
+                new java.io.ByteArrayInputStream(zipBytes))) {
             java.util.zip.ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 if (!entry.isDirectory()) {
@@ -285,7 +298,8 @@ public class StudentController {
     private String extractBaseName(String filename) {
         String name = filename;
         int lastSlash = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
-        if (lastSlash >= 0) name = name.substring(lastSlash + 1);
+        if (lastSlash >= 0)
+            name = name.substring(lastSlash + 1);
         int dot = name.lastIndexOf('.');
         return dot > 0 ? name.substring(0, dot) : name;
     }
@@ -296,9 +310,9 @@ public class StudentController {
             @RequestParam("photo") MultipartFile photo,
             @RequestParam(name = "consentGiven", defaultValue = "false") boolean consentGiven,
             Principal authentication) {
-        
+
         long startTime = System.currentTimeMillis();
-        
+
         try {
             imageUploadValidator.validate(photo);
             if (!consentGiven) {
@@ -322,15 +336,20 @@ public class StudentController {
             // Call face service /enroll endpoint
             String enrollUrl = faceServiceUrl + "/enroll";
             logger.info("Calling face service at: {}", enrollUrl);
-            
-            ResponseEntity<Map> response = restTemplate.postForEntity(enrollUrl, requestEntity, Map.class);
-            
+
+            ResponseEntity<?> response = restTemplate.postForEntity(enrollUrl, requestEntity, Map.class);
+
             if (response.getStatusCode() != HttpStatus.OK) {
                 return ResponseEntity.status(response.getStatusCode())
                         .body(response.getBody());
             }
 
-            Map<String, Object> faceResponse = response.getBody();
+            if (!(response.getBody() instanceof Map<?, ?> rawFaceResponse)) {
+                return ResponseEntity.internalServerError().body("Face service returned an invalid response");
+            }
+            Map<String, Object> faceResponse = new java.util.HashMap<>();
+            rawFaceResponse.forEach((key, value) -> faceResponse.put(String.valueOf(key), value));
+            @SuppressWarnings("unchecked")
             List<Double> embedding = (List<Double>) faceResponse.get("embedding");
             String message = (String) faceResponse.get("message");
 
@@ -365,14 +384,16 @@ public class StudentController {
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            
-            logger.error("✗ Enrollment failed for student: {} after {} ms. Status: {}, Error: {}", rollNumber, duration, e.getStatusCode(), e.getResponseBodyAsString());
-            
+
+            logger.error("✗ Enrollment failed for student: {} after {} ms. Status: {}, Error: {}", rollNumber, duration,
+                    e.getStatusCode(), e.getResponseBodyAsString());
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             try {
                 // Try to parse the JSON response from FastAPI
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                @SuppressWarnings("unchecked")
                 Map<String, Object> fastapiError = mapper.readValue(e.getResponseBodyAsString(), Map.class);
                 if (fastapiError.containsKey("detail")) {
                     error.put("message", fastapiError.get("detail"));
@@ -383,19 +404,20 @@ public class StudentController {
                 error.put("message", e.getResponseBodyAsString());
             }
             error.put("enrollmentTimeMs", duration);
-            
+
             return ResponseEntity.status(e.getStatusCode()).body(error);
         } catch (Exception e) {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            
-            logger.error("✗ Enrollment failed for student: {} after {} ms. Error: {}", rollNumber, duration, e.getMessage());
-            
+
+            logger.error("✗ Enrollment failed for student: {} after {} ms. Error: {}", rollNumber, duration,
+                    e.getMessage());
+
             Map<String, Object> error = new HashMap<>();
             error.put("status", "error");
             error.put("message", e.getMessage());
             error.put("enrollmentTimeMs", duration);
-            
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
@@ -410,8 +432,7 @@ public class StudentController {
         if (studentOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                     "status", "error",
-                    "message", "Student not found with id: " + id
-            ));
+                    "message", "Student not found with id: " + id));
         }
         Student student = studentOpt.get();
         student.setFaceEmbedding(null);
@@ -427,7 +448,6 @@ public class StudentController {
         return ResponseEntity.ok(Map.of(
                 "status", "success",
                 "message", "Biometric data deleted successfully for student: " + student.getRollNumber(),
-                "studentId", id
-        ));
+                "studentId", id));
     }
 }

@@ -35,7 +35,7 @@ marked `DONE` when its acceptance checks have been run and recorded in
 - [x] **T-008 — Streaming recognition progress** — DONE  
   Acceptance: async captures expose queued, detecting, matching, and done
   states; the UI renders progress and resolved faces without blocking.
-- [ ] **T-009 — Building recognition evaluation tooling** — TODO  
+- [x] **T-009 — Building recognition evaluation tooling** — DONE  
   Acceptance: labelled evaluation reports accuracy, FAR, and FRR; the golden
   set is consented/synthetic and the report contains measured values only.
 

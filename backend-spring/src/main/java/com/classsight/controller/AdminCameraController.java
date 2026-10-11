@@ -18,6 +18,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/admin/cameras")
+@SuppressWarnings("null")
 public class AdminCameraController {
     private final CameraRepository cameraRepository;
     private final RoomRepository roomRepository;

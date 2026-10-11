@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
+@SuppressWarnings("null")
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(DataSeeder.class);
@@ -49,7 +50,7 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        User admin = seedAdminUser();
+        seedAdminUser();
         User teacher = seedTeacherUser();
         Room defaultRoom = seedRoom();
         Subject defaultSubject = seedSubject();
@@ -156,4 +157,3 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 }
-

@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/admin/rooms")
+@SuppressWarnings("null")
 public class AdminRoomController {
 
     @Autowired

@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+@SuppressWarnings("null")
 public class DiskMultipartFile implements MultipartFile {
     private final Path path;
     private final String contentType;

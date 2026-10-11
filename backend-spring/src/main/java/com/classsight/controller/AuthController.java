@@ -6,7 +6,7 @@ import com.classsight.dto.UserResponse;
 import com.classsight.entity.User;
 import com.classsight.repository.UserRepository;
 import com.classsight.security.JwtUtil;
-import jakarta.servlet.http.Cookie;
+import com.classsight.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
+@SuppressWarnings("null")
 public class AuthController {
 
     @Autowired
@@ -29,6 +30,9 @@ public class AuthController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private RefreshTokenService refreshTokenService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletResponse response) {
@@ -47,12 +51,9 @@ public class AuthController {
                     .orElseGet(() -> userRepository.findByEmail(userDetails.getUsername())
                             .orElseThrow(() -> new RuntimeException("User not found")));
 
-            // Set HttpOnly cookie for browser-based flows
-            Cookie jwtCookie = new Cookie("jwt", token);
-            jwtCookie.setHttpOnly(true);
-            jwtCookie.setPath("/");
-            jwtCookie.setMaxAge(5 * 60 * 60); // 5 hours, matches JWT validity
-            response.addCookie(jwtCookie);
+            String refreshToken = refreshTokenService.issue(user);
+            addCookie(response, "refresh_token", refreshToken, 30 * 24 * 60 * 60);
+            addCookie(response, "jwt", token, 15 * 60);
 
             LoginResponse loginResponse = new LoginResponse(
                     token,
@@ -69,14 +70,46 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
-        Cookie jwtCookie = new Cookie("jwt", "");
-        jwtCookie.setHttpOnly(true);
-        jwtCookie.setPath("/");
-        jwtCookie.setMaxAge(0); // Immediately expire
-        response.addCookie(jwtCookie);
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response) {
+        try {
+            User user = refreshTokenService.consume(refreshToken);
+            UserDetails details = new org.springframework.security.core.userdetails.User(
+                    user.getUsername(), user.getPassword(), user.getEnabled(),
+                    true, true, true, java.util.List.of());
+            String accessToken = jwtUtil.generateToken(details);
+            String rotatedRefreshToken = refreshTokenService.issue(user);
+            addCookie(response, "refresh_token", rotatedRefreshToken, 30 * 24 * 60 * 60);
+            addCookie(response, "jwt", accessToken, 15 * 60);
+            return ResponseEntity.ok(new LoginResponse(
+                    accessToken, user.getId(), user.getUsername(), user.getFullName(),
+                    user.getEmail(), user.getRole().name()));
+        } catch (IllegalArgumentException exception) {
+            clearCookie(response, "refresh_token");
+            return ResponseEntity.status(401).body("Invalid or expired refresh token");
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(
+            @CookieValue(name = "refresh_token", required = false) String refreshToken,
+            HttpServletResponse response) {
+        refreshTokenService.revoke(refreshToken);
+        clearCookie(response, "refresh_token");
+        clearCookie(response, "jwt");
         return ResponseEntity.ok("Logged out");
+    }
+
+    private void addCookie(HttpServletResponse response, String name, String value, int maxAge) {
+        response.addHeader("Set-Cookie", String.format(
+                "%s=%s; Max-Age=%d; Path=/; HttpOnly; SameSite=Lax",
+                name, value, maxAge));
+    }
+
+    private void clearCookie(HttpServletResponse response, String name) {
+        response.addHeader("Set-Cookie", name + "=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax");
     }
 
     @GetMapping("/me")

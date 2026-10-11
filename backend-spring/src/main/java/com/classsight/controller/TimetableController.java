@@ -10,7 +10,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.*;
 
 /**
@@ -19,55 +18,56 @@ import java.util.*;
  * Base: /api/timetable
  *
  * Teacher endpoints:
- *   GET  /api/timetable/current-period          → auto-detect current/next period
- *   GET  /api/timetable/today                   → today's sessions for the caller
+ * GET /api/timetable/current-period → auto-detect current/next period
+ * GET /api/timetable/today → today's sessions for the caller
  *
  * Admin endpoints:
- *   POST /api/timetable/sessions/generate       → generate sessions for a date range
- *   GET  /api/timetable/sessions/range          → list sessions in a range
- *   POST /api/timetable/sessions/{id}/cancel    → cancel a session
- *   POST /api/timetable/sessions/{id}/substitute → assign a substitute teacher
- *   GET  /api/timetable/terms                   → list academic terms
- *   POST /api/timetable/terms                   → create a term
- *   POST /api/timetable/leaves                  → mark teacher on leave
- *   GET  /api/timetable/leaves                  → list leave records
- *   PUT  /api/timetable/leaves/{id}/approve     → approve a leave
+ * POST /api/timetable/sessions/generate → generate sessions for a date range
+ * GET /api/timetable/sessions/range → list sessions in a range
+ * POST /api/timetable/sessions/{id}/cancel → cancel a session
+ * POST /api/timetable/sessions/{id}/substitute → assign a substitute teacher
+ * GET /api/timetable/terms → list academic terms
+ * POST /api/timetable/terms → create a term
+ * POST /api/timetable/leaves → mark teacher on leave
+ * GET /api/timetable/leaves → list leave records
+ * PUT /api/timetable/leaves/{id}/approve → approve a leave
  */
 @RestController
 @RequestMapping("/api/timetable")
+@SuppressWarnings("null")
 public class TimetableController {
 
-    private final TimetableService         timetableService;
-    private final ClassSessionRepository   sessionRepo;
-    private final AcademicTermRepository   termRepo;
-    private final TeacherLeaveRepository   leaveRepo;
-    private final UserRepository           userRepo;
-    private final ClassSectionRepository   sectionRepo;
-    private final SubjectRepository        subjectRepo;
-    private final RoomRepository           roomRepo;
-    private final HolidayRepository        holidayRepo;
-    private final TimetableSlotRepository  slotRepo;
+    private final TimetableService timetableService;
+    private final ClassSessionRepository sessionRepo;
+    private final AcademicTermRepository termRepo;
+    private final TeacherLeaveRepository leaveRepo;
+    private final UserRepository userRepo;
+    private final ClassSectionRepository sectionRepo;
+    private final SubjectRepository subjectRepo;
+    private final RoomRepository roomRepo;
+    private final HolidayRepository holidayRepo;
+    private final TimetableSlotRepository slotRepo;
 
     public TimetableController(TimetableService timetableService,
-                               ClassSessionRepository sessionRepo,
-                               AcademicTermRepository termRepo,
-                               TeacherLeaveRepository leaveRepo,
-                               UserRepository userRepo,
-                               ClassSectionRepository sectionRepo,
-                               SubjectRepository subjectRepo,
-                               RoomRepository roomRepo,
-                               HolidayRepository holidayRepo,
-                               TimetableSlotRepository slotRepo) {
+            ClassSessionRepository sessionRepo,
+            AcademicTermRepository termRepo,
+            TeacherLeaveRepository leaveRepo,
+            UserRepository userRepo,
+            ClassSectionRepository sectionRepo,
+            SubjectRepository subjectRepo,
+            RoomRepository roomRepo,
+            HolidayRepository holidayRepo,
+            TimetableSlotRepository slotRepo) {
         this.timetableService = timetableService;
-        this.sessionRepo      = sessionRepo;
-        this.termRepo         = termRepo;
-        this.leaveRepo        = leaveRepo;
-        this.userRepo         = userRepo;
-        this.sectionRepo      = sectionRepo;
-        this.subjectRepo      = subjectRepo;
-        this.roomRepo         = roomRepo;
-        this.holidayRepo      = holidayRepo;
-        this.slotRepo         = slotRepo;
+        this.sessionRepo = sessionRepo;
+        this.termRepo = termRepo;
+        this.leaveRepo = leaveRepo;
+        this.userRepo = userRepo;
+        this.sectionRepo = sectionRepo;
+        this.subjectRepo = subjectRepo;
+        this.roomRepo = roomRepo;
+        this.holidayRepo = holidayRepo;
+        this.slotRepo = slotRepo;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -100,14 +100,16 @@ public class TimetableController {
         ClassSession cs = periodOpt.get();
         boolean captureAllowed = timetableService.isCaptureAllowed(cs, graceMinutes());
 
-        response.put("session",        sessionToMap(cs));
+        response.put("session", sessionToMap(cs));
         response.put("captureAllowed", captureAllowed);
-        response.put("windowOpen",     cs.getStartTime().minusMinutes(5).toString());
-        response.put("windowClose",    cs.getEndTime().plusMinutes(graceMinutes()).toString());
+        response.put("windowOpen", cs.getStartTime().minusMinutes(5).toString());
+        response.put("windowClose", cs.getEndTime().plusMinutes(graceMinutes()).toString());
         return ResponseEntity.ok(response);
     }
 
-    /** GET /api/timetable/today  — today's sessions visible to the calling teacher */
+    /**
+     * GET /api/timetable/today — today's sessions visible to the calling teacher
+     */
     @GetMapping("/today")
     public ResponseEntity<List<Map<String, Object>>> getTodaySessions(
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -141,11 +143,16 @@ public class TimetableController {
                 .filter(l -> l.isApproved() && !today.isBefore(l.getFromDate()) && !today.isAfter(l.getToDate()))
                 .toList();
 
-        long scheduledCount   = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.SCHEDULED).count();
-        long conductedCount   = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.CONDUCTED).count();
-        long cancelledCount   = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.CANCELLED).count();
-        long substitutedCount = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.SUBSTITUTED).count();
-        long missedCount      = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.MISSED).count();
+        long scheduledCount = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.SCHEDULED)
+                .count();
+        long conductedCount = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.CONDUCTED)
+                .count();
+        long cancelledCount = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.CANCELLED)
+                .count();
+        long substitutedCount = todaySessions.stream()
+                .filter(s -> s.getStatus() == ClassSession.SessionStatus.SUBSTITUTED).count();
+        long missedCount = todaySessions.stream().filter(s -> s.getStatus() == ClassSession.SessionStatus.MISSED)
+                .count();
 
         List<Map<String, Object>> pendingSubs = todaySessions.stream()
                 .filter(s -> s.getStatus() == ClassSession.SessionStatus.CANCELLED && s.getSubstituteTeacher() == null)
@@ -163,11 +170,11 @@ public class TimetableController {
         result.put("teachersOnLeaveCount", leavesToday.size());
         result.put("teachersOnLeave", leavesToday.stream().map(l -> Map.of(
                 "teacherId", l.getTeacher().getId(),
-                "teacherName", l.getTeacher().getFullName() != null ? l.getTeacher().getFullName() : l.getTeacher().getUsername(),
+                "teacherName",
+                l.getTeacher().getFullName() != null ? l.getTeacher().getFullName() : l.getTeacher().getUsername(),
                 "reason", l.getReason() != null ? l.getReason() : "",
                 "fromDate", l.getFromDate().toString(),
-                "toDate", l.getToDate().toString()
-        )).toList());
+                "toDate", l.getToDate().toString())).toList());
         result.put("pendingSubstitutions", pendingSubs);
         result.put("sessions", todaySessions.stream().map(this::sessionToMap).toList());
 
@@ -186,7 +193,7 @@ public class TimetableController {
     public ResponseEntity<Map<String, Object>> generateSessions(
             @RequestBody Map<String, String> body) {
         LocalDate from = LocalDate.parse(body.getOrDefault("from", LocalDate.now().toString()));
-        LocalDate to   = LocalDate.parse(body.getOrDefault("to",   LocalDate.now().plusDays(7).toString()));
+        LocalDate to = LocalDate.parse(body.getOrDefault("to", LocalDate.now().plusDays(7).toString()));
         int created = timetableService.generateSessionsForRange(from, to);
         return ResponseEntity.ok(Map.of("created", created, "from", from.toString(), "to", to.toString()));
     }
@@ -200,10 +207,10 @@ public class TimetableController {
                 .stream().map(this::sessionToMap).toList());
     }
 
-    /** POST /api/timetable/sessions/{id}/cancel  Body: { "reason": "..." } */
+    /** POST /api/timetable/sessions/{id}/cancel Body: { "reason": "..." } */
     @PostMapping("/sessions/{id}/cancel")
     public ResponseEntity<Map<String, Object>> cancelSession(@PathVariable Long id,
-                                                              @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body) {
         ClassSession cs = sessionRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + id));
         cs.setStatus(ClassSession.SessionStatus.CANCELLED);
@@ -212,11 +219,14 @@ public class TimetableController {
         return ResponseEntity.ok(Map.of("id", id, "status", "CANCELLED"));
     }
 
-    /** POST /api/timetable/sessions/{id}/substitute  Body: { "substituteId": 5, "reason": "..." } */
+    /**
+     * POST /api/timetable/sessions/{id}/substitute Body: { "substituteId": 5,
+     * "reason": "..." }
+     */
     @PostMapping("/sessions/{id}/substitute")
     public ResponseEntity<Map<String, Object>> assignSubstitute(@PathVariable Long id,
-                                                                 @RequestBody Map<String, Object> body) {
-        Long subId  = Long.parseLong(body.get("substituteId").toString());
+            @RequestBody Map<String, Object> body) {
+        Long subId = Long.parseLong(body.get("substituteId").toString());
         String reason = body.getOrDefault("reason", "Substitute assigned").toString();
         ClassSession cs = timetableService.assignSubstitute(id, subId, reason);
         return ResponseEntity.ok(Map.of("id", id, "status", cs.getStatus().name()));
@@ -254,14 +264,15 @@ public class TimetableController {
 
     /**
      * POST /api/timetable/leaves
-     * Body: { "teacherId": 3, "fromDate": "2026-10-05", "toDate": "2026-10-05", "reason": "..." }
+     * Body: { "teacherId": 3, "fromDate": "2026-10-05", "toDate": "2026-10-05",
+     * "reason": "..." }
      */
     @PostMapping("/leaves")
     public ResponseEntity<Map<String, Object>> createLeave(@RequestBody Map<String, Object> body) {
-        Long teacherId     = Long.parseLong(body.get("teacherId").toString());
+        Long teacherId = Long.parseLong(body.get("teacherId").toString());
         LocalDate fromDate = LocalDate.parse(body.get("fromDate").toString());
-        LocalDate toDate   = LocalDate.parse(body.get("toDate").toString());
-        String reason      = body.getOrDefault("reason", "").toString();
+        LocalDate toDate = LocalDate.parse(body.get("toDate").toString());
+        String reason = body.getOrDefault("reason", "").toString();
 
         User teacher = userRepo.findById(teacherId)
                 .orElseThrow(() -> new IllegalArgumentException("Teacher not found: " + teacherId));
@@ -280,7 +291,7 @@ public class TimetableController {
     /** PUT /api/timetable/leaves/{id}/approve */
     @PutMapping("/leaves/{id}/approve")
     public ResponseEntity<Map<String, Object>> approveLeave(@PathVariable Long id,
-                                                             @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal UserDetails userDetails) {
         TeacherLeave leave = leaveRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Leave not found: " + id));
         User approver = resolveUser(userDetails);
@@ -303,13 +314,14 @@ public class TimetableController {
     @GetMapping(value = "/template", produces = "text/csv")
     public ResponseEntity<String> getTimetableTemplate() {
         String csv = "day,start_time,end_time,subject_code,section,teacher_username,room\n" +
-                     "MONDAY,09:00,10:00,CS101,CS-2026-A,teacher,Room 101\n" +
-                     "WEDNESDAY,09:00,10:00,CS101,CS-2026-A,teacher,Room 101\n" +
-                     "FRIDAY,09:00,10:00,CS101,CS-2026-A,teacher,Room 101\n" +
-                     "TUESDAY,10:00,11:00,MATH101,CS-2026-A,teacher2,Room 101\n" +
-                     "THURSDAY,10:00,11:00,MATH101,CS-2026-A,teacher2,Room 101\n";
+                "MONDAY,09:00,10:00,CS101,CS-2026-A,teacher,Room 101\n" +
+                "WEDNESDAY,09:00,10:00,CS101,CS-2026-A,teacher,Room 101\n" +
+                "FRIDAY,09:00,10:00,CS101,CS-2026-A,teacher,Room 101\n" +
+                "TUESDAY,10:00,11:00,MATH101,CS-2026-A,teacher2,Room 101\n" +
+                "THURSDAY,10:00,11:00,MATH101,CS-2026-A,teacher2,Room 101\n";
         return ResponseEntity.ok()
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"timetable-template.csv\"")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"timetable-template.csv\"")
                 .body(csv);
     }
 
@@ -325,10 +337,12 @@ public class TimetableController {
             } else if (rawBody != null && !rawBody.isBlank()) {
                 csvContent = rawBody;
             } else {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No CSV content or file provided"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("success", false, "error", "No CSV content or file provided"));
             }
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Failed to read CSV: " + e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("success", false, "error", "Failed to read CSV: " + e.getMessage()));
         }
 
         Map<String, Object> result = timetableService.validateAndImportTimetableCsv(csvContent, commit);
@@ -453,40 +467,54 @@ public class TimetableController {
     }
 
     private User resolveUser(UserDetails userDetails) {
-        return userRepo.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in DB"));
+        String username = null;
+        if (userDetails != null) {
+            username = userDetails.getUsername();
+        } else {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication();
+            if (auth != null) {
+                username = auth.getName();
+            }
+        }
+        if (username == null) {
+            throw new IllegalStateException("Authenticated user not found");
+        }
+        final String finalUsername = username;
+        return userRepo.findByUsername(username)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found in DB: " + finalUsername));
     }
 
     private Map<String, Object> sessionToMap(ClassSession cs) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",          cs.getId());
-        m.put("date",        cs.getDate().toString());
-        m.put("startTime",   cs.getStartTime().toString());
-        m.put("endTime",     cs.getEndTime().toString());
-        m.put("status",      cs.getStatus().name());
-        m.put("type",        cs.getType().name());
-        m.put("reason",      cs.getReason());
+        m.put("id", cs.getId());
+        m.put("date", cs.getDate().toString());
+        m.put("startTime", cs.getStartTime().toString());
+        m.put("endTime", cs.getEndTime().toString());
+        m.put("status", cs.getStatus().name());
+        m.put("type", cs.getType().name());
+        m.put("reason", cs.getReason());
         if (cs.getSubject() != null) {
             m.put("subjectCode", cs.getSubject().getCode());
             m.put("subjectName", cs.getSubject().getName());
-            m.put("subjectId",   cs.getSubject().getId());
+            m.put("subjectId", cs.getSubject().getId());
         }
         if (cs.getClassSection() != null) {
             m.put("sectionName", cs.getClassSection().getName());
-            m.put("sectionId",   cs.getClassSection().getId());
+            m.put("sectionId", cs.getClassSection().getId());
         }
         if (cs.getTeacher() != null) {
             m.put("teacherUsername", cs.getTeacher().getUsername());
             m.put("teacherFullName", cs.getTeacher().getFullName());
-            m.put("teacherId",       cs.getTeacher().getId());
+            m.put("teacherId", cs.getTeacher().getId());
         }
         if (cs.getSubstituteTeacher() != null) {
             m.put("substituteTeacherUsername", cs.getSubstituteTeacher().getUsername());
-            m.put("substituteTeacherId",       cs.getSubstituteTeacher().getId());
+            m.put("substituteTeacherId", cs.getSubstituteTeacher().getId());
         }
         if (cs.getRoom() != null) {
             m.put("roomName", cs.getRoom().getName());
-            m.put("roomId",   cs.getRoom().getId());
+            m.put("roomId", cs.getRoom().getId());
         }
         return m;
     }

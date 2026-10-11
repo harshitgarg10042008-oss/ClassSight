@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
+@SuppressWarnings("null")
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired

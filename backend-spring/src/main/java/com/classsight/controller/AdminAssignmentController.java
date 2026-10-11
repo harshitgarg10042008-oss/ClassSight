@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @RestController
@@ -40,13 +41,17 @@ public class AdminAssignmentController {
 
     @PostMapping
     public ResponseEntity<?> createAssignment(@Valid @RequestBody AssignmentRequest request) {
-        Optional<User> facultyOpt = userRepository.findById(request.getFacultyId());
+        Long facultyId = Objects.requireNonNull(request.getFacultyId(), "facultyId is required");
+        Long subjectId = Objects.requireNonNull(request.getSubjectId(), "subjectId is required");
+        Long classSectionId = Objects.requireNonNull(request.getClassSectionId(), "classSectionId is required");
+
+        Optional<User> facultyOpt = userRepository.findById(facultyId);
         if (facultyOpt.isEmpty()) return ResponseEntity.badRequest().body("Faculty not found");
         
-        Optional<Subject> subjectOpt = subjectRepository.findById(request.getSubjectId());
+        Optional<Subject> subjectOpt = subjectRepository.findById(subjectId);
         if (subjectOpt.isEmpty()) return ResponseEntity.badRequest().body("Subject not found");
         
-        Optional<ClassSection> classSectionOpt = classSectionRepository.findById(request.getClassSectionId());
+        Optional<ClassSection> classSectionOpt = classSectionRepository.findById(classSectionId);
         if (classSectionOpt.isEmpty()) return ResponseEntity.badRequest().body("ClassSection not found");
 
         FacultySubjectAssignment assignment = new FacultySubjectAssignment();
@@ -63,21 +68,26 @@ public class AdminAssignmentController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> updateAssignment(@PathVariable Long id, @Valid @RequestBody AssignmentRequest request) {
-        return assignmentRepository.findById(id).map(assignment -> {
-            if (request.getFacultyId() != null) {
-                Optional<User> facultyOpt = userRepository.findById(request.getFacultyId());
+        Long assignmentId = Objects.requireNonNull(id, "assignment id is required");
+        return assignmentRepository.findById(assignmentId).map(assignment -> {
+            Long facultyId = request.getFacultyId();
+            if (facultyId != null) {
+                Optional<User> facultyOpt = userRepository.findById(Objects.requireNonNull(facultyId));
                 if (facultyOpt.isPresent()) assignment.setFaculty(facultyOpt.get());
                 else return ResponseEntity.badRequest().body("Faculty not found");
             }
             
-            if (request.getSubjectId() != null) {
-                Optional<Subject> subjectOpt = subjectRepository.findById(request.getSubjectId());
+            Long subjectId = request.getSubjectId();
+            if (subjectId != null) {
+                Optional<Subject> subjectOpt = subjectRepository.findById(Objects.requireNonNull(subjectId));
                 if (subjectOpt.isPresent()) assignment.setSubject(subjectOpt.get());
                 else return ResponseEntity.badRequest().body("Subject not found");
             }
             
-            if (request.getClassSectionId() != null) {
-                Optional<ClassSection> classSectionOpt = classSectionRepository.findById(request.getClassSectionId());
+            Long classSectionId = request.getClassSectionId();
+            if (classSectionId != null) {
+                Optional<ClassSection> classSectionOpt =
+                        classSectionRepository.findById(Objects.requireNonNull(classSectionId));
                 if (classSectionOpt.isPresent()) assignment.setClassSection(classSectionOpt.get());
                 else return ResponseEntity.badRequest().body("ClassSection not found");
             }
@@ -86,14 +96,15 @@ public class AdminAssignmentController {
                 assignment.setActive(request.getActive());
             }
 
-            return ResponseEntity.ok(assignmentRepository.save(assignment));
+            return ResponseEntity.ok(assignmentRepository.save(Objects.requireNonNull(assignment)));
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAssignment(@PathVariable Long id) {
-        if (!assignmentRepository.existsById(id)) return ResponseEntity.notFound().build();
-        assignmentRepository.deleteById(id);
+        Long assignmentId = Objects.requireNonNull(id, "assignment id is required");
+        if (!assignmentRepository.existsById(assignmentId)) return ResponseEntity.notFound().build();
+        assignmentRepository.deleteById(assignmentId);
         return ResponseEntity.noContent().build();
     }
 }

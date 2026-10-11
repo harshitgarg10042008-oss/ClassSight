@@ -21,6 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/attendance-sessions/{sessionId}/review")
+@SuppressWarnings("null")
 public class AttendanceReviewController {
 
     private final AttendanceReviewService reviewService;
@@ -55,6 +56,7 @@ public class AttendanceReviewController {
     }
 
     @PostMapping
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> submitReview(
             @PathVariable Long sessionId,
             Principal authentication,
@@ -68,7 +70,8 @@ public class AttendanceReviewController {
                 "sessionId", session.getId(),
                 "status", session.getStatus().toString(),
                 "unresolvedReviewCount", session.getAttendanceRecords().stream()
-                        .filter(record -> record.getStatus() == com.classsight.entity.AttendanceRecord.AttendanceStatus.REVIEW)
+                        .filter(record -> record
+                                .getStatus() == com.classsight.entity.AttendanceRecord.AttendanceStatus.REVIEW)
                         .count()));
     }
 }

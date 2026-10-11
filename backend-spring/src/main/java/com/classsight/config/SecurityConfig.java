@@ -13,10 +13,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @Configuration
 @EnableWebSecurity
+@SuppressWarnings("null")
 public class SecurityConfig {
 
     @Autowired
@@ -25,31 +25,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                .ignoringRequestMatchers("/auth/**",
-                    "/api/**", "/capture", "/capture/**",
-                    "/students/**", "/student/**", "/admin/**", "/teacher/**"))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/health", "/actuator/**", "/csrf", "/auth/login", "/auth/logout", "/login", "/*.html", "/css/**", "/js/**", "/images/**").permitAll()
-                .requestMatchers("/auth/me", "/auth/change-password").authenticated()
-                .requestMatchers("/admin/**").hasAnyRole("ADMIN", "HOD")
-                .requestMatchers("/teacher/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/student/**").hasAnyRole("ADMIN", "HOD", "TEACHER", "STUDENT")
-                .requestMatchers("/students/**", "/capture/**", "/capture").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/api/attendance-sessions/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/api/analytics/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/api/disputes/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/api/student-leaves/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/api/students/*/biometrics").hasAnyRole("ADMIN", "HOD")
-                .requestMatchers("/api/timetable/current-period", "/api/timetable/today").hasAnyRole("ADMIN", "HOD", "TEACHER")
-                .requestMatchers("/api/timetable/**").hasAnyRole("ADMIN", "HOD")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/health", "/actuator/**", "/csrf", "/auth/login", "/auth/logout", "/auth/refresh", "/login",
+                                "/*.html", "/css/**", "/js/**", "/images/**")
+                        .permitAll()
+                        .requestMatchers("/auth/me", "/auth/change-password").authenticated()
+                        .requestMatchers("/admin/**").hasAnyRole("ADMIN", "HOD")
+                        .requestMatchers("/teacher/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/student/**").hasAnyRole("ADMIN", "HOD", "TEACHER", "STUDENT")
+                        .requestMatchers("/students/**", "/capture/**", "/capture")
+                        .hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/api/attendance-sessions/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/api/analytics/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/api/disputes/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/api/student-leaves/**").hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/api/students/*/biometrics").hasAnyRole("ADMIN", "HOD")
+                        .requestMatchers("/api/timetable/current-period", "/api/timetable/today")
+                        .hasAnyRole("ADMIN", "HOD", "TEACHER")
+                        .requestMatchers("/api/timetable/**").hasAnyRole("ADMIN", "HOD")
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

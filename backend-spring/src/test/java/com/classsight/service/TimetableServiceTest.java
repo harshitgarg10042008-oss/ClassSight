@@ -4,8 +4,6 @@ import com.classsight.entity.*;
 import com.classsight.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -21,7 +19,6 @@ class TimetableServiceTest {
     private TimetableSlotRepository slotRepo;
     private ClassSessionRepository sessionRepo;
     private HolidayRepository holidayRepo;
-    private TeacherLeaveRepository leaveRepo;
     private UserRepository userRepo;
     private TimetableService timetableService;
 
@@ -31,11 +28,10 @@ class TimetableServiceTest {
         slotRepo = mock(TimetableSlotRepository.class);
         sessionRepo = mock(ClassSessionRepository.class);
         holidayRepo = mock(HolidayRepository.class);
-        leaveRepo = mock(TeacherLeaveRepository.class);
         userRepo = mock(UserRepository.class);
 
         timetableService = new TimetableService(
-                termRepo, slotRepo, sessionRepo, holidayRepo, leaveRepo, userRepo);
+                termRepo, slotRepo, sessionRepo, holidayRepo, userRepo);
     }
 
     @Test
@@ -75,6 +71,7 @@ class TimetableServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testMarkConductedChangesStatus() {
         ClassSession session = new ClassSession();
         session.setId(10L);
@@ -88,6 +85,7 @@ class TimetableServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testCancelSessionsForLeave() {
         User teacher = new User();
         teacher.setId(2L);
@@ -120,6 +118,7 @@ class TimetableServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testAssignSubstitute() {
         ClassSession cs = new ClassSession();
         cs.setId(50L);
@@ -243,6 +242,7 @@ class TimetableServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testGenerateSessionsForRange_SkipsHolidays() {
         AcademicTerm term = new AcademicTerm();
         term.setId(1L);

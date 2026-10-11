@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+
+  face-service-fastapi:
+    build:
+      context: ./face-service-fastapi
+    restart: unless-stopped
+    environment:
+      QUALITY_BLUR_THRESHOLD: ${QUALITY_BLUR_THRESHOLD:-30.0}
+      QUALITY_MIN_BRIGHTNESS: ${QUALITY_MIN_BRIGHTNESS:-35.0}
+      QUALITY_MAX_BRIGHTNESS: ${QUALITY_MAX_BRIGHTNESS:-220.0}
+      QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
+      QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
+      DETECTOR_BACKEND: ${DETECTOR_BACKEND:-dlib_hog}
+
+  backend-spring:
+    build:
+      context: ./backend-spring
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      FACE_SERVICE_URL: http://face-service-fastapi:8000
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required}
+      MINIO_BUCKET: ${MINIO_BUCKET:?MINIO_BUCKET is required}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:?RABBITMQ_USER is required}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      face-service-fastapi:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      minio:
+        condition: service_healthy
+
+  frontend-next:
+    build:
+      context: ./frontend-next
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?NEXT_PUBLIC_API_BASE_URL is required}
+    depends_on:
+      backend-spring:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
+  minio-data:

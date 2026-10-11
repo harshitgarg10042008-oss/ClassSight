@@ -13,6 +13,7 @@ import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 
 @Configuration
 @EnableRabbit
+@SuppressWarnings("null")
 public class RabbitConfig {
     public static final String CAPTURE_EXCHANGE = "classsight.capture.exchange";
     public static final String RECOGNITION_EXCHANGE = "classsight.recognition.exchange";

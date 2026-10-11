@@ -15,12 +15,10 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@SuppressWarnings("null")
 public class AttendancePdfReportService {
 
-    private final AttendanceAnalyticsService analyticsService;
-
-    public AttendancePdfReportService(AttendanceAnalyticsService analyticsService) {
-        this.analyticsService = analyticsService;
+    public AttendancePdfReportService() {
     }
 
     public byte[] generate(Map<String, Object> analytics) {
@@ -42,7 +40,9 @@ public class AttendancePdfReportService {
             for (String heading : List.of("Student", "Roll", "Present", "Sessions", "Attendance %", "Defaulter")) {
                 table.addCell(new Phrase(heading));
             }
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> defaulters = (List<Map<String, Object>>) analytics.get("defaulters");
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> students = (List<Map<String, Object>>) analytics.get("students");
             for (Map<String, Object> student : students) {
                 table.addCell(String.valueOf(student.get("studentName")));

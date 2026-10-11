@@ -1,5 +1,6 @@
 import json
 import sys
+import argparse
 from pathlib import Path
 
 import face_recognition
@@ -29,6 +30,9 @@ def one_face_encoding(path: Path):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, help="Write measured evaluation JSON to this path")
+    args = parser.parse_args()
     reference_encodings = {student_id: one_face_encoding(path) for student_id, (_, path) in REFERENCE_FILES.items()}
     # The source is a 4096px public-domain image. Downscale only for CPU runtime;
     # it remains the same distinct group photograph, not a crop or enrollment image.
@@ -116,6 +120,36 @@ def main():
         if row["expected_identity_by_reference_distance"] == "UNENROLLED/UNKNOWN"
         and row["matched"]
     ]
+    enrolled_attempts = [
+        row for row in rows
+        if row["expected_identity_by_reference_distance"] in {name for name, _ in REFERENCE_FILES.values()}
+    ]
+    false_rejections = [
+        row for row in enrolled_attempts
+        if row["predicted_student"] != row["expected_identity_by_reference_distance"] or not row["matched"]
+    ]
+    unknown_attempts = [
+        row for row in rows
+        if row["expected_identity_by_reference_distance"] == "UNENROLLED/UNKNOWN"
+    ]
+    far = len(false_present) / len(unknown_attempts) if unknown_attempts else None
+    frr = len(false_rejections) / len(enrolled_attempts) if enrolled_attempts else None
+    report = {
+        "fixture": GROUP.name,
+        "reference_files": [path.name for _, path in REFERENCE_FILES.values()],
+        "face_count": len(rows),
+        "false_accept_rate": far,
+        "false_reject_rate": frr,
+        "enrolled_match_accuracy": (
+            len(enrolled_correct) / len(enrolled_attempts) if enrolled_attempts else None
+        ),
+        "measured_rows": rows,
+    }
+    if args.output:
+        args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        print(f"evaluation_report={args.output}")
+    print(f"false_accept_rate={far if far is not None else 'not-computable'}")
+    print(f"false_reject_rate={frr if frr is not None else 'not-computable'}")
     print(f"\ncorrect_enrolled_matches={len(enrolled_correct)}/{len(REFERENCE_FILES)}")
     print(f"false_present_candidates_for_unenrolled_faces={len(false_present)}")
     print("validation_interpretation=" + ("PASS" if len(enrolled_correct) == len(REFERENCE_FILES) and not false_present else "FAIL_OR_REVIEW_REQUIRED"))

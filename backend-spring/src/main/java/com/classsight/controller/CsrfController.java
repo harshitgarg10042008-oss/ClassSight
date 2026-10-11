@@ -10,6 +10,9 @@ import java.util.Map;
 public class CsrfController {
     @GetMapping("/csrf")
     public Map<String, String> csrf(CsrfToken token) {
+        if (token == null) {
+            return Map.of("token", "stateless-token", "headerName", "X-XSRF-TOKEN");
+        }
         return Map.of("token", token.getToken(), "headerName", token.getHeaderName());
     }
 }

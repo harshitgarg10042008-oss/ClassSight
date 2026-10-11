@@ -4,6 +4,7 @@ import com.classsight.entity.*;
 import com.classsight.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,14 +18,15 @@ import java.util.*;
  * TimetableService — Phase 2 core service.
  *
  * Responsibilities:
- *  1. Generate class_sessions from active timetable slots for a given date range
- *  2. Nightly scheduler that marks past SCHEDULED sessions as MISSED
- *  3. Process teacher leaves → CANCEL affected sessions
- *  4. Current-period lookup for the auto-select teacher flow
- *  5. Conflict detection for new slot additions
+ * 1. Generate class_sessions from active timetable slots for a given date range
+ * 2. Nightly scheduler that marks past SCHEDULED sessions as MISSED
+ * 3. Process teacher leaves → CANCEL affected sessions
+ * 4. Current-period lookup for the auto-select teacher flow
+ * 5. Conflict detection for new slot additions
  */
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class TimetableService {
 
     private static final Logger log = LoggerFactory.getLogger(TimetableService.class);
@@ -32,43 +34,40 @@ public class TimetableService {
     /** Minutes before period start where capture is allowed early */
     private static final int EARLY_CAPTURE_MINUTES = 5;
 
-    private final AcademicTermRepository      termRepo;
-    private final TimetableSlotRepository     slotRepo;
-    private final ClassSessionRepository      sessionRepo;
-    private final HolidayRepository           holidayRepo;
-    private final TeacherLeaveRepository      leaveRepo;
-    private final UserRepository              userRepo;
-    private final SubjectRepository           subjectRepo;
-    private final ClassSectionRepository      classSectionRepo;
-    private final RoomRepository              roomRepo;
+    private final AcademicTermRepository termRepo;
+    private final TimetableSlotRepository slotRepo;
+    private final ClassSessionRepository sessionRepo;
+    private final HolidayRepository holidayRepo;
+    private final UserRepository userRepo;
+    private final SubjectRepository subjectRepo;
+    private final ClassSectionRepository classSectionRepo;
+    private final RoomRepository roomRepo;
 
     public TimetableService(AcademicTermRepository termRepo,
-                             TimetableSlotRepository slotRepo,
-                             ClassSessionRepository sessionRepo,
-                             HolidayRepository holidayRepo,
-                             TeacherLeaveRepository leaveRepo,
-                             UserRepository userRepo) {
-        this(termRepo, slotRepo, sessionRepo, holidayRepo, leaveRepo, userRepo, null, null, null);
+            TimetableSlotRepository slotRepo,
+            ClassSessionRepository sessionRepo,
+            HolidayRepository holidayRepo,
+            UserRepository userRepo) {
+        this(termRepo, slotRepo, sessionRepo, holidayRepo, userRepo, null, null, null);
     }
 
+    @Autowired
     public TimetableService(AcademicTermRepository termRepo,
-                             TimetableSlotRepository slotRepo,
-                             ClassSessionRepository sessionRepo,
-                             HolidayRepository holidayRepo,
-                             TeacherLeaveRepository leaveRepo,
-                             UserRepository userRepo,
-                             SubjectRepository subjectRepo,
-                             ClassSectionRepository classSectionRepo,
-                             RoomRepository roomRepo) {
-        this.termRepo         = termRepo;
-        this.slotRepo         = slotRepo;
-        this.sessionRepo      = sessionRepo;
-        this.holidayRepo      = holidayRepo;
-        this.leaveRepo        = leaveRepo;
-        this.userRepo         = userRepo;
-        this.subjectRepo      = subjectRepo;
+            TimetableSlotRepository slotRepo,
+            ClassSessionRepository sessionRepo,
+            HolidayRepository holidayRepo,
+            UserRepository userRepo,
+            SubjectRepository subjectRepo,
+            ClassSectionRepository classSectionRepo,
+            RoomRepository roomRepo) {
+        this.termRepo = termRepo;
+        this.slotRepo = slotRepo;
+        this.sessionRepo = sessionRepo;
+        this.holidayRepo = holidayRepo;
+        this.userRepo = userRepo;
+        this.subjectRepo = subjectRepo;
         this.classSectionRepo = classSectionRepo;
-        this.roomRepo         = roomRepo;
+        this.roomRepo = roomRepo;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -133,11 +132,14 @@ public class TimetableService {
     // 2. Nightly Scheduler — mark past SCHEDULED sessions as MISSED
     // ──────────────────────────────────────────────────────────────────────────
 
-    /** Runs at 23:55 every night; marks SCHEDULED sessions that are now in the past as MISSED. */
+    /**
+     * Runs at 23:55 every night; marks SCHEDULED sessions that are now in the past
+     * as MISSED.
+     */
     @Scheduled(cron = "0 55 23 * * *")
     public void markMissedSessions() {
         LocalDate today = LocalDate.now();
-        LocalTime now   = LocalTime.now();
+        LocalTime now = LocalTime.now();
         List<ClassSession> toMiss = sessionRepo.findSessionsToMarkMissed(today, now);
         for (ClassSession cs : toMiss) {
             cs.setStatus(ClassSession.SessionStatus.MISSED);
@@ -191,7 +193,7 @@ public class TimetableService {
     @Transactional(readOnly = true)
     public Optional<ClassSession> getCurrentOrNextPeriod(Long teacherId) {
         LocalDate today = LocalDate.now();
-        LocalTime now   = LocalTime.now();
+        LocalTime now = LocalTime.now();
 
         // current period (teacher is inside a scheduled window)
         Optional<ClassSession> current = sessionRepo.findCurrentPeriodForTeacher(today, teacherId, now);
@@ -214,8 +216,8 @@ public class TimetableService {
      */
     @Transactional(readOnly = true)
     public boolean isCaptureAllowed(ClassSession session, int graceMinutes) {
-        LocalTime now   = LocalTime.now();
-        LocalTime open  = session.getStartTime().minusMinutes(EARLY_CAPTURE_MINUTES);
+        LocalTime now = LocalTime.now();
+        LocalTime open = session.getStartTime().minusMinutes(EARLY_CAPTURE_MINUTES);
         LocalTime close = session.getEndTime().plusMinutes(graceMinutes);
         return !now.isBefore(open) && !now.isAfter(close);
     }
@@ -277,18 +279,29 @@ public class TimetableService {
             this.description = description;
         }
 
-        public boolean hasConflict() { return hasConflict; }
-        public String getConflictType() { return conflictType; }
-        public String getDescription() { return description; }
+        public boolean hasConflict() {
+            return hasConflict;
+        }
+
+        public String getConflictType() {
+            return conflictType;
+        }
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     public ConflictResult checkConflict(TimetableSlot candidate, List<TimetableSlot> existingSlots) {
         for (TimetableSlot existing : existingSlots) {
-            if (candidate.getId() != null && candidate.getId().equals(existing.getId())) continue;
-            if (candidate.getDayOfWeek() != existing.getDayOfWeek()) continue;
+            if (candidate.getId() != null && candidate.getId().equals(existing.getId()))
+                continue;
+            if (candidate.getDayOfWeek() != existing.getDayOfWeek())
+                continue;
             boolean overlaps = candidate.getStartTime().isBefore(existing.getEndTime())
                     && existing.getStartTime().isBefore(candidate.getEndTime());
-            if (!overlaps) continue;
+            if (!overlaps)
+                continue;
 
             if (candidate.getTeacher() != null && existing.getTeacher() != null
                     && candidate.getTeacher().getId().equals(existing.getTeacher().getId())) {
@@ -325,7 +338,8 @@ public class TimetableService {
     public Map<String, Object> validateAndImportTimetableCsv(String csvContent, boolean commit) {
         Optional<AcademicTerm> termOpt = termRepo.findByActiveTrue();
         if (termOpt.isEmpty()) {
-            return Map.of("success", false, "error", "No active academic term found. Please activate an academic term first.");
+            return Map.of("success", false, "error",
+                    "No active academic term found. Please activate an academic term first.");
         }
         AcademicTerm term = termOpt.get();
 
@@ -340,7 +354,8 @@ public class TimetableService {
         for (String rawLine : lines) {
             rowIdx++;
             String line = rawLine.trim();
-            if (line.isEmpty() || line.startsWith("#")) continue;
+            if (line.isEmpty() || line.startsWith("#"))
+                continue;
 
             String[] cols = line.split(",");
             if (!headerProcessed) {
@@ -352,7 +367,8 @@ public class TimetableService {
 
             if (cols.length < 7) {
                 errorTable.add(Map.of("row", rowIdx, "field", "columns", "message",
-                        "Expected 7 columns (day,start_time,end_time,subject_code,section,teacher_username,room), found " + cols.length));
+                        "Expected 7 columns (day,start_time,end_time,subject_code,section,teacher_username,room), found "
+                                + cols.length));
                 continue;
             }
 
@@ -378,30 +394,37 @@ public class TimetableService {
                 startTime = LocalTime.parse(startStr);
                 endTime = LocalTime.parse(endStr);
             } catch (Exception e) {
-                errorTable.add(Map.of("row", rowIdx, "field", "time", "message", "Invalid time format (expected HH:mm): " + startStr + "-" + endStr));
+                errorTable.add(Map.of("row", rowIdx, "field", "time", "message",
+                        "Invalid time format (expected HH:mm): " + startStr + "-" + endStr));
                 continue;
             }
 
             if (!startTime.isBefore(endTime)) {
-                errorTable.add(Map.of("row", rowIdx, "field", "time", "message", "start_time must be before end_time (" + startStr + " >= " + endStr + ")"));
+                errorTable.add(Map.of("row", rowIdx, "field", "time", "message",
+                        "start_time must be before end_time (" + startStr + " >= " + endStr + ")"));
                 continue;
             }
 
-            Subject subject = (subjectRepo != null ? subjectRepo.findByCode(subjectCode) : Optional.<Subject>empty()).orElse(null);
+            Subject subject = (subjectRepo != null ? subjectRepo.findByCode(subjectCode) : Optional.<Subject>empty())
+                    .orElse(null);
             if (subject == null) {
-                errorTable.add(Map.of("row", rowIdx, "field", "subject_code", "message", "Unknown subject code: " + subjectCode));
+                errorTable.add(Map.of("row", rowIdx, "field", "subject_code", "message",
+                        "Unknown subject code: " + subjectCode));
                 continue;
             }
 
-            ClassSection section = (classSectionRepo != null ? classSectionRepo.findByName(sectionName) : Optional.<ClassSection>empty()).orElse(null);
+            ClassSection section = (classSectionRepo != null ? classSectionRepo.findByName(sectionName)
+                    : Optional.<ClassSection>empty()).orElse(null);
             if (section == null) {
-                errorTable.add(Map.of("row", rowIdx, "field", "section", "message", "Unknown class section: " + sectionName));
+                errorTable.add(
+                        Map.of("row", rowIdx, "field", "section", "message", "Unknown class section: " + sectionName));
                 continue;
             }
 
             User teacher = userRepo.findByUsername(teacherUsername).orElse(null);
             if (teacher == null) {
-                errorTable.add(Map.of("row", rowIdx, "field", "teacher_username", "message", "Unknown teacher: " + teacherUsername));
+                errorTable.add(Map.of("row", rowIdx, "field", "teacher_username", "message",
+                        "Unknown teacher: " + teacherUsername));
                 continue;
             }
 
@@ -425,7 +448,8 @@ public class TimetableService {
             // Conflict check
             ConflictResult conflict = checkConflict(candidate, existingSlots);
             if (conflict.hasConflict()) {
-                errorTable.add(Map.of("row", rowIdx, "field", conflict.getConflictType(), "message", conflict.getDescription()));
+                errorTable.add(Map.of("row", rowIdx, "field", conflict.getConflictType(), "message",
+                        conflict.getDescription()));
                 continue;
             }
 

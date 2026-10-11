@@ -1,0 +1,42 @@
+{
+  "fixture": "obama_biden_group_2010.jpg",
+  "reference_files": [
+    "obama_reference.jpg",
+    "biden_reference.jpg"
+  ],
+  "face_count": 2,
+  "false_accept_rate": 0.0,
+  "false_reject_rate": 0.0,
+  "measured_rows": [
+    {
+      "face_index": 0,
+      "expected_identity_by_reference_distance": "Obama",
+      "expected_distance": 0.483962,
+      "reference_distances": {
+        "Obama": 0.483962,
+        "Biden": 0.798831
+      },
+      "predicted_student": "Obama",
+      "predicted_student_id": 101,
+      "endpoint_confidence": 0.761401,
+      "endpoint_distance": 0.483962,
+      "matched": true,
+      "outcome": "PRESENT_CANDIDATE"
+    },
+    {
+      "face_index": 1,
+      "expected_identity_by_reference_distance": "UNENROLLED/UNKNOWN",
+      "expected_distance": 0.667401,
+      "reference_distances": {
+        "Obama": 0.81503,
+        "Biden": 0.667401
+      },
+      "predicted_student": "Biden",
+      "predicted_student_id": 102,
+      "endpoint_confidence": 0.337599,
+      "endpoint_distance": 0.667401,
+      "matched": false,
+      "outcome": "REVIEW_OR_NO_MATCH"
+    }
+  ]
+}

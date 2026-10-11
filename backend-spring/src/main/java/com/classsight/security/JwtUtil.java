@@ -13,12 +13,14 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Component
+@SuppressWarnings("null")
 public class JwtUtil {
 
     @Value("${jwt.secret}")
     private String secret;
 
-    private static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60 * 1000; // 5 hours
+    @Value("${jwt.access-validity-minutes:15}")
+    private long accessValidityMinutes;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
@@ -60,7 +62,7 @@ public class JwtUtil {
                 .claims(claims)
                 .subject(subject)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY))
+                .expiration(new Date(System.currentTimeMillis() + accessValidityMinutes * 60_000L))
                 .signWith(getSigningKey())
                 .compact();
     }

@@ -24,10 +24,14 @@ public class GlobalApiExceptionHandler {
                 "message", "Uploaded file exceeds the configured size limit"));
     }
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(GlobalApiExceptionHandler.class);
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleUnexpected(Exception exception) {
+        logger.error("Unhandled API exception: {}", exception.getMessage(), exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "status", "error",
-                "message", "The request could not be completed"));
+                "message", exception.getMessage() != null ? exception.getMessage() : "The request could not be completed",
+                "exception", exception.getClass().getName()));
     }
 }

@@ -48,6 +48,7 @@ class AttendanceRecognitionServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void testUndetectedStudentsMarkedAbsentAndSessionFinalizesCleanly() {
         // Given: 5 enrolled students in ClassSection
         ClassSection section = new ClassSection();

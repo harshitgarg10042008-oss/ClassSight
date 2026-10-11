@@ -15,7 +15,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -25,6 +25,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     baseline-version: 1
+    validate-on-migrate: false
     locations: classpath:db/migration
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
@@ -34,6 +35,8 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:your_jwt_secret_here_change_in_production}
+  access-validity-minutes: ${JWT_ACCESS_VALIDITY_MINUTES:15}
+  refresh-validity-days: ${JWT_REFRESH_VALIDITY_DAYS:30}
 
 face-service:
   url: ${FACE_SERVICE_URL:http://localhost:8000}

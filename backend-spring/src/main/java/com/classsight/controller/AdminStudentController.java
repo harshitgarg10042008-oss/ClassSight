@@ -13,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/admin/students")
+@SuppressWarnings("null")
 public class AdminStudentController {
     private final StudentRepository studentRepository;
     private final ClassSectionRepository classSectionRepository;

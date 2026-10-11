@@ -13,6 +13,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api")
+@SuppressWarnings("null")
 public class AttendanceDisputeController {
 
     private final AttendanceDisputeRepository disputeRepo;

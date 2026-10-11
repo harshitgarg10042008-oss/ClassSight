@@ -24,6 +24,7 @@ import java.util.Optional;
 
 @Service
 @Transactional
+@SuppressWarnings("null")
 public class AttendanceSessionService {
 
     private static final Logger logger = LoggerFactory.getLogger(AttendanceSessionService.class);

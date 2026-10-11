@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 @Service
+@SuppressWarnings("null")
 public class RtspCameraAdapter implements CameraFrameAdapter {
     private final CameraRepository cameraRepository;
     private final Path frameDirectory;

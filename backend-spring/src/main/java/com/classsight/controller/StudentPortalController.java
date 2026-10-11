@@ -20,6 +20,7 @@ import java.util.*;
  */
 @RestController
 @RequestMapping("/student")
+@SuppressWarnings("null")
 public class StudentPortalController {
 
     private final StudentRepository studentRepo;

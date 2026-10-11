@@ -13,13 +13,18 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
 
     List<AttendanceRecord> findByStudent_IdOrderByCreatedAtDesc(Long studentId);
 
+    default List<AttendanceRecord> findFinalizedRecordsForStudent(Long studentId) {
+        return findRecordsForStudentByStatus(studentId, com.classsight.entity.AttendanceSession.SessionStatus.FINALIZED);
+    }
+
     @Query("""
         SELECT ar FROM AttendanceRecord ar
         JOIN FETCH ar.session s
         JOIN FETCH s.subject sub
         WHERE ar.student.id = :studentId
-          AND s.status = com.classsight.entity.AttendanceSession.SessionStatus.FINALIZED
+          AND s.status = :status
         ORDER BY s.startedAt DESC
         """)
-    List<AttendanceRecord> findFinalizedRecordsForStudent(@Param("studentId") Long studentId);
+    List<AttendanceRecord> findRecordsForStudentByStatus(@Param("studentId") Long studentId,
+                                                         @Param("status") com.classsight.entity.AttendanceSession.SessionStatus status);
 }

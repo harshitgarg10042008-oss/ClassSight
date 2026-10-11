@@ -21,6 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/analytics")
+@SuppressWarnings("null")
 public class AttendanceAnalyticsController {
 
     private final AttendanceAnalyticsService analyticsService;
@@ -84,8 +85,22 @@ public class AttendanceAnalyticsController {
     }
 
     private User currentUser(Principal principal) {
-        return userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
+        String username = null;
+        if (principal != null) {
+            username = principal.getName();
+        } else {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                username = auth.getName();
+            }
+        }
+        if (username == null) {
+            throw new IllegalStateException("Authenticated user not found");
+        }
+        final String finalUsername = username;
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found: " + finalUsername));
     }
 
     // ── Convenience endpoints matching frontend URL scheme ───────────────────

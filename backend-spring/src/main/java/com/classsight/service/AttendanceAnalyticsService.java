@@ -9,6 +9,7 @@ import com.classsight.repository.FacultySubjectAssignmentRepository;
 import com.classsight.entity.ClassSession;
 import com.classsight.repository.ClassSessionRepository;
 import com.classsight.repository.StudentLeaveRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -17,15 +18,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
+@SuppressWarnings("null")
 public class AttendanceAnalyticsService {
 
     private final AttendanceSessionRepository sessionRepository;
@@ -49,6 +49,7 @@ public class AttendanceAnalyticsService {
         this(sessionRepository, assignmentRepository, classSessionRepository, null, defaulterThreshold);
     }
 
+    @Autowired
     public AttendanceAnalyticsService(
             AttendanceSessionRepository sessionRepository,
             FacultySubjectAssignmentRepository assignmentRepository,
@@ -63,7 +64,8 @@ public class AttendanceAnalyticsService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> analytics(Long subjectId, Long classSectionId, LocalDate from, LocalDate to, User actor) {
+    public Map<String, Object> analytics(Long subjectId, Long classSectionId, LocalDate from, LocalDate to,
+            User actor) {
         authorize(subjectId, classSectionId, actor);
         LocalDate effectiveFrom = from == null ? LocalDate.of(1970, 1, 1) : from;
         LocalDate effectiveTo = to == null ? LocalDate.now() : to;
@@ -71,12 +73,14 @@ public class AttendanceAnalyticsService {
             throw new IllegalArgumentException("to must be on or after from");
         }
 
-        List<AttendanceSession> rawSessions = sessionRepository.findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
-                classSectionId, subjectId, AttendanceSession.SessionStatus.FINALIZED,
-                effectiveFrom.atStartOfDay(), effectiveTo.atTime(LocalTime.MAX));
+        List<AttendanceSession> rawSessions = sessionRepository
+                .findByClassSectionIdAndSubjectIdAndStatusAndStartedAtBetween(
+                        classSectionId, subjectId, AttendanceSession.SessionStatus.FINALIZED,
+                        effectiveFrom.atStartOfDay(), effectiveTo.atTime(LocalTime.MAX));
 
         // Filter out any attendance sessions linked to CANCELLED class sessions
-        // (Hard rule: Cancelled sessions must NEVER count towards total lectures conducted)
+        // (Hard rule: Cancelled sessions must NEVER count towards total lectures
+        // conducted)
         List<AttendanceSession> sessions = rawSessions.stream()
                 .filter(s -> s.getClassSession() == null ||
                         s.getClassSession().getStatus() != ClassSession.SessionStatus.CANCELLED)
@@ -91,17 +95,19 @@ public class AttendanceAnalyticsService {
                     continue;
                 }
                 Student student = record.getStudent();
-                // Exclude session from student's denominator if student has approved leave (Medical or Duty/OD)
+                // Exclude session from student's denominator if student has approved leave
+                // (Medical or Duty/OD)
                 if (studentLeaveRepository != null && sessionDate != null) {
-                    List<com.classsight.entity.StudentLeave> approvedLeaves =
-                            studentLeaveRepository.findApprovedLeaveOnDate(student.getId(), sessionDate);
+                    List<com.classsight.entity.StudentLeave> approvedLeaves = studentLeaveRepository
+                            .findApprovedLeaveOnDate(student.getId(), sessionDate);
                     if (!approvedLeaves.isEmpty()) {
                         continue;
                     }
                 }
                 StudentSummary summary = summaries.computeIfAbsent(student.getId(), id -> new StudentSummary(student));
                 summary.total++;
-                if (record.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT) summary.present++;
+                if (record.getStatus() == AttendanceRecord.AttendanceStatus.PRESENT)
+                    summary.present++;
             }
         }
 
@@ -159,7 +165,8 @@ public class AttendanceAnalyticsService {
         }
 
         private Map<String, Object> toMap() {
-            BigDecimal percentage = total == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(present * 100.0 / total).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal percentage = total == 0 ? BigDecimal.ZERO
+                    : BigDecimal.valueOf(present * 100.0 / total).setScale(2, RoundingMode.HALF_UP);
             Map<String, Object> result = new HashMap<>();
             result.put("studentId", student.getId());
             result.put("rollNumber", student.getRollNumber());
