@@ -26,7 +26,7 @@ marked `DONE` when its acceptance checks have been run and recorded in
   Acceptance: the benchmark measures 8, 15, and 30 faces with upload, decode,
   quality, detection, embedding, matching, and total timings; results are
   reproducible and printed as a before/after table.
-- [ ] **T-006 — Reducing recognition latency** — TODO  
+- [x] **T-006 — Reducing recognition latency** — DONE  
   Acceptance: client resize, warm-up, tiled detection, roster matching, and
   safe parallelism are implemented; benchmark results are recorded honestly.
 - [ ] **T-007 — Making face detection pluggable** — TODO  

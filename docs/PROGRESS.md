@@ -107,6 +107,17 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
   stage timings. The fixture detected four faces; no accuracy claim is made.
 - T-005 is DONE.
 
+## 2026-10-11 — T-006 recognition performance safeguards
+
+- Added browser-side JPEG resizing to a bounded 1600px maximum dimension
+  before attendance upload.
+- Added server-side bounded decode resizing with a configurable
+  `RECOGNITION_MAX_DIMENSION`, preserving the existing tiled detector,
+  warm-up, vectorized roster matching, and edge-crop paths.
+- Added a regression test for the decode bound. FastAPI tests passed
+  (11 passed), frontend typecheck/build passed, and the real-face benchmark
+  completed after the memory safeguard. T-006 is DONE.
+
 ## 2026-10-11 — T-002 Frontend restructuring plan
 
 - Analyzed current monolithic `frontend-next/app/page.tsx` (410+ lines) containing all pages.

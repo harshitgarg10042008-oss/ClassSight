@@ -41,6 +41,7 @@ QUALITY_MAX_ROLL_DEGREES = float(os.getenv("QUALITY_MAX_ROLL_DEGREES", "25.0"))
 EDGE_CROP_ENABLED = os.getenv("EDGE_CROP_ENABLED", "false").lower() == "true"
 EDGE_CROP_PADDING = float(os.getenv("EDGE_CROP_PADDING", "0.20"))
 EDGE_CROP_MAX_DIMENSION = int(os.getenv("EDGE_CROP_MAX_DIMENSION", "0"))
+RECOGNITION_MAX_DIMENSION = int(os.getenv("RECOGNITION_MAX_DIMENSION", "1600"))
 
 # Phase 1: High-Performance Detection & Matching Settings
 TILED_DETECTION_ENABLED = os.getenv("TILED_DETECTION_ENABLED", "true").lower() == "true"
@@ -126,6 +127,8 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         pil_image = Image.open(io.BytesIO(image_bytes))
         if pil_image.mode != "RGB":
             pil_image = pil_image.convert("RGB")
+        if RECOGNITION_MAX_DIMENSION > 0:
+            pil_image.thumbnail((RECOGNITION_MAX_DIMENSION, RECOGNITION_MAX_DIMENSION), Image.Resampling.LANCZOS)
         return np.array(pil_image)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
