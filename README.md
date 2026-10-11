@@ -331,18 +331,32 @@ All containers (`postgres`, `minio`, `rabbitmq`, `face-service-fastapi`, `backen
 
 ### 2. Run Tests & Validation
 ```powershell
-# Backend Spring Boot tests (20 unit & integration tests)
-cd backend-spring
-mvn test
+# Backend Spring Boot tests (works without Maven installed on Windows)
+docker run --rm -v "${PWD}\backend-spring:/app" -w /app maven:3.9-eclipse-temurin-17 mvn test
 
-# Frontend Next.js build
-cd ../frontend-next
+# Frontend Next.js type check and production build
+cd frontend-next
+npm run typecheck
 npm run build
 
-# Face Service latency benchmark (8, 15, and 30 student cohorts)
+# Return to the repository root before scripts
 cd ..
-python scripts/latency_benchmark.py
 ```
+
+### 3. Teacher demo
+
+Open `http://localhost:3000` and sign in with `teacher/teacher123`. For the
+complete ten-minute walkthrough, fallback plan, lighting guidance, and reset
+command, see [DEMO_GUIDE.md](DEMO_GUIDE.md). The repeatable reset command is:
+
+```powershell
+.\scripts\Reset-DemoData.ps1
+```
+
+The face service applies a 1024px maximum dimension before dlib processing to
+prevent oversized classroom images from taking down the service. The current
+measured repository four-face fixture detection is approximately 674ms; no
+unmeasured 30-face benchmark is advertised.
 
 ---
 
