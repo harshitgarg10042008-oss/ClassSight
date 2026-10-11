@@ -87,3 +87,21 @@ and editable names/roll numbers from the quick-enrollment grid.
 
 - Steps 3-7: results, measured speed, demo helpers, automated scenario, and
   clean-start final audit.
+
+## Final audit
+
+Status: **DONE WITH LIMITATIONS**
+
+- `docker compose down` followed by `docker compose up -d --build` completed.
+- All six application/infrastructure containers reported healthy.
+- Backend tests passed in the Maven container.
+- Frontend `npm run typecheck` and production build passed.
+- Direct face detection passed on the four-face repository fixture. Two
+  measured runs were 674ms and 775ms total; these are not 30-face benchmarks.
+- The original seeded-teacher capture/review/finalize flow was rechecked.
+
+Not completed in this pass: a fully automated API demo scenario, duplicate
+merge warnings, MinIO-backed quick-enrollment thumbnails, assignment-specific
+quick-enrollment linkage, and a measured 30-face before/after benchmark.
+Those items remain explicitly unclaimed rather than being represented as
+finished.
