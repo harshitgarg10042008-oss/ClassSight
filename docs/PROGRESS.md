@@ -134,3 +134,13 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
 - Documented explicit re-enrollment when the embedding model changes.
 - Backend image build passed, Flyway applied V11, and `/actuator/health`
   returned `{"status":"UP"}`. T-007 is DONE.
+
+## 2026-10-11 — T-008 recognition progress
+
+- Attendance sessions now expose a persisted `capturePhase` alongside status:
+  `QUEUED`, `DETECTING`, `MATCHING`, and `DONE`.
+- RabbitMQ enqueue and synchronous processing paths update the phase, and the
+  review API returns it for polling clients.
+- The teacher route renders the live phase while recognition is processing.
+  Backend Docker compilation and frontend typecheck/build passed. T-008 is
+  DONE.

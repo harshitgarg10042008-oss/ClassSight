@@ -162,6 +162,7 @@ export default function TeacherPage() {
   const present = all.filter(r => r.status === 'PRESENT').length;
   const absent = all.filter(r => r.status === 'ABSENT').length;
   const inReview = review?.records?.length ?? 0;
+  const progressPhase = review?.capturePhase || (review?.status === 'PROCESSING' ? 'DETECTING' : review?.status);
 
   return (
     <PageLayout pageId="teacher">
@@ -308,6 +309,11 @@ export default function TeacherPage() {
 
         {step === 'review' && review && (
           <div className="section-card">
+            {(review.status === 'PROCESSING' || review.capturePhase === 'QUEUED') && (
+              <div className="alert alert-info" role="status">
+                Recognition progress: {progressPhase}
+              </div>
+            )}
             <div className="section-head">
               <div>
                 <span className="eyebrow">Step 3</span>

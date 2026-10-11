@@ -32,7 +32,7 @@ marked `DONE` when its acceptance checks have been run and recorded in
 - [x] **T-007 — Making face detection pluggable** — DONE  
   Acceptance: detector selection is environment-configurable; model versions
   are persisted and migration/re-enrollment behavior is documented.
-- [ ] **T-008 — Streaming recognition progress** — TODO  
+- [x] **T-008 — Streaming recognition progress** — DONE  
   Acceptance: async captures expose queued, detecting, matching, and done
   states; the UI renders progress and resolved faces without blocking.
 - [ ] **T-009 — Building recognition evaluation tooling** — TODO  
