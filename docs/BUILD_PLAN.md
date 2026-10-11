@@ -16,7 +16,7 @@ marked `DONE` when its acceptance checks have been run and recorded in
 - [x] **T-003 — Persisting refresh sessions securely** — DONE  
   Acceptance: reload silently refreshes a short-lived access token; logout
   invalidates the refresh session and clears the secure httpOnly cookie.
-- [ ] **T-004 — Adding continuous integration** — TODO  
+- [x] **T-004 — Adding continuous integration** — DONE  
   Acceptance: CI runs backend, face service, frontend type/build checks,
   Docker builds, and dependency vulnerability scanning.
 

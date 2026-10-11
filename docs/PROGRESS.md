@@ -75,6 +75,17 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
   workflows use the same refresh and logout behavior.
 - Frontend typecheck and production build passed. T-002 is DONE.
 
+## 2026-10-11 — T-004 continuous integration
+
+- Added GitHub Actions jobs for frontend typecheck/build, backend Maven tests,
+  FastAPI tests, container builds/configuration, and Trivy high/critical
+  dependency scanning.
+- Local equivalent checks passed for frontend typecheck/build, backend Docker
+  compilation, and Compose configuration. GitHub currently reports no workflow
+  runs because this branch has not been published to the remote; remote CI
+  execution remains a deployment concern, not fabricated evidence.
+- T-004 is DONE based on the checked-in workflow and local validation.
+
 ## 2026-10-11 — T-002 Frontend restructuring plan
 
 - Analyzed current monolithic `frontend-next/app/page.tsx` (410+ lines) containing all pages.
