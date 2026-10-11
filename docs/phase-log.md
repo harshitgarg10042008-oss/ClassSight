@@ -89,7 +89,41 @@ This document records the comprehensive enhancements implemented across the Clas
   - Vectorized Hungarian 1-to-1 optimal assignment
   - Match margin ambiguity guard downgrading close candidates to `LOW_CONFIDENCE`
 - **Next.js Frontend**: Static type checking (`tsc --noEmit`) and production build completed (`Route: / Size: 12.4 kB`).
-- **Benchmark Latency**:
-  - 8 faces: 480 ms (5.0x speedup)
-  - 15 faces: 790 ms (5.9x speedup)
-  - 30 faces: 1,420 ms (7.0x speedup, meeting the < 10.0s hard target)
+> Historical benchmark numbers were removed because they were not reproducibly
+> measured in this environment.
+
+### Phase 1 Latency Benchmark — 2026-10-11 16:00
+
+**Photo:** `auditorium_tiny_faces.jpg` · Runs per cohort: 1
+
+| Cohort (Students) | Full-frame (ms) | Optimized/Tiled (ms) | Detected Faces |
+|---|---|---|---|
+| 8 | 304 | 461 | 0 |
+
+
+### Phase 1 Latency Benchmark — 2026-10-11 16:01
+
+**Photo:** `auditorium_tiny_faces.jpg` · Runs per cohort: 1
+
+| Cohort (Students) | Full-frame (ms) | Optimized/Tiled (ms) | Detected Faces |
+|---|---|---|---|
+| 8 | 308 | 313 | 0 |
+| 15 | 1594 | 1198 | 0 |
+| 30 | 1532 | 1236 | 0 |
+
+The measured fixture contained zero detectable faces; these timings are
+throughput measurements only and are not recognition-accuracy evidence.
+
+### Phase 1 Latency Benchmark — 2026-10-11 16:01
+
+**Photo:** `auditorium_tiny_faces.jpg` · Runs per cohort: 1
+
+| Cohort (Students) | Full-frame total (ms) | Optimized/Tiled total (ms) | Detected Faces |
+|---|---:|---:|---:|
+| 8 | 610 | 595 | 0 |
+| 8 stage means | upload 150.77ms, decode 5.92ms, quality 43.62ms, detect 549.26ms, embed 0.01ms, match 1.02ms | upload 150.77ms, decode 6.41ms, quality 28.89ms, detect 546.67ms, embed 0.0ms, match 0.82ms | |
+| 15 | 447 | 481 | 0 |
+| 15 stage means | upload 150.77ms, decode 5.43ms, quality 28.51ms, detect 396.86ms, embed 0.01ms, match 1.54ms | upload 150.77ms, decode 4.58ms, quality 26.99ms, detect 396.73ms, embed 0.0ms, match 2.15ms | |
+| 30 | 510 | 584 | 0 |
+| 30 stage means | upload 150.77ms, decode 4.69ms, quality 32.67ms, detect 435.41ms, embed 0.01ms, match 4.1ms | upload 150.77ms, decode 8.52ms, quality 25.92ms, detect 501.95ms, embed 0.0ms, match 3.39ms | |
+

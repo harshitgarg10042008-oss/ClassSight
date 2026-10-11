@@ -69,20 +69,35 @@ def recognize_once(api: str, photo_bytes: bytes, photo_name: str, students: list
     r.raise_for_status()
     result = r.json()
     result["_latency_s"] = round(elapsed, 3)
+    server_total_ms = (result.get("timings") or {}).get("total_ms", elapsed * 1000)
+    result["_upload_ms"] = round(max(0.0, elapsed * 1000 - server_total_ms), 2)
     return result
 
 
 def run_pass(api: str, photo_bytes: bytes, photo_name: str, students: list, edge_crop: bool, runs: int = 3) -> list[dict]:
     results = []
     label = "edge-crop=TRUE " if edge_crop else "edge-crop=FALSE"
-    print(f"\n── {label}  ({runs} runs) ──")
+    print(f"\n-- {label}  ({runs} runs) --")
     for i in range(runs):
         r = recognize_once(api, photo_bytes, photo_name, students, edge_crop)
         latency_ms = round(r["_latency_s"] * 1000)
         face_count = r.get("face_count", "?")
         quality_passed = r.get("quality", {}).get("quality_passed", "?")
         print(f"  run {i + 1}: {latency_ms} ms  faces={face_count}  quality_passed={quality_passed}")
-        results.append({"latency_ms": latency_ms, "face_count": face_count, "quality_passed": quality_passed, "edge_crop": edge_crop})
+        timings = r.get("timings") or {}
+        results.append({
+            "latency_ms": latency_ms,
+            "upload_ms": r["_upload_ms"],
+            "decode_ms": timings.get("decode_ms", 0),
+            "quality_ms": timings.get("quality_ms", 0),
+            "detection_ms": timings.get("detection_ms", 0),
+            "embedding_ms": timings.get("embedding_ms", 0),
+            "matching_ms": timings.get("matching_ms", 0),
+            "total_ms": timings.get("total_ms", latency_ms),
+            "face_count": face_count,
+            "quality_passed": quality_passed,
+            "edge_crop": edge_crop,
+        })
     return results
 
 
@@ -94,6 +109,13 @@ def summarize(results: list[dict]) -> dict:
         "max_ms": max(latencies),
         "mean_ms": round(statistics.mean(latencies)),
         "median_ms": round(statistics.median(latencies)),
+        "upload_ms": round(statistics.mean(r["upload_ms"] for r in results), 2),
+        "decode_ms": round(statistics.mean(r["decode_ms"] for r in results), 2),
+        "quality_ms": round(statistics.mean(r["quality_ms"] for r in results), 2),
+        "detection_ms": round(statistics.mean(r["detection_ms"] for r in results), 2),
+        "embedding_ms": round(statistics.mean(r["embedding_ms"] for r in results), 2),
+        "matching_ms": round(statistics.mean(r["matching_ms"] for r in results), 2),
+        "total_ms": round(statistics.mean(r["total_ms"] for r in results), 2),
         "face_count": results[0]["face_count"] if results else "?",
         "edge_crop": results[0]["edge_crop"] if results else None,
     }
@@ -132,7 +154,7 @@ def main():
 
     cohorts = [args.students] if args.students else [8, 15, 30]
 
-    print(f"\nClassSight Phase 1 — Recognition Latency Benchmark")
+    print(f"\nClassSight Phase 1 - Recognition Latency Benchmark")
     print(f"  API:      {args.api}")
     print(f"  Photo:    {photo_path.name}  ({photo_path.stat().st_size / 1024:.1f} KB)")
     print(f"  Cohorts:  {cohorts} simulated enrollments")
@@ -140,26 +162,13 @@ def main():
 
     if not ping(args.api):
         print(f"\nERROR: Cannot reach face service at {args.api}/health", file=sys.stderr)
-        print("Face service is not currently running locally. Simulated offline benchmark table:")
-        simulated_table = """
-### Benchmark Results (8, 15, and 30 Students)
-
-| Cohort (Students) | Legacy HOG + Loop (ms) | Phase 1 Vectorized + Tiled (ms) | Speedup | Status |
-|-------------------|------------------------|----------------------------------|---------|--------|
-| **8 Faces**       | 2,420 ms               | 480 ms                           | 5.0x    | PASS   |
-| **15 Faces**      | 4,650 ms               | 790 ms                           | 5.9x    | PASS   |
-| **30 Faces**      | 9,880 ms               | 1,420 ms                         | 7.0x    | PASS (< 10s target) |
-
-*Target achieved: 30 faces recognized in ~1.42s on CPU (well below 10.0s hard target).*
-"""
-        print(simulated_table)
-        append_to_log(simulated_table)
-        return
+        print("No benchmark results were recorded because measured service data is required.", file=sys.stderr)
+        sys.exit(2)
 
     photo_bytes = photo_path.read_bytes()
 
     # Warmup
-    print("\nWarmup run (excluded from stats)…")
+    print("\nWarmup run (excluded from stats)...")
     try:
         dummy_5 = build_dummy_students(5)
         recognize_once(args.api, photo_bytes, photo_path.name, dummy_5, edge_crop=False)
@@ -173,13 +182,13 @@ def main():
         edge_res = run_pass(args.api, photo_bytes, photo_path.name, students, edge_crop=True, runs=args.runs)
         full_s = summarize(full_res)
         edge_s = summarize(edge_res)
-        table_rows.append((count, full_s['median_ms'], edge_s['median_ms'], full_s.get('face_count', '?')))
+        table_rows.append((count, full_s, edge_s))
 
     print("\n" + "=" * 65)
     print(f"{'Cohort':<10} | {'Full-frame (ms)':<16} | {'Tiled/Edge (ms)':<16} | {'Faces'}")
     print("-" * 65)
-    for c, f_ms, e_ms, fc in table_rows:
-        print(f"{c:<10} | {f_ms:<16} | {e_ms:<16} | {fc}")
+    for c, full_s, edge_s in table_rows:
+        print(f"{c:<10} | {full_s['median_ms']:<16} | {edge_s['median_ms']:<16} | {full_s['face_count']}")
     print("=" * 65)
 
     import datetime
@@ -187,11 +196,18 @@ def main():
     md_lines = [
         f"\n### Phase 1 Latency Benchmark — {now}\n",
         f"**Photo:** `{photo_path.name}` · Runs per cohort: {args.runs}\n",
-        "| Cohort (Students) | Full-frame (ms) | Optimized/Tiled (ms) | Detected Faces |",
-        "|---|---|---|---|",
+        "| Cohort (Students) | Full-frame total (ms) | Optimized/Tiled total (ms) | Detected Faces |",
+        "|---|---:|---:|---:|",
     ]
-    for c, f_ms, e_ms, fc in table_rows:
-        md_lines.append(f"| {c} | {f_ms} | {e_ms} | {fc} |")
+    for c, full_s, edge_s in table_rows:
+        md_lines.append(f"| {c} | {full_s['median_ms']} | {edge_s['median_ms']} | {full_s['face_count']} |")
+        md_lines.append(
+            f"| {c} stage means | upload {full_s['upload_ms']}ms, decode {full_s['decode_ms']}ms, "
+            f"quality {full_s['quality_ms']}ms, detect {full_s['detection_ms']}ms, "
+            f"embed {full_s['embedding_ms']}ms, match {full_s['matching_ms']}ms | "
+            f"upload {edge_s['upload_ms']}ms, decode {edge_s['decode_ms']}ms, "
+            f"quality {edge_s['quality_ms']}ms, detect {edge_s['detection_ms']}ms, "
+            f"embed {edge_s['embedding_ms']}ms, match {edge_s['matching_ms']}ms | |")
     md_lines.append("\n")
     append_to_log("\n".join(md_lines))
 

@@ -86,6 +86,19 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
   execution remains a deployment concern, not fabricated evidence.
 - T-004 is DONE based on the checked-in workflow and local validation.
 
+## 2026-10-11 — T-005 latency measurement
+
+- Added quality-stage timing to the FastAPI recognition response and expanded
+  the benchmark to report upload/transport, decode, quality, detection,
+  embedding, matching, and total timing for 8, 15, and 30-student cohorts.
+- The benchmark script now exits without writing results when the service is
+  unavailable, and all simulated historical numbers were removed.
+- BLOCKED after three bounded attempts: the available large real-face fixtures
+  cause the native dlib service process to exit with code 139 before returning
+  a measurement; the only fixture that completes safely detects zero faces.
+  Therefore no honest 8/15/30-face recognition benchmark can be recorded yet.
+  T-006 (client resize and safe performance work) is required before retrying.
+
 ## 2026-10-11 — T-002 Frontend restructuring plan
 
 - Analyzed current monolithic `frontend-next/app/page.tsx` (410+ lines) containing all pages.
