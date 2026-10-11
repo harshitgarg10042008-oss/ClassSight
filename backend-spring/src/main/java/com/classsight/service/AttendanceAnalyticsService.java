@@ -10,6 +10,7 @@ import com.classsight.entity.ClassSession;
 import com.classsight.repository.ClassSessionRepository;
 import com.classsight.repository.StudentLeaveRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +50,7 @@ public class AttendanceAnalyticsService {
         this(sessionRepository, assignmentRepository, classSessionRepository, null, defaulterThreshold);
     }
 
+    @Autowired
     public AttendanceAnalyticsService(
             AttendanceSessionRepository sessionRepository,
             FacultySubjectAssignmentRepository assignmentRepository,

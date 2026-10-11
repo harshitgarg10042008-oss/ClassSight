@@ -97,7 +97,8 @@ public class StudentPortalController {
             return ResponseEntity.status(404).body(List.of());
         }
 
-        List<AttendanceRecord> records = recordRepo.findFinalizedRecordsForStudent(student.getId());
+        List<AttendanceRecord> records = recordRepo.findFinalizedRecordsForStudent(student.getId(),
+                AttendanceSession.SessionStatus.FINALIZED);
         if (subjectId != null) {
             records = records.stream()
                     .filter(r -> r.getSession() != null && r.getSession().getSubject() != null
@@ -142,7 +143,8 @@ public class StudentPortalController {
             return ResponseEntity.status(404).body(Map.of("error", "Student record not found"));
         }
 
-        List<AttendanceRecord> records = recordRepo.findFinalizedRecordsForStudent(student.getId());
+        List<AttendanceRecord> records = recordRepo.findFinalizedRecordsForStudent(student.getId(),
+                AttendanceSession.SessionStatus.FINALIZED);
 
         // Group by subject
         Map<Long, SubjectSummary> summaryMap = new HashMap<>();
@@ -371,8 +373,8 @@ public class StudentPortalController {
                 return ResponseEntity.status(404).body(Map.of("error", "Student not found"));
             }
             Long sessId = Long.parseLong(body.get("sessionId").toString());
-            List<AttendanceRecord> recs = recordRepo.findFinalizedRecordsForStudent(student.getId())
-                    .stream()
+            List<AttendanceRecord> recs = recordRepo.findFinalizedRecordsForStudent(student.getId(),
+                    AttendanceSession.SessionStatus.FINALIZED).stream()
                     .filter(r -> r.getSession() != null && r.getSession().getId().equals(sessId))
                     .toList();
             if (recs.isEmpty()) {

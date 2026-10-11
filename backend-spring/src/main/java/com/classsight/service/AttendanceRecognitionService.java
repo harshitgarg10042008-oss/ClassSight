@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -76,6 +77,7 @@ public class AttendanceRecognitionService {
                 faceServiceUrl, distanceThreshold, edgeCropEnabled, timetableService, null);
     }
 
+    @Autowired
     public AttendanceRecognitionService(
             AttendanceSessionRepository attendanceSessionRepository,
             StudentRepository studentRepository,

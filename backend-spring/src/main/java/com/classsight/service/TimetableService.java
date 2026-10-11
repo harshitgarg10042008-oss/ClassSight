@@ -5,6 +5,7 @@ import com.classsight.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,7 @@ public class TimetableService {
     private final ClassSectionRepository      classSectionRepo;
     private final RoomRepository              roomRepo;
 
+    @Autowired
     public TimetableService(AcademicTermRepository termRepo,
                              TimetableSlotRepository slotRepo,
                              ClassSessionRepository sessionRepo,

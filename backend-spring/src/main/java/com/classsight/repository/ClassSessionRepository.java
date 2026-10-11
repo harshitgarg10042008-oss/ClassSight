@@ -78,10 +78,7 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
         WHERE cs.subject.id = :subjectId
           AND cs.classSection.id = :sectionId
           AND cs.date BETWEEN :from AND :to
-          AND cs.status IN (
-              com.classsight.entity.ClassSession.SessionStatus.CONDUCTED,
-              com.classsight.entity.ClassSession.SessionStatus.SUBSTITUTED
-          )
+          AND cs.status IN ('CONDUCTED', 'SUBSTITUTED')
         """)
     long countConductedSessions(
             @Param("subjectId") Long subjectId,
@@ -109,11 +106,7 @@ public interface ClassSessionRepository extends JpaRepository<ClassSession, Long
           AND (cs.teacher.id = :teacherId OR (cs.substituteTeacher IS NOT NULL AND cs.substituteTeacher.id = :teacherId))
           AND cs.subject.id = :subjectId
           AND cs.room.id = :roomId
-          AND cs.status IN (
-              com.classsight.entity.ClassSession.SessionStatus.SCHEDULED,
-              com.classsight.entity.ClassSession.SessionStatus.SUBSTITUTED,
-              com.classsight.entity.ClassSession.SessionStatus.CONDUCTED
-          )
+          AND cs.status IN ('SCHEDULED', 'SUBSTITUTED', 'CONDUCTED')
         ORDER BY cs.startTime ASC
         """)
     List<ClassSession> findMatchingSessionsForCapture(
