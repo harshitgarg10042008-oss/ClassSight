@@ -124,3 +124,13 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
 - Plan: Create proper Next.js app router structure with separate route files, extract shared components, create typed API client, add shared layout and auth guard.
 - Files to create: `app/layout.tsx`, `app/login/page.tsx`, `app/dashboard/page.tsx`, `app/teacher/page.tsx`, `app/enrollment/page.tsx`, `app/analytics/page.tsx`, `app/hod/page.tsx`, `app/admin/page.tsx`, `app/student/page.tsx`, `components/` directory, `lib/api.ts`.
 - Verification: TypeScript passes, existing workflows function identically, all pages accessible via routes.
+
+## 2026-10-11 — T-007 pluggable detection
+
+- Detector selection is configurable through `DETECTOR_BACKEND` with YuNet and
+  dlib-HOG fallback behavior exposed in the face-service health metadata.
+- Added Flyway V11 and persisted `model_version` on every face embedding;
+  existing vectors are labeled during migration.
+- Documented explicit re-enrollment when the embedding model changes.
+- Backend image build passed, Flyway applied V11, and `/actuator/health`
+  returned `{"status":"UP"}`. T-007 is DONE.
