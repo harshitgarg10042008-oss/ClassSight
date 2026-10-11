@@ -127,3 +127,17 @@ throughput measurements only and are not recognition-accuracy evidence.
 | 30 | 510 | 584 | 0 |
 | 30 stage means | upload 150.77ms, decode 4.69ms, quality 32.67ms, detect 435.41ms, embed 0.01ms, match 4.1ms | upload 150.77ms, decode 8.52ms, quality 25.92ms, detect 501.95ms, embed 0.0ms, match 3.39ms | |
 
+
+### Phase 1 Latency Benchmark — 2026-10-11 16:04
+
+**Photo:** `obama_biden_group_2010.jpg` · Runs per cohort: 1
+
+| Cohort (Students) | Full-frame total (ms) | Optimized/Tiled total (ms) | Detected Faces |
+|---|---:|---:|---:|
+| 8 | 588 | 568 | 4 |
+| 8 stage means | upload 141.03ms, decode 216.91ms, quality 39.38ms, detect 71.51ms, embed 111.73ms, match 2.43ms | upload 124.52ms, decode 218.21ms, quality 35.31ms, detect 66.78ms, embed 118.47ms, match 2.39ms | |
+| 15 | 1907 | 912 | 4 |
+| 15 stage means | upload 132.51ms, decode 325.41ms, quality 53.07ms, detect 100.29ms, embed 1286.06ms, match 6.99ms | upload 135.76ms, decode 371.27ms, quality 60.35ms, detect 273.36ms, embed 61.21ms, match 4.51ms | |
+| 30 | 1061 | 889 | 4 |
+| 30 stage means | upload 139.95ms, decode 343.96ms, quality 53.47ms, detect 86.06ms, embed 422.24ms, match 11.58ms | upload 156.24ms, decode 364.95ms, quality 52.95ms, detect 93.09ms, embed 202.85ms, match 14.12ms | |
+

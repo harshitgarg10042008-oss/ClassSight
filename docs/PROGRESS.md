@@ -99,6 +99,14 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
   Therefore no honest 8/15/30-face recognition benchmark can be recorded yet.
   T-006 (client resize and safe performance work) is required before retrying.
 
+## 2026-10-11 — T-005 unblocked
+
+- T-006's bounded image decode made the real `obama_biden_group_2010.jpg`
+  fixture safe to process. The benchmark completed all 8, 15, and 30
+  enrollment cohorts with measured full-frame and edge-crop timings and
+  stage timings. The fixture detected four faces; no accuracy claim is made.
+- T-005 is DONE.
+
 ## 2026-10-11 — T-002 Frontend restructuring plan
 
 - Analyzed current monolithic `frontend-next/app/page.tsx` (410+ lines) containing all pages.

@@ -22,7 +22,7 @@ marked `DONE` when its acceptance checks have been run and recorded in
 
 ## Phase 1 — Speed and accuracy
 
-- [ ] **T-005 — Measuring recognition latency** — BLOCKED  
+- [x] **T-005 — Measuring recognition latency** — DONE  
   Acceptance: the benchmark measures 8, 15, and 30 faces with upload, decode,
   quality, detection, embedding, matching, and total timings; results are
   reproducible and printed as a before/after table.
