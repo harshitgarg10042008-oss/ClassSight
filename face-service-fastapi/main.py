@@ -37,9 +37,10 @@ QUALITY_MAX_ROLL_DEGREES = float(os.getenv("QUALITY_MAX_ROLL_DEGREES", "25.0"))
 EDGE_CROP_ENABLED = os.getenv("EDGE_CROP_ENABLED", "false").lower() == "true"
 EDGE_CROP_PADDING = float(os.getenv("EDGE_CROP_PADDING", "0.20"))
 EDGE_CROP_MAX_DIMENSION = int(os.getenv("EDGE_CROP_MAX_DIMENSION", "0"))
+MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "1024"))
 
 # Phase 1: High-Performance Detection & Matching Settings
-TILED_DETECTION_ENABLED = os.getenv("TILED_DETECTION_ENABLED", "true").lower() == "true"
+TILED_DETECTION_ENABLED = os.getenv("TILED_DETECTION_ENABLED", "false").lower() == "true"
 TILED_DETECTION_MIN_DIM = int(os.getenv("TILED_DETECTION_MIN_DIM", "1000"))
 TILED_OVERLAP = float(os.getenv("TILED_OVERLAP", "0.15"))
 DETECTION_UPSAMPLE = int(os.getenv("DETECTION_UPSAMPLE", "-1"))
@@ -98,6 +99,21 @@ class RecognitionResponse(BaseModel):
     timings: Optional[Timings] = None
 
 
+class DetectedFace(BaseModel):
+    face_index: int
+    box: list[int]
+    quality_warnings: list[str] = Field(default_factory=list)
+
+
+class DetectionResponse(BaseModel):
+    face_count: int
+    faces: list[DetectedFace]
+    quality: QualityMetrics
+    image_width: int
+    image_height: int
+    timings: Optional[Timings] = None
+
+
 @app.on_event("startup")
 def preload_models():
     """Phase 1: Warm up dlib and deep learning models at startup to eliminate first-request penalty."""
@@ -121,9 +137,50 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         pil_image = Image.open(io.BytesIO(image_bytes))
         if pil_image.mode != "RGB":
             pil_image = pil_image.convert("RGB")
+        if MAX_IMAGE_DIMENSION > 0 and max(pil_image.size) > MAX_IMAGE_DIMENSION:
+            pil_image.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
         return np.array(pil_image)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
+
+
+@app.post("/detect-faces", response_model=DetectionResponse)
+async def detect_faces(image: UploadFile = File(...)):
+    started = time.perf_counter()
+    image_bytes = await image.read()
+    try:
+        decode_started = time.perf_counter()
+        image_array = _load_rgb_image(image_bytes)
+        decode_ms = (time.perf_counter() - decode_started) * 1000
+        detection_started = time.perf_counter()
+        locations = _detect_faces(image_array)
+        detection_ms = (time.perf_counter() - detection_started) * 1000
+        quality = _quality_metrics(image_array, locations)
+        faces = [
+            DetectedFace(
+                face_index=index,
+                box=[int(value) for value in location],
+                quality_warnings=_face_quality_warnings(
+                    image_array, location, image_array.shape, quality
+                ),
+            )
+            for index, location in enumerate(locations)
+        ]
+        return DetectionResponse(
+            face_count=len(faces),
+            faces=faces,
+            quality=quality,
+            image_width=int(image_array.shape[1]),
+            image_height=int(image_array.shape[0]),
+            timings=Timings(
+                decode_ms=decode_ms,
+                detection_ms=detection_ms,
+                total_ms=(time.perf_counter() - started) * 1000,
+            ),
+        )
+    except Exception as exc:
+        logger.exception("Face detection failed")
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _crop_face(image_array: np.ndarray, location: tuple[int, int, int, int], padding: float = EDGE_CROP_PADDING) -> np.ndarray:

@@ -31,6 +31,13 @@ type BulkEnrollResponse = {
   totalRows: number; successCount: number; failureCount: number;
   results: { rollNumber: string; name: string; success: boolean; message: string }[];
 };
+type QuickDetection = {
+  face_count: number;
+  image_width: number;
+  image_height: number;
+  faces: { face_index: number; box: [number, number, number, number]; quality_warnings: string[] }[];
+  timings?: { total_ms?: number };
+};
 type TimetablePeriod = {
   session: {
     id: number; date: string; startTime: string; endTime: string; status: string;
@@ -477,7 +484,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   authFetch: (p: string, o?: RequestInit) => Promise<Response>;
   getCsrf: () => Promise<{ token: string }>;
 }) {
-  const [tab, setTab]               = useState<'bulk'|'single'|'roster'>('bulk');
+  const [tab, setTab]               = useState<'quick'|'bulk'|'single'|'roster'>('quick');
   const [roster, setRoster]         = useState<StudentRosterItem[]>([]);
   const [loadingRoster, setLR]      = useState(false);
   const [busy, setBusy]             = useState(false);
@@ -491,6 +498,10 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   const [sPhoto, setSPhoto]         = useState<File|null>(null);
   const [sUrl, setSUrl]             = useState<string|null>(null);
   const [camOn, setCamOn]           = useState(false);
+  const [quickPhoto, setQuickPhoto] = useState<File|null>(null);
+  const [quickUrl, setQuickUrl]     = useState<string|null>(null);
+  const [quickDetection, setQuickDetection] = useState<QuickDetection|null>(null);
+  const [quickConsent, setQuickConsent] = useState(false);
   const vidRef = useRef<HTMLVideoElement|null>(null);
   const strmRef = useRef<MediaStream|null>(null);
 
@@ -549,6 +560,61 @@ function EnrollmentPage({ authFetch, getCsrf }: {
     finally { setBusy(false); }
   }
 
+  async function detectQuickPhoto(file: File) {
+    setQuickPhoto(file);
+    setQuickUrl(URL.createObjectURL(file));
+    setQuickDetection(null);
+    setBusy(true);
+    setMsg('Detecting faces…');
+    try {
+      const csrf = await getCsrf(), form = new FormData();
+      form.append('photo', file);
+      const response = await authFetch('/students/quick-detect', {
+        method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form,
+      });
+      const result: QuickDetection = await response.json();
+      setQuickDetection(result);
+      setMsg(`${result.face_count} face(s) detected. Remove false detections before enrollment.`);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : 'Face detection failed');
+    } finally { setBusy(false); }
+  }
+
+  async function enrollDetectedFaces() {
+    if (!quickPhoto || !quickDetection || !quickConsent) {
+      setMsg('Confirm consent before enrolling the detected faces.');
+      return;
+    }
+    setBusy(true); setMsg('Enrolling demo faces…');
+    try {
+      const image = new Image();
+      image.src = URL.createObjectURL(quickPhoto);
+      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not read class photo')); });
+      const source = document.createElement('canvas');
+      source.width = quickDetection.image_width; source.height = quickDetection.image_height;
+      source.getContext('2d')?.drawImage(image, 0, 0, source.width, source.height);
+      let enrolled = 0;
+      for (const face of quickDetection.faces) {
+        const [top, right, bottom, left] = face.box;
+        const crop = document.createElement('canvas');
+        crop.width = Math.max(96, right - left); crop.height = Math.max(96, bottom - top);
+        crop.getContext('2d')?.drawImage(source, left, top, right - left, bottom - top, 0, 0, crop.width, crop.height);
+        const blob = await new Promise<Blob|null>(resolve => crop.toBlob(resolve, 'image/jpeg', 0.95));
+        if (!blob) continue;
+        const form = new FormData(), csrf = await getCsrf();
+        form.append('name', `Demo-${String(face.face_index + 1).padStart(2, '0')}`);
+        form.append('rollNumber', `DEMO-${String(face.face_index + 1).padStart(2, '0')}`);
+        form.append('consentGiven', 'true');
+        form.append('photo', new File([blob], `demo-${face.face_index + 1}.jpg`, { type:'image/jpeg' }));
+        await authFetch('/students/enroll-single', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form });
+        enrolled++;
+      }
+      setMsg(`✅ Enrolled ${enrolled} demo face(s).`);
+      loadRoster();
+    } catch (err) { setMsg(err instanceof Error ? err.message : 'Demo enrollment failed'); }
+    finally { setBusy(false); }
+  }
+
   return (
     <div>
       {msg && <div className="alert alert-info">{msg}</div>}
@@ -558,7 +624,54 @@ function EnrollmentPage({ authFetch, getCsrf }: {
             {t === 'bulk' ? '📦 Bulk Import' : t === 'single' ? '👤 Single Student' : `📋 Roster (${roster.length})`}
           </button>
         ))}
+        <button className={`inner-tab ${tab === 'quick' ? 'active' : ''}`} onClick={() => setTab('quick')}>
+          ⚡ Quick Class Enrollment
+        </button>
       </div>
+
+      {tab === 'quick' && (
+        <div className="section-card">
+          <span className="eyebrow">Demo enrollment</span><h2>Quick Class Enrollment</h2>
+          <p className="hint">Upload one class photo. The face service detects and numbers faces; review false detections before creating demo roster entries.</p>
+          <label>Class photo
+            <input type="file" accept="image/*" disabled={busy}
+              onChange={e => { const file = e.target.files?.[0]; if (file) detectQuickPhoto(file); }} />
+          </label>
+          <label style={{ display:'flex', gap:8, alignItems:'center', marginTop:16 }}>
+            <input type="checkbox" checked={quickConsent} onChange={e => setQuickConsent(e.target.checked)} required /> Everyone in this photo has agreed to biometric enrollment.
+          </label>
+          {quickUrl && quickDetection && (
+            <div style={{ marginTop:20 }}>
+              <div style={{ position:'relative', maxWidth:800 }}>
+                {/* Detection coordinates are returned in the resized image coordinate system. */}
+                <img src={quickUrl} alt="Class photo" style={{ display:'block', width:'100%' }} />
+                {quickDetection.faces.map(face => {
+                  const [top, right, bottom, left] = face.box;
+                  return <div key={face.face_index} style={{
+                    position:'absolute', top:`${top / quickDetection.image_height * 100}%`,
+                    left:`${left / quickDetection.image_width * 100}%`,
+                    width:`${(right-left) / quickDetection.image_width * 100}%`,
+                    height:`${(bottom-top) / quickDetection.image_height * 100}%`,
+                    border:'2px solid #22c55e', color:'#fff', fontWeight:800,
+                    background:'rgba(34,197,94,.15)', textShadow:'0 1px 2px #000',
+                  }}>Demo-{String(face.face_index + 1).padStart(2, '0')}</div>;
+                })}
+              </div>
+              <p><strong>{quickDetection.face_count}</strong> detected · {quickDetection.timings?.total_ms?.toFixed(0) ?? '—'} ms</p>
+              <button type="button" className="btn-lg" disabled={busy || !quickConsent || quickDetection.faces.length === 0} onClick={enrollDetectedFaces}>
+                {busy ? 'Enrolling…' : 'Enroll Demo Faces'}
+              </button>
+              <div className="table-wrap"><table><thead><tr><th>Label</th><th>Quality warnings</th><th>Action</th></tr></thead>
+                <tbody>{quickDetection.faces.map(face => <tr key={face.face_index}>
+                  <td><strong>Demo-{String(face.face_index + 1).padStart(2, '0')}</strong></td>
+                  <td>{face.quality_warnings.length ? face.quality_warnings.join('; ') : 'Good'}</td>
+                  <td><button type="button" className="btn-secondary" onClick={() => setQuickDetection(d => d ? ({ ...d, faces:d.faces.filter(f => f.face_index !== face.face_index) }) : d)}>Remove</button></td>
+                </tr>)}</tbody></table></div>
+              <p className="hint">Detection review is complete. Use Single Student or Bulk Import to attach names and consented face photos; automatic roster creation from a class image is not enabled until each face has an individual enrollment photo.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === 'bulk' && (
         <div className="section-card">

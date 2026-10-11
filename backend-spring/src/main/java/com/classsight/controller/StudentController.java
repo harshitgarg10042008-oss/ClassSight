@@ -54,6 +54,31 @@ public class StudentController {
         return ResponseEntity.ok(students.stream().map(com.classsight.dto.StudentResponse::new).toList());
     }
 
+    @PostMapping(value = "/quick-detect", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> quickDetect(@RequestParam("photo") MultipartFile photo) {
+        try {
+            imageUploadValidator.validate(photo);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            HttpHeaders imageHeaders = new HttpHeaders();
+            imageHeaders.setContentType(Optional.ofNullable(photo.getContentType())
+                    .map(MediaType::parseMediaType).orElse(MediaType.IMAGE_JPEG));
+            imageHeaders.setContentDispositionFormData("image",
+                    Optional.ofNullable(photo.getOriginalFilename()).orElse("class-photo.jpg"));
+            body.add("image", new HttpEntity<>(photo.getBytes(), imageHeaders));
+            ResponseEntity<Map<String, Object>> result = restTemplate.exchange(
+                    faceServiceUrl + "/detect-faces",
+                    HttpMethod.POST,
+                    new HttpEntity<>(body, headers),
+                    new org.springframework.core.ParameterizedTypeReference<>() {});
+            return ResponseEntity.status(result.getStatusCode()).body(result.getBody());
+        } catch (Exception e) {
+            logger.error("Quick face detection failed", e);
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Could not detect faces: " + e.getMessage()));
+        }
+    }
+
     @GetMapping(value = "/template.csv", produces = "text/csv")
     public ResponseEntity<byte[]> downloadCsvTemplate() {
         String csv = "roll_number,name\n" +
