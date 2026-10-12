@@ -13,7 +13,7 @@ export default function HodPage() {
   useEffect(() => {
     api.getDisputes()
       .then(setDisputes)
-      .catch(err => setMsg(err.message))
+      .catch((err: unknown) => setMsg(err instanceof Error ? err.message : 'Unable to load disputes.'))
       .finally(() => setLoading(false));
   }, []);
 

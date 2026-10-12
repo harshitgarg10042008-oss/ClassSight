@@ -46,7 +46,7 @@ export default function TeacherPage() {
           if (rm) setRoomId(rm.id);
         }
       }).catch(() => setPeriod(null));
-    }).catch(err => setMsg(err.message));
+    }).catch((err: unknown) => setMsg(err instanceof Error ? err.message : 'Unable to load the current period.'));
   }, []);
 
   async function startCam() {

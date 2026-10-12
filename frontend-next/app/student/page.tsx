@@ -13,7 +13,7 @@ export default function StudentPage() {
   useEffect(() => {
     api.getStudentTimetable()
       .then(setTimetable)
-      .catch(err => setMsg(err.message))
+      .catch((err: unknown) => setMsg(err instanceof Error ? err.message : 'Unable to load timetable.'))
       .finally(() => setLoading(false));
   }, []);
 

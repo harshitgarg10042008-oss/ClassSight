@@ -6,11 +6,11 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, and `BLOCKED`. A task is
 
 ## Tier A — Demo
 
-- [ ] **A0 — Consolidating branches** — TODO
+- [x] **A0 — Consolidating branches** — DONE
   - Branches and worktree are audited.
   - Backup tags for `main` and the saas branch exist.
   - The selected consolidation builds and passes the baseline tests.
-- [ ] **A1 — Establishing a clean baseline** — TODO
+- [x] **A1 — Establishing a clean baseline** — DONE
   - All services build from Docker Compose.
   - Backend and face-service tests pass.
   - Health checks and existing demo flows are verified.

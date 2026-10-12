@@ -13,7 +13,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     api.getAnalytics()
       .then(setAnalytics)
-      .catch(err => setMsg(err.message))
+      .catch((err: unknown) => setMsg(err instanceof Error ? err.message : 'Unable to load analytics.'))
       .finally(() => setLoading(false));
   }, []);
 

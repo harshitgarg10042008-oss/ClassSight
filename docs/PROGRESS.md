@@ -28,6 +28,23 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
 - No task is marked DONE until the missing-tool/environment limitation is
   resolved and the relevant checks are rerun.
 
+## 2026-10-12 — A0/A1 branch and baseline verification
+
+- Consolidated `saas-build` into `main` with a non-fast-forward merge.
+- Preserved both backup tags and the `saas-build` branch.
+- Restored the missing `V10__refresh_tokens.sql` migration required by the
+  existing database; the Compose backend then started healthy.
+- Added the missing frontend `PageLayout` and `@/*` TypeScript path mapping
+  required by the consolidated routes.
+- `npm run typecheck` and `npm run build` pass.
+- Ten focused face-service unit tests pass. The broader local Python suite
+  remains limited by the unavailable `face-recognition` package.
+- `docker compose up -d --build` completed and all six runtime services report
+  healthy; `/health`, `/actuator/health`, and the frontend root responded.
+- Maven is not installed on the host, but the Docker Maven build completed;
+  host-side Spring test execution remains an environment limitation.
+- A0 and A1 are DONE with the above limitations recorded honestly.
+
 ## 2026-10-11 — T-001 documentation and startup verification
 
 - Corrected the README's YuNet/ONVIF terminology, migration/version claims,

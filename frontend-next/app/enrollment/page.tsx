@@ -13,7 +13,7 @@ export default function EnrollmentPage() {
   useEffect(() => {
     api.getStudentRoster()
       .then(setRoster)
-      .catch(err => setMsg(err.message))
+      .catch((err: unknown) => setMsg(err instanceof Error ? err.message : 'Unable to load enrollment.'))
       .finally(() => setLoading(false));
   }, []);
 
