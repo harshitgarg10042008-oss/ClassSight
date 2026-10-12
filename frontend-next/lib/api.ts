@@ -16,6 +16,7 @@ export type RecognitionDiagnostic = {
   distance?: number; second_best_distance?: number; margin?: number;
   recognition_state?: string; rejection_reason?: string;
   detector?: string; detector_scale?: string;
+  box?: number[]; image_width_px?: number; image_height_px?: number;
 };
 export type Review = {
   sessionId: number; status: string; records: ReviewRecord[]; allRecords?: ReviewRecord[];

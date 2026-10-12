@@ -94,6 +94,8 @@ class FaceMatch(BaseModel):
     detector_scale: str = "full-frame"
     second_best_distance: Optional[float] = None
     rejection_reason: Optional[str] = None
+    image_width_px: int = 0
+    image_height_px: int = 0
 
 
 class Timings(BaseModel):
@@ -755,6 +757,8 @@ async def recognize(
                 detector_scale=_detector_scale(),
                 second_best_distance=result.get("second_best_distance"),
                 rejection_reason=_rejection_reason(rec_state, face_warning_list, has_candidate),
+                image_width_px=int(image_array.shape[1]),
+                image_height_px=int(image_array.shape[0]),
             ))
 
         t_end = time.perf_counter()
@@ -851,6 +855,8 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
             detector_scale=_detector_scale(),
             second_best_distance=result.get("second_best_distance"),
             rejection_reason=_rejection_reason(rec_state, face_warning_list, has_candidate),
+            image_width_px=int(image_array.shape[1]),
+            image_height_px=int(image_array.shape[0]),
         ))
 
     t_end = time.perf_counter()

@@ -335,6 +335,21 @@ export default function TeacherPage() {
               </div>
             )}
             {review.quality?.warning && <div className="alert alert-warning">{review.quality.warning}</div>}
+            {review.diagnostics?.some(d => d.box?.length === 4) && (
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <img src={review.photoUrl} alt="Captured classroom photo with recognition boxes" style={{ display: 'block', width: '100%', borderRadius: 12 }} />
+                {review.diagnostics.map((d, index) => {
+                  if (!d.box || d.box.length !== 4 || !d.image_width_px || !d.image_height_px) return null;
+                  const [top, right, bottom, left] = d.box;
+                  const color = d.recognition_state === 'RECOGNIZED' ? '#22c55e' : d.recognition_state === 'LOW_CONFIDENCE' ? '#f59e0b' : '#ef4444';
+                  return <div key={d.face_index ?? index} style={{
+                    position: 'absolute', top: `${top / d.image_height_px * 100}%`, left: `${left / d.image_width_px * 100}%`,
+                    width: `${(right - left) / d.image_width_px * 100}%`, height: `${(bottom - top) / d.image_height_px * 100}%`,
+                    border: `3px solid ${color}`, background: `${color}22`, color, fontWeight: 800,
+                  }}>#{(d.face_index ?? index) + 1}</div>;
+                })}
+              </div>
+            )}
             <div className="student-grid">
               {all.map(r => (
                 <div key={r.recordId} className="student-card">
