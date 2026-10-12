@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@SuppressWarnings("null")
 public class AttendanceReviewService {
 
     private final AttendanceSessionRepository sessionRepository;
@@ -45,6 +46,7 @@ public class AttendanceReviewService {
         Map<String, Object> response = new HashMap<>();
         response.put("sessionId", session.getId());
         response.put("status", session.getStatus().toString());
+        response.put("capturePhase", session.getCapturePhase());
         response.put("capturedPhotoPath", session.getCapturedPhotoPath());
         response.put("photoUrl", "/api/attendance-sessions/" + sessionId + "/review/photo");
         response.put("records", records);

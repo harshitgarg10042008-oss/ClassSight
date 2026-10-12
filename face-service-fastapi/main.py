@@ -19,8 +19,12 @@ try:
 except ImportError:
     face_recognition = None
 
-from scipy.spatial.distance import cdist
-from scipy.optimize import linear_sum_assignment
+try:
+    from scipy.spatial.distance import cdist
+    from scipy.optimize import linear_sum_assignment
+except ImportError:
+    cdist = None
+    linear_sum_assignment = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,7 +41,9 @@ QUALITY_MAX_ROLL_DEGREES = float(os.getenv("QUALITY_MAX_ROLL_DEGREES", "25.0"))
 EDGE_CROP_ENABLED = os.getenv("EDGE_CROP_ENABLED", "false").lower() == "true"
 EDGE_CROP_PADDING = float(os.getenv("EDGE_CROP_PADDING", "0.20"))
 EDGE_CROP_MAX_DIMENSION = int(os.getenv("EDGE_CROP_MAX_DIMENSION", "0"))
-MAX_IMAGE_DIMENSION = int(os.getenv("MAX_IMAGE_DIMENSION", "1024"))
+RECOGNITION_MAX_DIMENSION = int(
+    os.getenv("RECOGNITION_MAX_DIMENSION", os.getenv("MAX_IMAGE_DIMENSION", "1600"))
+)
 
 # Phase 1: High-Performance Detection & Matching Settings
 TILED_DETECTION_ENABLED = os.getenv("TILED_DETECTION_ENABLED", "false").lower() == "true"
@@ -85,6 +91,7 @@ class FaceMatch(BaseModel):
 
 class Timings(BaseModel):
     decode_ms: float = 0.0
+    quality_ms: float = 0.0
     detection_ms: float = 0.0
     embedding_ms: float = 0.0
     matching_ms: float = 0.0
@@ -137,8 +144,8 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         pil_image = Image.open(io.BytesIO(image_bytes))
         if pil_image.mode != "RGB":
             pil_image = pil_image.convert("RGB")
-        if MAX_IMAGE_DIMENSION > 0 and max(pil_image.size) > MAX_IMAGE_DIMENSION:
-            pil_image.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
+        if RECOGNITION_MAX_DIMENSION > 0:
+            pil_image.thumbnail((RECOGNITION_MAX_DIMENSION, RECOGNITION_MAX_DIMENSION), Image.Resampling.LANCZOS)
         return np.array(pil_image)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
@@ -506,18 +513,46 @@ def _vectorized_hungarian_matching(
     ref_to_student = np.asarray(ref_to_student_idx, dtype=int)
 
     # 2. Vectorized pairwise distance calculation: shape (M, TotalReferences)
-    D_all = cdist(F, E, metric="euclidean")
+    if cdist is not None:
+        D_all = cdist(F, E, metric="euclidean")
+    else:
+        D_all = np.linalg.norm(F[:, np.newaxis, :] - E[np.newaxis, :, :], axis=2)
 
     # 3. Collapse references per student into (M, K) student cost matrix
-    cost_matrix = np.full((M, K), fill_value=np.inf, dtype=np.float64)
+    cost_matrix = np.full((M, K), fill_value=1e6, dtype=np.float64)
     for s_idx in range(K):
         mask = (ref_to_student == s_idx)
         if np.any(mask):
             cost_matrix[:, s_idx] = np.min(D_all[:, mask], axis=1)
 
-    # 4. Hungarian algorithm (scipy linear_sum_assignment)
-    row_ind, col_ind = linear_sum_assignment(cost_matrix)
-    assignment_map = dict(zip(row_ind, col_ind))
+    # 4. Hungarian algorithm (scipy linear_sum_assignment) with safe greedy fallback
+    assignment_map = {}
+    if linear_sum_assignment is not None:
+        try:
+            safe_cost_matrix = np.nan_to_num(cost_matrix, nan=1e6, posinf=1e6, neginf=0.0)
+            row_ind, col_ind = linear_sum_assignment(safe_cost_matrix)
+            assignment_map = dict(zip(row_ind, col_ind))
+        except Exception as err:
+            logger.warning("Hungarian algorithm failed (%s); falling back to greedy assignment", err)
+            assignment_map = {}
+
+    if not assignment_map:
+        claimed_cols = set()
+        entries = []
+        for r in range(M):
+            for c in range(K):
+                val = float(cost_matrix[r, c])
+                if np.isfinite(val) and val < 1e5:
+                    entries.append((val, r, c))
+        entries.sort(key=lambda x: x[0])
+        claimed_rows = set()
+        for val, r, c in entries:
+            if r not in claimed_rows and c not in claimed_cols:
+                assignment_map[r] = c
+                claimed_rows.add(r)
+                claimed_cols.add(c)
+                if len(claimed_rows) == min(M, K):
+                    break
 
     results = []
     for face_idx in range(M):
@@ -536,7 +571,7 @@ def _vectorized_hungarian_matching(
         row_dists = np.sort(cost_matrix[face_idx, :])
         if K >= 2:
             d2 = float(row_dists[1] if row_dists[0] == d1 else row_dists[0])
-            margin = float(d2 - d1)
+            margin = float(abs(d2 - d1))
             is_ambiguous = (d1 < distance_threshold) and (margin < margin_threshold)
         else:
             margin = 1.0
@@ -638,8 +673,10 @@ async def recognize(
         t_detect_end = time.perf_counter()
 
         # 3. Quality & Embedding generation
-        t_embed_start = time.perf_counter()
+        t_quality_start = time.perf_counter()
         quality = _quality_metrics(image_array, face_locations)
+        t_quality_end = time.perf_counter()
+        t_embed_start = time.perf_counter()
         face_encodings = _encode_detected_faces(image_array, face_locations, edge_crop)
         t_embed_end = time.perf_counter()
 
@@ -688,6 +725,7 @@ async def recognize(
         t_end = time.perf_counter()
         timings = Timings(
             decode_ms=round((t_decode_end - t_decode_start) * 1000, 2),
+            quality_ms=round((t_quality_end - t_quality_start) * 1000, 2),
             detection_ms=round((t_detect_end - t_detect_start) * 1000, 2),
             embedding_ms=round((t_embed_end - t_embed_start) * 1000, 2),
             matching_ms=round((t_match_end - t_match_start) * 1000, 2),

@@ -20,6 +20,9 @@ public class StudentFaceEmbedding {
     @Column(name = "embedding", nullable = false)
     private List<Double> embedding;
 
+    @Column(name = "model_version", nullable = false)
+    private String modelVersion = "face-recognition-small-v1";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -46,6 +49,14 @@ public class StudentFaceEmbedding {
 
     public void setEmbedding(List<Double> embedding) {
         this.embedding = embedding;
+    }
+
+    public String getModelVersion() {
+        return modelVersion;
+    }
+
+    public void setModelVersion(String modelVersion) {
+        this.modelVersion = modelVersion;
     }
 
     public LocalDateTime getCreatedAt() {

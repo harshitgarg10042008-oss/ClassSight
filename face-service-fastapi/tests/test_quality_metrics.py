@@ -2,9 +2,19 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
+import io
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from main import _quality_metrics  # noqa: E402
+from main import _load_rgb_image, _quality_metrics  # noqa: E402
+
+
+def test_recognition_decode_caps_large_image_dimension():
+    image = Image.new("RGB", (3200, 2000), "white")
+    payload = io.BytesIO()
+    image.save(payload, format="JPEG")
+    decoded = _load_rgb_image(payload.getvalue())
+    assert max(decoded.shape[:2]) == 1600
 
 
 def test_sharp_well_lit_image_passes_quality_checks():

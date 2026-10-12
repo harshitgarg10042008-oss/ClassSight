@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
+@SuppressWarnings("null")
 public class AsyncRecognitionService {
     private final RabbitTemplate rabbitTemplate;
     private final AttendanceSessionRepository sessionRepository;
@@ -40,6 +41,8 @@ public class AsyncRecognitionService {
     public void enqueue(Long sessionId, String objectKey) {
         AttendanceSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
+        session.setCapturePhase("QUEUED");
+        sessionRepository.save(session);
         List<Map<String, Object>> enrolled = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection())
                 .stream().map(this::studentPayload).toList();
         Map<String, Object> message = new HashMap<>();
@@ -68,4 +71,3 @@ public class AsyncRecognitionService {
         return item;
     }
 }
-
