@@ -18,6 +18,16 @@ def test_quality_warning_requires_recapture_state():
     assert _recognition_state(True, ['image blurry'], True) == 'RECAPTURE_REQUIRED'
 
 
+def test_rejection_reason_explains_weak_and_unknown_faces():
+    from main import _rejection_reason
+
+    assert _rejection_reason('LOW_CONFIDENCE', [], True) == (
+        'distance or top-1/top-2 margin did not meet the threshold'
+    )
+    assert _rejection_reason('UNKNOWN', [], False) == 'no enrolled candidate'
+    assert _rejection_reason('RECAPTURE_REQUIRED', ['face too small'], True) == 'face too small'
+
+
 def test_multiple_reference_embeddings_are_normalized_and_cached():
     from main import EnrolledStudent, _student_embeddings
 

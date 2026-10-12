@@ -45,6 +45,21 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
   host-side Spring test execution remains an environment limitation.
 - A0 and A1 are DONE with the above limitations recorded honestly.
 
+## 2026-10-12 — A2 diagnostics foundation
+
+- Recognition responses now expose per-face box, width/height in pixels,
+  detector/backend scale, best and second-best distances, margin, state, and
+  an explicit rejection reason.
+- Recognition diagnostics and stage timings are persisted with the attendance
+  session in new migration `V12__recognition_diagnostics.sql`.
+- The review API and teacher results screen expose a details toggle with the
+  diagnostics table, measured stage timings, camera resolution, and a coverage
+  warning when detected faces are fewer than enrolled records.
+- Eleven focused face-service tests pass, frontend typecheck passes, and the
+  rebuilt Compose stack is healthy with Flyway V12 applied.
+- Small-face recall benchmarking, annotated-image persistence, and the
+  synthetic 40/60/80/120 px acceptance measurement remain outstanding.
+
 ## 2026-10-11 — T-001 documentation and startup verification
 
 - Corrected the README's YuNet/ONVIF terminology, migration/version claims,

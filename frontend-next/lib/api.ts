@@ -11,11 +11,19 @@ export type ReviewRecord = {
   recordId: number; studentId: number; studentName: string; rollNumber: string;
   status: string; recognitionState?: string; confidenceScore?: number; qualityWarning?: string;
 };
+export type RecognitionDiagnostic = {
+  face_index?: number; face_width_px?: number; face_height_px?: number;
+  distance?: number; second_best_distance?: number; margin?: number;
+  recognition_state?: string; rejection_reason?: string;
+  detector?: string; detector_scale?: string;
+};
 export type Review = {
   sessionId: number; status: string; records: ReviewRecord[]; allRecords?: ReviewRecord[];
   photoUrl: string;
   capturePhase?: 'QUEUED' | 'DETECTING' | 'MATCHING' | 'DONE' | string;
   quality?: { warning?: string };
+  diagnostics?: RecognitionDiagnostic[];
+  timings?: Record<string, number>;
 };
 export type StudentRosterItem = {
   id: number; rollNumber: string; name: string; active: boolean;

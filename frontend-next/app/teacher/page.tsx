@@ -23,6 +23,8 @@ export default function TeacherPage() {
   const [period, setPeriod] = useState<TimetablePeriod | null>(null);
   const [camErr, setCamErr] = useState('');
   const [camOn, setCamOn] = useState(false);
+  const [cameraResolution, setCameraResolution] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
   const vidRef = useRef<HTMLVideoElement | null>(null);
   const strmRef = useRef<MediaStream | null>(null);
 
@@ -57,6 +59,7 @@ export default function TeacherPage() {
       if (vidRef.current) {
         vidRef.current.srcObject = s;
         await vidRef.current.play();
+        setCameraResolution(`${vidRef.current.videoWidth} × ${vidRef.current.videoHeight}px`);
       }
       setCamOn(true);
     } catch (e) {
@@ -271,6 +274,7 @@ export default function TeacherPage() {
               ? <div className="alert alert-danger">{camErr}</div>
               : <div className="webcam-wrap">
                 <video ref={vidRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 420, display: 'block', objectFit: 'cover' }} />
+                {cameraResolution && <div className="hint">Camera resolution: {cameraResolution}</div>}
                 <div className="webcam-actions">
                   <button onClick={snap} style={{ boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}>📸 Snap Photo</button>
                   {camOn ? <button className="btn-secondary" onClick={stopCam}>Pause</button> : <button className="btn-secondary" onClick={startCam}>Restart</button>}
@@ -325,6 +329,11 @@ export default function TeacherPage() {
               <span className="badge badge-red">🔴 {absent} Absent</span>
               {inReview > 0 && <span className="badge badge-amber">🟡 {inReview} Review</span>}
             </div>
+            {(review.diagnostics?.length ?? 0) < (review.allRecords?.length ?? 0) && (
+              <div className="alert alert-warning">
+                Many students may be too far or out of frame. Take a second photo of the back rows.
+              </div>
+            )}
             {review.quality?.warning && <div className="alert alert-warning">{review.quality.warning}</div>}
             <div className="student-grid">
               {all.map(r => (
@@ -334,6 +343,28 @@ export default function TeacherPage() {
                   <div className={`status-pill ${r.status === 'PRESENT' ? 'status-green' : r.status === 'ABSENT' ? 'status-red' : 'status-amber'}`}>
                     {r.status}
                   </div>
+                  <button type="button" className="btn-secondary" onClick={() => setShowDetails(!showDetails)}>
+                    {showDetails ? 'Hide recognition details' : 'Show recognition details'}
+                  </button>
+                  {showDetails && (
+                    <div className="table-wrap" style={{ marginTop: 16 }}>
+                      <table>
+                        <thead><tr><th>Face</th><th>Size</th><th>Best / second distance</th><th>Margin</th><th>State</th><th>Detector</th><th>Reason</th></tr></thead>
+                        <tbody>{(review.diagnostics ?? []).map((d, index) => (
+                          <tr key={d.face_index ?? index}>
+                            <td>#{(d.face_index ?? index) + 1}</td>
+                            <td>{d.face_width_px ?? '—'} × {d.face_height_px ?? '—'} px</td>
+                            <td>{d.distance?.toFixed(4) ?? '—'} / {d.second_best_distance?.toFixed(4) ?? '—'}</td>
+                            <td>{d.margin?.toFixed(4) ?? '—'}</td>
+                            <td>{d.recognition_state ?? 'UNKNOWN'}</td>
+                            <td>{d.detector ?? '—'} ({d.detector_scale ?? '—'})</td>
+                            <td>{d.rejection_reason ?? 'Accepted'}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                      {review.timings && <p className="hint">Pipeline: {Object.entries(review.timings).map(([key, value]) => `${key} ${Number(value).toFixed(1)}ms`).join(' · ')}</p>}
+                    </div>
+                  )}
                   {r.confidenceScore && <div style={{ fontSize: 11, marginTop: 4 }}>Conf: {(r.confidenceScore * 100).toFixed(1)}%</div>}
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                     <button

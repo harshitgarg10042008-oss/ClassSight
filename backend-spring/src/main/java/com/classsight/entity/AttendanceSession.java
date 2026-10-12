@@ -76,6 +76,12 @@ public class AttendanceSession {
     @Column(name = "capture_phase", length = 50)
     private String capturePhase = "SINGLE";
 
+    @Column(name = "recognition_diagnostics", columnDefinition = "text")
+    private String recognitionDiagnostics;
+
+    @Column(name = "recognition_timings", columnDefinition = "text")
+    private String recognitionTimings;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -270,5 +276,21 @@ public class AttendanceSession {
 
     public void setCapturePhase(String capturePhase) {
         this.capturePhase = capturePhase;
+    }
+
+    public String getRecognitionDiagnostics() {
+        return recognitionDiagnostics;
+    }
+
+    public void setRecognitionDiagnostics(String recognitionDiagnostics) {
+        this.recognitionDiagnostics = recognitionDiagnostics;
+    }
+
+    public String getRecognitionTimings() {
+        return recognitionTimings;
+    }
+
+    public void setRecognitionTimings(String recognitionTimings) {
+        this.recognitionTimings = recognitionTimings;
     }
 }

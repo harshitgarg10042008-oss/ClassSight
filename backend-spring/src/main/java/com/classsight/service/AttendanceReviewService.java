@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -26,16 +28,19 @@ public class AttendanceReviewService {
 
     private final AttendanceSessionRepository sessionRepository;
     private final StorageService storageService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
-    public AttendanceReviewService(AttendanceSessionRepository sessionRepository, StorageService storageService) {
+    public AttendanceReviewService(AttendanceSessionRepository sessionRepository, StorageService storageService,
+            ObjectMapper objectMapper) {
         this.sessionRepository = sessionRepository;
         this.storageService = storageService;
+        this.objectMapper = objectMapper;
     }
 
     /** Compatibility constructor for focused unit tests that exercise local storage. */
     public AttendanceReviewService(AttendanceSessionRepository sessionRepository) {
-        this(sessionRepository, new CapturePhotoStorageService("./data/captures"));
+        this(sessionRepository, new CapturePhotoStorageService("./data/captures"), new ObjectMapper());
     }
 
     @Transactional(readOnly = true)
@@ -51,6 +56,8 @@ public class AttendanceReviewService {
         response.put("photoUrl", "/api/attendance-sessions/" + sessionId + "/review/photo");
         response.put("records", records);
         response.put("allRecords", reviewRecords(session, false));
+        response.put("diagnostics", parseJsonArray(session.getRecognitionDiagnostics()));
+        response.put("timings", parseJsonObject(session.getRecognitionTimings()));
         Map<String, Object> quality = new HashMap<>();
         quality.put("blurScore", session.getBlurScore());
         quality.put("brightnessMean", session.getBrightnessMean());
@@ -152,6 +159,28 @@ public class AttendanceReviewService {
                     result.add(item);
                 });
         return result;
+    }
+
+    private List<?> parseJsonArray(String value) {
+        if (value == null || value.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(value, List.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Stored recognition diagnostics are invalid", e);
+        }
+    }
+
+    private Map<?, ?> parseJsonObject(String value) {
+        if (value == null || value.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(value, Map.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Stored recognition timings are invalid", e);
+        }
     }
 
     public record PhotoFile(Resource resource, MediaType mediaType) {

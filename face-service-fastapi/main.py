@@ -87,6 +87,13 @@ class FaceMatch(BaseModel):
     quality_warnings: list[str] = []
     recognition_state: str = "UNKNOWN"
     margin: Optional[float] = None
+    box: list[int] = Field(default_factory=list)
+    face_width_px: int = 0
+    face_height_px: int = 0
+    detector: str = DETECTOR_BACKEND
+    detector_scale: str = "full-frame"
+    second_best_distance: Optional[float] = None
+    rejection_reason: Optional[str] = None
 
 
 class Timings(BaseModel):
@@ -300,6 +307,24 @@ def _recognition_state(matched: bool, warnings: list[str], has_candidate: bool) 
     return "RECOGNIZED"
 
 
+def _rejection_reason(state: str, warnings: list[str], has_candidate: bool) -> Optional[str]:
+    if state == "RECOGNIZED":
+        return None
+    if warnings:
+        return "; ".join(warnings)
+    if not has_candidate:
+        return "no enrolled candidate"
+    if state == "LOW_CONFIDENCE":
+        return "distance or top-1/top-2 margin did not meet the threshold"
+    return state.lower().replace("_", " ")
+
+
+def _detector_scale() -> str:
+    if TILED_DETECTION_ENABLED:
+        return "tiled"
+    return f"upsample-{DETECTION_UPSAMPLE if DETECTION_UPSAMPLE >= 0 else 'auto'}"
+
+
 _EMBEDDING_CACHE: dict[int, tuple[str, list[np.ndarray]]] = {}
 
 
@@ -490,7 +515,8 @@ def _vectorized_hungarian_matching(
     if M == 0 or K == 0:
         return [{
             "student_id": None, "roll_number": None, "distance": None,
-            "confidence_score": 0.0, "matched": False, "is_ambiguous": False, "margin": None
+            "confidence_score": 0.0, "matched": False, "is_ambiguous": False,
+            "margin": None, "second_best_distance": None
         } for _ in range(M)]
 
     # 1. Stack all references across valid students into single matrix
@@ -505,7 +531,8 @@ def _vectorized_hungarian_matching(
     if not all_refs:
         return [{
             "student_id": None, "roll_number": None, "distance": None,
-            "confidence_score": 0.0, "matched": False, "is_ambiguous": False, "margin": None
+            "confidence_score": 0.0, "matched": False, "is_ambiguous": False,
+            "margin": None, "second_best_distance": None
         } for _ in range(M)]
 
     E = np.asarray(all_refs, dtype=np.float64)       # shape (TotalReferences, 128)
@@ -559,7 +586,8 @@ def _vectorized_hungarian_matching(
         if face_idx not in assignment_map:
             results.append({
                 "student_id": None, "roll_number": None, "distance": None,
-                "confidence_score": 0.0, "matched": False, "is_ambiguous": False, "margin": None
+                "confidence_score": 0.0, "matched": False, "is_ambiguous": False,
+                "margin": None, "second_best_distance": None
             })
             continue
 
@@ -568,9 +596,8 @@ def _vectorized_hungarian_matching(
         d1 = float(cost_matrix[face_idx, assigned_s_idx])
 
         # Top-1 vs Top-2 margin check
-        row_dists = np.sort(cost_matrix[face_idx, :])
         if K >= 2:
-            d2 = float(row_dists[1] if row_dists[0] == d1 else row_dists[0])
+            d2 = float(np.min(np.delete(cost_matrix[face_idx, :], assigned_s_idx)))
             margin = float(abs(d2 - d1))
             is_ambiguous = (d1 < distance_threshold) and (margin < margin_threshold)
         else:
@@ -588,6 +615,7 @@ def _vectorized_hungarian_matching(
             "matched": matched,
             "is_ambiguous": is_ambiguous,
             "margin": round(margin, 6),
+            "second_best_distance": round(d2, 6) if K >= 2 else None,
         })
 
     return results
@@ -720,6 +748,13 @@ async def recognize(
                 quality_warnings=face_warning_list,
                 recognition_state=rec_state,
                 margin=result.get("margin"),
+                box=[top, right, bottom, left],
+                face_width_px=max(0, right - left),
+                face_height_px=max(0, bottom - top),
+                detector=DETECTOR_BACKEND,
+                detector_scale=_detector_scale(),
+                second_best_distance=result.get("second_best_distance"),
+                rejection_reason=_rejection_reason(rec_state, face_warning_list, has_candidate),
             ))
 
         t_end = time.perf_counter()
@@ -809,6 +844,13 @@ def _recognize_message(image_bytes: bytes, students_payload: list[dict], distanc
             quality_warnings=face_warning_list,
             recognition_state=rec_state,
             margin=result.get("margin"),
+            box=[top, right, bottom, left],
+            face_width_px=max(0, right - left),
+            face_height_px=max(0, bottom - top),
+            detector=DETECTOR_BACKEND,
+            detector_scale=_detector_scale(),
+            second_best_distance=result.get("second_best_distance"),
+            rejection_reason=_rejection_reason(rec_state, face_warning_list, has_candidate),
         ))
 
     t_end = time.perf_counter()

@@ -12,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -125,6 +124,7 @@ public class AttendanceRecognitionService {
 
         Map<String, Object> recognition = callRecognition(image, enrolledStudents);
         session.setCapturePhase("MATCHING");
+        persistRecognitionDiagnostics(session, recognition);
         List<Map<String, Object>> matches = readMatches(recognition);
         Map<String, Object> quality = readQuality(recognition);
         boolean qualityPassed = Boolean.TRUE.equals(quality.get("quality_passed"));
@@ -242,6 +242,7 @@ public class AttendanceRecognitionService {
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
         session.setStatus(AttendanceSession.SessionStatus.PROCESSING);
         List<Student> enrolledStudents = resolveEnrolledStudents(session);
+        persistRecognitionDiagnostics(session, recognition);
         Map<Long, Student> studentsById = enrolledStudents.stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
         List<Map<String, Object>> matches = readMatches(recognition);
@@ -410,7 +411,6 @@ public class AttendanceRecognitionService {
         return (Map<String, Object>) map;
     }
 
-    @SuppressWarnings("unchecked")
     private List<String> stringList(Object value) {
         if (!(value instanceof List<?> list))
             return new java.util.ArrayList<>();
@@ -427,16 +427,27 @@ public class AttendanceRecognitionService {
         return new java.util.ArrayList<>(unique);
     }
 
-    @SuppressWarnings("unchecked")
     private List<Map<String, Object>> readMatches(Map<String, Object> recognition) {
         Object rawMatches = recognition.get("matches");
         if (!(rawMatches instanceof List<?>)) {
             throw new IllegalStateException("Face service response did not include matches");
         }
+
         return ((List<?>) rawMatches).stream()
                 .filter(Map.class::isInstance)
                 .map(item -> (Map<String, Object>) item)
                 .toList();
+    }
+
+    private void persistRecognitionDiagnostics(AttendanceSession session, Map<String, Object> recognition) {
+        try {
+            session.setRecognitionDiagnostics(objectMapper.writeValueAsString(
+                    recognition.getOrDefault("matches", List.of())));
+            session.setRecognitionTimings(objectMapper.writeValueAsString(
+                    recognition.getOrDefault("timings", Map.of())));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not persist recognition diagnostics", e);
+        }
     }
 
     private Map<String, Object> findMatchForStudent(

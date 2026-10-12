@@ -14,7 +14,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, and `BLOCKED`. A task is
   - All services build from Docker Compose.
   - Backend and face-service tests pass.
   - Health checks and existing demo flows are verified.
-- [ ] **A2 — Improving small-face recognition** — TODO
+- [ ] **A2 — Improving small-face recognition** — IN PROGRESS
   - Per-face diagnostics and annotated captures are available.
   - Camera resolution, enrollment coverage, and weak-face review are visible.
   - Synthetic 40/60/80/120 px measurements are recorded honestly.
