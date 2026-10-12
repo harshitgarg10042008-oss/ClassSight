@@ -147,6 +147,9 @@ export default function ClassSightApp() {
             </button>
           </form>
           <div className="login-hint">Demo: <code>teacher/teacher123</code> · <code>admin/admin123</code></div>
+          <div className="legal-links" style={{ justifyContent: 'center', marginTop: 20, fontSize: 12 }}>
+            <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+          </div>
         </div>
       </div>
     );
@@ -509,6 +512,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   const [quickUrl, setQuickUrl]     = useState<string|null>(null);
   const [quickDetection, setQuickDetection] = useState<QuickDetection|null>(null);
   const [quickConsent, setQuickConsent] = useState(false);
+  const [quickBatchId, setQuickBatchId] = useState('');
   const [testPhoto, setTestPhoto] = useState<File | null>(null);
   const [testReview, setTestReview] = useState<Review | null>(null);
   const [testAssignments, setTestAssignments] = useState<Assignment[]>([]);
@@ -524,7 +528,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
 
   useEffect(() => {
     loadRoster();
-    Promise.all([authFetch('/teacher/assignments').then(r => r.json()), authFetch('/rooms').then(r => r.json())])
+    Promise.all([authFetch('/teacher/assignments').then(r => r.json()), authFetch('/api/rooms').then(r => r.json())])
       .then(([assignments, rooms]) => { setTestAssignments(assignments); setTestRooms(rooms); })
       .catch(() => setMsg('Unable to load test recognition context.'));
   }, [loadRoster, authFetch]);
@@ -639,6 +643,8 @@ function EnrollmentPage({ authFetch, getCsrf }: {
       const source = document.createElement('canvas');
       source.width = quickDetection.image_width; source.height = quickDetection.image_height;
       source.getContext('2d')?.drawImage(image, 0, 0, source.width, source.height);
+      const batchId = quickBatchId || `CLASS-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${Date.now().toString().slice(-6)}`;
+      setQuickBatchId(batchId);
       let enrolled = 0;
       for (const face of quickDetection.faces) {
         const [top, right, bottom, left] = face.box;
@@ -648,14 +654,15 @@ function EnrollmentPage({ authFetch, getCsrf }: {
         const blob = await new Promise<Blob|null>(resolve => crop.toBlob(resolve, 'image/jpeg', 0.95));
         if (!blob) continue;
         const form = new FormData(), csrf = await getCsrf();
-        form.append('name', `Demo-${String(face.face_index + 1).padStart(2, '0')}`);
-        form.append('rollNumber', `DEMO-${String(face.face_index + 1).padStart(2, '0')}`);
+        const studentNumber = `${batchId}-${String(face.face_index + 1).padStart(2, '0')}`;
+        form.append('name', `Class Student ${String(face.face_index + 1).padStart(2, '0')}`);
+        form.append('rollNumber', studentNumber);
         form.append('consentGiven', 'true');
         form.append('photo', new File([blob], `demo-${face.face_index + 1}.jpg`, { type:'image/jpeg' }));
         await authFetch('/students/enroll-single', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form });
         enrolled++;
       }
-      setMsg(`✅ Enrolled ${enrolled} demo face(s).`);
+      setMsg(`✅ Enrolled ${enrolled} student(s) with stable numbers from ${batchId}. Use Test Recognition after students leave the room.`);
       loadRoster();
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Demo enrollment failed'); }
     finally { setBusy(false); }
@@ -712,8 +719,8 @@ function EnrollmentPage({ authFetch, getCsrf }: {
 
       {tab === 'quick' && (
         <div className="section-card">
-          <span className="eyebrow">Demo enrollment</span><h2>Quick Class Enrollment</h2>
-          <p className="hint">Upload one class photo. The face service detects and numbers faces; review false detections before creating demo roster entries.</p>
+          <span className="eyebrow">Class roster enrollment</span><h2>Enroll a class from one photo</h2>
+          <p className="hint">Upload the first classroom photo. Every detected student receives a stable number and face reference. Later, use Test Recognition after students leave to see who is absent.</p>
           <label>Class photo
             <input type="file" accept="image/*" disabled={busy}
               onChange={e => { const file = e.target.files?.[0]; if (file) detectQuickPhoto(file); }} />
@@ -735,7 +742,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
                     height:`${(bottom-top) / quickDetection.image_height * 100}%`,
                     border:'2px solid #22c55e', color:'#fff', fontWeight:800,
                     background:'rgba(34,197,94,.15)', textShadow:'0 1px 2px #000',
-                  }}>Demo-{String(face.face_index + 1).padStart(2, '0')}</div>;
+                  }}>{quickBatchId ? `${quickBatchId}-${String(face.face_index + 1).padStart(2, '0')}` : `Student-${String(face.face_index + 1).padStart(2, '0')}`}</div>;
                 })}
               </div>
               <p><strong>{quickDetection.face_count}</strong> detected · {quickDetection.timings?.total_ms?.toFixed(0) ?? '—'} ms</p>
@@ -744,11 +751,11 @@ function EnrollmentPage({ authFetch, getCsrf }: {
               </button>
               <div className="table-wrap"><table><thead><tr><th>Label</th><th>Quality warnings</th><th>Action</th></tr></thead>
                 <tbody>{quickDetection.faces.map(face => <tr key={face.face_index}>
-                  <td><strong>Demo-{String(face.face_index + 1).padStart(2, '0')}</strong></td>
+                  <td><strong>{quickBatchId ? `${quickBatchId}-${String(face.face_index + 1).padStart(2, '0')}` : `Student-${String(face.face_index + 1).padStart(2, '0')}`}</strong></td>
                   <td>{face.quality_warnings.length ? face.quality_warnings.join('; ') : 'Good'}</td>
                   <td><button type="button" className="btn-secondary" onClick={() => setQuickDetection(d => d ? ({ ...d, faces:d.faces.filter(f => f.face_index !== face.face_index) }) : d)}>Remove</button></td>
                 </tr>)}</tbody></table></div>
-              <p className="hint">Detection review is complete. Use Single Student or Bulk Import to attach names and consented face photos; automatic roster creation from a class image is not enabled until each face has an individual enrollment photo.</p>
+              <p className="hint">Review and remove false detections before enrollment. The generated numbers remain linked to these face references, so the next classroom photo can report present and absent students.</p>
             </div>
           )}
         </div>

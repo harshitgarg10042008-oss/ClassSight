@@ -29,6 +29,8 @@ export function PageLayout({
               {link.label}
             </Link>
           ))}
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
         </nav>
       </header>
       <div className="page-content">{children}</div>
