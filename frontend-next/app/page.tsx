@@ -22,6 +22,7 @@ type Review = {
   sessionId: number; status: string; records: ReviewRecord[]; allRecords?: ReviewRecord[];
   photoUrl: string;
   quality?: { warning?: string };
+  diagnostics?: { recognition_state?: string }[];
 };
 type StudentRosterItem = {
   id: number; rollNumber: string; name: string; active: boolean;
@@ -490,7 +491,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   authFetch: (p: string, o?: RequestInit) => Promise<Response>;
   getCsrf: () => Promise<{ token: string }>;
 }) {
-  const [tab, setTab]               = useState<'quick'|'bulk'|'single'|'roster'>('quick');
+  const [tab, setTab]               = useState<'quick'|'bulk'|'single'|'roster'|'test'>('quick');
   const [roster, setRoster]         = useState<StudentRosterItem[]>([]);
   const [loadingRoster, setLR]      = useState(false);
   const [busy, setBusy]             = useState(false);
@@ -508,6 +509,10 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   const [quickUrl, setQuickUrl]     = useState<string|null>(null);
   const [quickDetection, setQuickDetection] = useState<QuickDetection|null>(null);
   const [quickConsent, setQuickConsent] = useState(false);
+  const [testPhoto, setTestPhoto] = useState<File | null>(null);
+  const [testReview, setTestReview] = useState<Review | null>(null);
+  const [testAssignments, setTestAssignments] = useState<Assignment[]>([]);
+  const [testRooms, setTestRooms] = useState<Room[]>([]);
   const vidRef = useRef<HTMLVideoElement|null>(null);
   const strmRef = useRef<MediaStream|null>(null);
 
@@ -517,7 +522,42 @@ function EnrollmentPage({ authFetch, getCsrf }: {
     finally { setLR(false); }
   }, [authFetch]);
 
-  useEffect(() => { loadRoster(); }, [loadRoster]);
+  useEffect(() => {
+    loadRoster();
+    Promise.all([authFetch('/teacher/assignments').then(r => r.json()), authFetch('/rooms').then(r => r.json())])
+      .then(([assignments, rooms]) => { setTestAssignments(assignments); setTestRooms(rooms); })
+      .catch(() => setMsg('Unable to load test recognition context.'));
+  }, [loadRoster, authFetch]);
+
+  async function runTestRecognition() {
+    if (!testPhoto || !testAssignments[0] || !testRooms[0]) {
+      setMsg('Enroll students and ensure a subject assignment and room are available.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const csrf = await getCsrf();
+      const form = new FormData();
+      form.append('image', testPhoto);
+      form.append('roomId', String(testRooms[0].id));
+      form.append('cameraId', '1');
+      form.append('assignmentId', String(testAssignments[0].id));
+      form.append('sessionType', 'TEST');
+      const result = await authFetch('/capture', { method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form }).then(r => r.json());
+      const review = await authFetch(`/attendance-sessions/${result.sessionId}/review`).then(r => r.json());
+      setTestReview(review);
+      setMsg(`Test session #${result.sessionId} completed. It does not affect attendance analytics.`);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : 'Test recognition failed');
+    } finally { setBusy(false); }
+  }
+
+  async function clearTestRecognition() {
+    if (!testReview) return;
+    await authFetch(`/attendance-sessions/${testReview.sessionId}`, { method: 'DELETE' });
+    setTestReview(null);
+    setMsg('Test recognition session cleared.');
+  }
 
   async function startCam() {
     try {
@@ -633,7 +673,42 @@ function EnrollmentPage({ authFetch, getCsrf }: {
         <button className={`inner-tab ${tab === 'quick' ? 'active' : ''}`} onClick={() => setTab('quick')}>
           ⚡ Quick Class Enrollment
         </button>
+        <button className={`inner-tab ${tab === 'test' ? 'active' : ''}`} onClick={() => setTab('test')}>
+          🧪 Test Recognition
+        </button>
       </div>
+
+      {tab === 'test' && (
+        <div className="section-card">
+          <span className="eyebrow">Isolated TEST session</span><h2>Test Recognition</h2>
+          <p className="hint">Run recognition against the currently enrolled roster. TEST sessions never count toward attendance or analytics.</p>
+          <label>Recognition photo
+            <input type="file" accept="image/*" disabled={busy} onChange={e => setTestPhoto(e.target.files?.[0] ?? null)} />
+          </label>
+          <button type="button" className="btn-lg" disabled={busy || !testPhoto} onClick={runTestRecognition}>
+            {busy ? 'Testing…' : 'Run Test Recognition'}
+          </button>
+          {testReview && (
+            <>
+              <div className="metric-row" style={{ marginTop: 16 }}>
+                <span className="badge badge-green">{testReview.diagnostics?.filter(d => d.recognition_state === 'RECOGNIZED').length ?? 0} Recognised</span>
+                <span className="badge badge-amber">{testReview.diagnostics?.filter(d => d.recognition_state === 'LOW_CONFIDENCE').length ?? 0} Low confidence</span>
+                <span className="badge badge-red">{testReview.diagnostics?.filter(d => d.recognition_state === 'UNKNOWN').length ?? 0} Unknown</span>
+                <span className="badge badge-red">{testReview.allRecords?.filter(r => r.status === 'ABSENT').length ?? 0} Absent</span>
+              </div>
+              <div className="student-grid">
+                {(testReview.allRecords ?? []).map(record => (
+                  <div className="student-card" key={record.recordId}>
+                    <strong>{record.studentName}</strong><div className="hint">{record.rollNumber}</div>
+                    <span className={`status-pill ${record.status === 'PRESENT' ? 'status-green' : 'status-red'}`}>{record.status}</span>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="btn-secondary" onClick={clearTestRecognition}>Clear TEST session</button>
+            </>
+          )}
+        </div>
+      )}
 
       {tab === 'quick' && (
         <div className="section-card">

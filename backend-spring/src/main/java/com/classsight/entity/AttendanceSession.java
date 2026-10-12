@@ -10,6 +10,10 @@ import java.util.Set;
 @Table(name = "attendance_sessions")
 public class AttendanceSession {
 
+    public enum SessionType {
+        ATTENDANCE, TEST
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -37,6 +41,10 @@ public class AttendanceSession {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SessionStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "session_type", nullable = false, length = 20)
+    private SessionType sessionType = SessionType.ATTENDANCE;
 
     @Column(name = "started_at")
     private LocalDateTime startedAt;
@@ -164,6 +172,14 @@ public class AttendanceSession {
 
     public void setStatus(SessionStatus status) {
         this.status = status;
+    }
+
+    public SessionType getSessionType() {
+        return sessionType;
+    }
+
+    public void setSessionType(SessionType sessionType) {
+        this.sessionType = sessionType;
     }
 
     public LocalDateTime getStartedAt() {

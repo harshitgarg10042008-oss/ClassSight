@@ -30,3 +30,6 @@
 6. Missing local validation tools are an environment blocker, not a passing
    result. Tool installation will only be considered when needed for a
    dependency-aware validation step.
+7. Recognition verification uses a first-class `TEST` attendance-session type.
+   Test records are retained only until the teacher clears them and are
+   excluded from analytics and timetable state transitions.

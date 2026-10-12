@@ -82,6 +82,7 @@ public class AttendanceAnalyticsService {
         List<AttendanceSession> sessions = rawSessions.stream()
                 .filter(s -> s.getClassSession() == null ||
                         s.getClassSession().getStatus() != ClassSession.SessionStatus.CANCELLED)
+                .filter(s -> s.getSessionType() == AttendanceSession.SessionType.ATTENDANCE)
                 .toList();
 
         Map<Long, StudentSummary> summaries = new HashMap<>();

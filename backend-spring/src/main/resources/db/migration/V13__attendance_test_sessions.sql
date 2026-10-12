@@ -1,0 +1,2 @@
+ALTER TABLE attendance_sessions
+    ADD COLUMN IF NOT EXISTS session_type VARCHAR(20) NOT NULL DEFAULT 'ATTENDANCE';

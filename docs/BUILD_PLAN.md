@@ -22,7 +22,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`, and `BLOCKED`. A task is
   - A class photo can be uploaded or captured.
   - Detected faces can be reviewed, removed, and enrolled in a linked demo section.
   - Consent and retention rules remain enforced.
-- [ ] **A4 — Adding test recognition** — TODO
+- [x] **A4 — Adding test recognition** — DONE
   - Test recognition reports every enrolled student and every detected face.
   - Manual corrections and unknown-face assignment persist as test data only.
   - Test sessions never affect real attendance or analytics.

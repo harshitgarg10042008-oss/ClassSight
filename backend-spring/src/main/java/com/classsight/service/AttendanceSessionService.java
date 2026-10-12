@@ -54,6 +54,12 @@ public class AttendanceSessionService {
 
     public AttendanceSession createSession(User faculty, Room room, Camera camera, 
                                            Subject subject, ClassSection classSection) {
+        return createSession(faculty, room, camera, subject, classSection, AttendanceSession.SessionType.ATTENDANCE);
+    }
+
+    public AttendanceSession createSession(User faculty, Room room, Camera camera,
+                                           Subject subject, ClassSection classSection,
+                                           AttendanceSession.SessionType sessionType) {
         logger.info("createSession called with faculty: {} (ID: {}), room: {}, camera: {}, subject: {}, class: {}", 
                 faculty != null ? faculty.getUsername() : "null", 
                 faculty != null ? faculty.getId() : "null",
@@ -75,6 +81,7 @@ public class AttendanceSessionService {
         session.setSubject(subject);
         session.setClassSection(classSection);
         session.setStatus(AttendanceSession.SessionStatus.OPEN);
+        session.setSessionType(sessionType);
         session.setStartedAt(LocalDateTime.now());
         
         logger.info("Session object before save - faculty: {}, room: {}, camera: {}", 
@@ -160,5 +167,9 @@ public class AttendanceSessionService {
 
     public AttendanceSession transitionToCancelled(Long sessionId) {
         return updateStatus(sessionId, AttendanceSession.SessionStatus.CANCELLED);
+    }
+
+    public void delete(AttendanceSession session) {
+        attendanceSessionRepository.delete(session);
     }
 }

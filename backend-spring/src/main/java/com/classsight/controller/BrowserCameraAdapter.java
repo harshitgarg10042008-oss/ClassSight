@@ -88,6 +88,7 @@ public class BrowserCameraAdapter {
             @RequestParam(value = "cameraId", required = false) Long cameraId,
             @RequestParam(value = "assignmentId", required = false) Long assignmentId,
             @RequestParam(value = "classSessionId", required = false) Long classSessionId,
+            @RequestParam(value = "sessionType", defaultValue = "ATTENDANCE") AttendanceSession.SessionType sessionType,
             org.springframework.security.core.Authentication authentication) {
         
         logger.info("Received capture via multipart. Size: {} bytes, ContentType: {}, RoomId: {}, CameraId: {}, AssignmentId: {}, ClassSessionId: {}", 
@@ -141,7 +142,7 @@ public class BrowserCameraAdapter {
                 
                 // Create session with OPEN status
                 AttendanceSession session = attendanceSessionService.createSession(
-                        faculty, room, camera, subject, classSection);
+                        faculty, room, camera, subject, classSection, sessionType);
                 attendanceSessionService.setCaptureFingerprint(session.getId(),
                         attendanceSessionService.captureFingerprint(faculty, room, camera, subject, classSection, imageBytes));
                 

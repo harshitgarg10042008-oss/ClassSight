@@ -67,4 +67,17 @@ public class AttendanceSessionController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTestSession(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User faculty) {
+        AttendanceSession session = attendanceSessionService.getSessionById(id).orElse(null);
+        if (session == null || session.getSessionType() != AttendanceSession.SessionType.TEST
+                || session.getFaculty() == null || !session.getFaculty().getId().equals(faculty.getId())) {
+            return ResponseEntity.notFound().build();
+        }
+        attendanceSessionService.delete(session);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -60,6 +60,19 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
 - Small-face recall benchmarking, annotated-image persistence, and the
   synthetic 40/60/80/120 px acceptance measurement remain outstanding.
 
+## 2026-10-12 — A4 isolated test recognition
+
+- Added `ATTENDANCE` and `TEST` session types with Flyway migration V13.
+- Added an Enrollment-area Test Recognition step that submits a photo as a
+  TEST session, displays recognition totals and every enrolled student's
+  status, and clears the test session with one click.
+- TEST sessions are excluded from analytics and cannot mark linked timetable
+  classes conducted. Deletion is restricted to the owning teacher's TEST
+  sessions.
+- Frontend typecheck/build, Docker Maven compilation, and focused face-service
+  regression tests pass. Runtime migration and health checks are pending the
+  final Compose restart.
+
 ## 2026-10-11 — T-001 documentation and startup verification
 
 - Corrected the README's YuNet/ONVIF terminology, migration/version claims,

@@ -220,6 +220,7 @@ public class AttendanceRecognitionService {
         // Phase 2: mark the linked class session as CONDUCTED when attendance is
         // finalized
         if (timetableService != null
+                && saved.getSessionType() == AttendanceSession.SessionType.ATTENDANCE
                 && saved.getStatus() == AttendanceSession.SessionStatus.FINALIZED
                 && saved.getClassSession() != null) {
             try {
