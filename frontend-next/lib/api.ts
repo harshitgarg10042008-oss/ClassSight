@@ -12,8 +12,9 @@ export type ReviewRecord = {
   status: string; recognitionState?: string; confidenceScore?: number; qualityWarning?: string;
 };
 export type RecognitionDiagnostic = {
-  face_index?: number; face_width_px?: number; face_height_px?: number;
-  distance?: number; second_best_distance?: number; margin?: number;
+  face_index?: number; student_id?: number | null; matched?: boolean;
+  face_width_px?: number; face_height_px?: number;
+  distance?: number; confidence_score?: number; second_best_distance?: number; margin?: number;
   recognition_state?: string; rejection_reason?: string;
   detector?: string; detector_scale?: string;
   box?: number[]; image_width_px?: number; image_height_px?: number;
@@ -23,12 +24,15 @@ export type Review = {
   photoUrl: string;
   capturePhase?: 'QUEUED' | 'DETECTING' | 'MATCHING' | 'DONE' | string;
   quality?: { warning?: string };
-  diagnostics?: RecognitionDiagnostic[];
+  diagnostics?: RecognitionDiagnostic[]; unknownDetections?: number; unknownFacesReviewed?: boolean;
+  finalizedBy?: number | string | null; finalizedAt?: string | null;
   timings?: Record<string, number>;
 };
 export type StudentRosterItem = {
   id: number; rollNumber: string; name: string; active: boolean;
-  createdAt: string; faceRegistered: boolean;
+  createdAt: string; faceRegistered: boolean; classSectionId?:number; classSectionName?:string;
+  classSectionIds?:number[]; classSectionNames?:string[]; subjectIds?:number[]; sectionWideEnrollment?:boolean;
+  embeddingCount?:number; consentGiven?:boolean;
 };
 export type BulkEnrollResponse = {
   totalRows: number; successCount: number; failureCount: number;
@@ -85,6 +89,19 @@ export type CsrfResponse = {
 };
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8080';
+function normalizedApiError(status:number, raw:string): string {
+  let payload:any = null;
+  try { payload=JSON.parse(raw); } catch { /* plain text response */ }
+  const source=String(payload?.message||payload?.detail||payload?.error||raw).replace(/^\s*\{.*?\}\s*$/s,'').trim();
+  const lower=source.toLowerCase();
+  if(status===413||payload?.code==='UPLOAD_TOO_LARGE')return 'Photo upload is too large. Choose a smaller image and try again.';
+  if(payload?.code==='CONSENT_REQUIRED'||lower.includes('consent'))return 'Biometric consent is required before saving face data.';
+  if(payload?.code==='DUPLICATE_ROLL_NUMBER'||status===409)return 'A student with this roll number already exists in the roster.';
+  if(lower.includes('no face')||lower.includes('no human face'))return 'No face found. Reposition the camera and try again.';
+  if(lower.includes('multiple face'))return 'Multiple faces were detected. Use Quick Class Enrollment or capture one student at a time.';
+  if(lower.includes('class')&&lower.includes('required'))return 'Choose a class and subject before capturing or enrolling.';
+  return source||`Request failed (${status}). Please try again.`;
+}
 
 // ─── API Client ────────────────────────────────────────────────────────────────
 export class ApiClient {
@@ -131,7 +148,7 @@ export class ApiClient {
     }
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`${res.status}: ${text}`);
+      throw new Error(normalizedApiError(res.status, text));
     }
     return res;
   }
@@ -185,11 +202,15 @@ export class ApiClient {
     return this.fetch(`/api/attendance-sessions/${sessionId}/review`).then(r => r.json());
   }
 
-  async submitReview(sessionId: number, decisions: any[], csrfToken: string): Promise<any> {
+  async getReviewPhoto(sessionId:number): Promise<Blob> {
+    return this.fetch(`/api/attendance-sessions/${sessionId}/review/photo`).then(response=>response.blob());
+  }
+
+  async submitReview(sessionId: number, decisions: any[], csrfToken: string, acknowledgeUnknownFaces = false, unknownFaceAssignments: any[] = []): Promise<any> {
     return this.fetch(`/api/attendance-sessions/${sessionId}/review`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken },
-      body: JSON.stringify({ decisions }),
+      body: JSON.stringify({ decisions, acknowledgeUnknownFaces, unknownFaceAssignments }),
     }).then(r => r.json());
   }
 

@@ -26,4 +26,6 @@ public interface StudentEnrollmentRepository extends JpaRepository<StudentEnroll
                                                   @Param("subjectId") Long subjectId);
 
     List<StudentEnrollment> findByStudent_IdAndActiveTrue(Long studentId);
+
+    List<StudentEnrollment> findByClassSection_IdAndActiveTrue(Long classSectionId);
 }

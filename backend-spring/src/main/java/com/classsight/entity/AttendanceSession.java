@@ -55,6 +55,9 @@ public class AttendanceSession {
     @Column(name = "captured_photo_path", length = 1024)
     private String capturedPhotoPath;
 
+    @Column(name = "captured_photo_paths", columnDefinition = "text")
+    private String capturedPhotoPaths;
+
     @Column(name = "capture_fingerprint", length = 64)
     private String captureFingerprint;
 
@@ -89,6 +92,15 @@ public class AttendanceSession {
 
     @Column(name = "recognition_timings", columnDefinition = "text")
     private String recognitionTimings;
+
+    @Column(name = "unknown_faces_reviewed", nullable = false)
+    private boolean unknownFacesReviewed = false;
+
+    @Column(name = "finalized_by")
+    private Long finalizedBy;
+
+    @Column(name = "finalized_at")
+    private LocalDateTime finalizedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -214,6 +226,9 @@ public class AttendanceSession {
         this.capturedPhotoPath = capturedPhotoPath;
     }
 
+    public String getCapturedPhotoPaths() { return capturedPhotoPaths; }
+    public void setCapturedPhotoPaths(String capturedPhotoPaths) { this.capturedPhotoPaths = capturedPhotoPaths; }
+
     public Double getBlurScore() {
         return blurScore;
     }
@@ -261,6 +276,15 @@ public class AttendanceSession {
     public void setAttendanceRecords(Set<AttendanceRecord> attendanceRecords) {
         this.attendanceRecords = attendanceRecords;
     }
+
+    public boolean isUnknownFacesReviewed() { return unknownFacesReviewed; }
+
+    public void setUnknownFacesReviewed(boolean unknownFacesReviewed) { this.unknownFacesReviewed = unknownFacesReviewed; }
+
+    public Long getFinalizedBy() { return finalizedBy; }
+    public void setFinalizedBy(Long finalizedBy) { this.finalizedBy = finalizedBy; }
+    public LocalDateTime getFinalizedAt() { return finalizedAt; }
+    public void setFinalizedAt(LocalDateTime finalizedAt) { this.finalizedAt = finalizedAt; }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

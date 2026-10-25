@@ -43,7 +43,7 @@ public class AsyncRecognitionService {
                 .orElseThrow(() -> new IllegalArgumentException("Session not found with id: " + sessionId));
         session.setCapturePhase("QUEUED");
         sessionRepository.save(session);
-        List<Map<String, Object>> enrolled = studentRepository.findByClassSectionAndActiveTrue(session.getClassSection())
+        List<Map<String, Object>> enrolled = recognitionService.recognitionCandidatesFor(session)
                 .stream().map(this::studentPayload).toList();
         Map<String, Object> message = new HashMap<>();
         message.put("sessionId", sessionId);
