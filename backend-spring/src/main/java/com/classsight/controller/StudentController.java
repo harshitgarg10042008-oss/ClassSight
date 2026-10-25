@@ -17,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -453,6 +454,120 @@ public class StudentController {
                 "status", "success",
                 "message", "Biometric data deleted successfully for student: " + student.getRollNumber(),
                 "studentId", id
+        ));
+    }
+
+    /**
+     * POST /api/students/{id}/enroll-frame
+     *
+     * Add ONE FaceNet embedding from a single enrollment photo to the student's
+     * stored embedding set.  Call this repeatedly to build up the multi-angle
+     * enrollment dataset required by the paper (Alniemi 2023 §2.4):
+     *
+     *   Target: 30 frames per student, covering:
+     *     • 5 head positions: front, 45° left, 45° right, 90° left, 90° right
+     *     • 3 lighting conditions: bright, medium, low
+     *
+     * Fewer frames will produce lower accuracy.  A single enrollment photo will
+     * NOT approach the paper's 97.5% multi-face recognition rate.
+     *
+     * This endpoint intentionally allows duplicate embeddings — callers should
+     * capture diverse frames rather than the same angle repeatedly.
+     */
+    @PostMapping(value = "/{id}/enroll-frame", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> enrollFrame(
+            @PathVariable Long id,
+            @RequestParam(name = "photo", required = false) MultipartFile photoParam,
+            @RequestParam(name = "image", required = false) MultipartFile imageParam,
+            @RequestParam(name = "angleHint", required = false) String angleHint,
+            @RequestParam(name = "consentGiven", required = false, defaultValue = "false") boolean consentGiven,
+            Principal principal) {
+        MultipartFile photo = photoParam != null ? photoParam : imageParam;
+        if (photo == null || photo.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Multipart file 'photo' or 'image' is required"));
+        }
+        Optional<Student> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("status", "error", "message", "Student not found: " + id));
+        }
+        Student student = studentOpt.get();
+        if (!Boolean.TRUE.equals(student.getConsentGiven())) {
+            if (consentGiven) {
+                student.setConsentGiven(true);
+                student.setConsentedAt(java.time.LocalDateTime.now());
+                if (principal != null) {
+                    userRepository.findByUsername(principal.getName()).ifPresent(student::setConsentedBy);
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("status", "error",
+                                "message", "Biometric consent not recorded for this student. Pass consentGiven=true to record consent."));
+            }
+        }
+        try {
+            imageUploadValidator.validate(photo);
+            List<Double> embedding = callFaceServiceEnroll(photo.getBytes(), photo.getOriginalFilename());
+            student.addFaceEmbedding(embedding);
+            // Keep the primary embedding field as the most-recently added one
+            student.setFaceEmbedding(embedding);
+            studentRepository.save(student);
+
+            int totalEmbeddings = student.getFaceEmbeddings() != null ? student.getFaceEmbeddings().size() : 1;
+            boolean meetsMinimum = totalEmbeddings >= 30;
+            String progressMsg = meetsMinimum
+                    ? "✓ Meets paper-recommended minimum (≥30 frames across 5 angles × 3 lighting conditions)"
+                    : String.format("⚠ %d/30 frames — add %d more frames across different angles and lighting for paper-level accuracy",
+                            totalEmbeddings, 30 - totalEmbeddings);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("status", "success");
+            result.put("studentId", id);
+            result.put("rollNumber", student.getRollNumber());
+            result.put("totalEmbeddings", totalEmbeddings);
+            result.put("meetsMinimum30Frames", meetsMinimum);
+            result.put("angleHint", angleHint != null ? angleHint : "not specified");
+            result.put("progress", progressMsg);
+            result.put("paperNote",
+                    "Paper (Alniemi 2023 §2.4) recommends 30 frames: 5 angles × 3 lighting conditions. " +
+                    "Single-photo enrollment will not approach 97.5% accuracy.");
+            logger.info("Enrolled frame for student {} (ID {}): total embeddings now {}, angle={}",
+                    student.getRollNumber(), id, totalEmbeddings, angleHint);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            logger.error("Frame enrollment failed for student {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * GET /api/students/{id}/enrollment-status
+     *
+     * Returns how many embedding frames have been enrolled for this student and
+     * whether the paper-recommended minimum of 30 frames has been reached.
+     */
+    @GetMapping("/{id}/enrollment-status")
+    public ResponseEntity<?> enrollmentStatus(@PathVariable Long id) {
+        Optional<Student> studentOpt = studentRepository.findById(id);
+        if (studentOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("status", "error", "message", "Student not found: " + id));
+        }
+        Student student = studentOpt.get();
+        int total = student.getFaceEmbeddings() != null ? student.getFaceEmbeddings().size() : 0;
+        boolean hasPrimary = student.getFaceEmbedding() != null && !student.getFaceEmbedding().isEmpty();
+        boolean meetsMinimum = total >= 30;
+        return ResponseEntity.ok(Map.of(
+                "studentId", id,
+                "rollNumber", student.getRollNumber(),
+                "totalEmbeddingFrames", total,
+                "hasPrimaryEmbedding", hasPrimary,
+                "consentGiven", Boolean.TRUE.equals(student.getConsentGiven()),
+                "meetsMinimum30Frames", meetsMinimum,
+                "paperNote",
+                "30 frames (5 angles × 3 lighting) needed to approach 97.5% (Alniemi 2023 §2.4). " +
+                "Current: " + total + " frame(s)."
         ));
     }
 }

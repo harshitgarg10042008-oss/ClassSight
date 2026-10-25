@@ -112,6 +112,18 @@ services:
       QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
       QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
       RECOGNITION_MAX_DIMENSION: ${RECOGNITION_MAX_DIMENSION:-1600}
+      # Paper pipeline — Alniemi 2023
+      # Haar Cascade: scaleFactor=1.2 matches the paper's multi-scale search pyramid
+      HAAR_SCALE_FACTOR: ${HAAR_SCALE_FACTOR:-1.2}
+      HAAR_MIN_NEIGHBORS: ${HAAR_MIN_NEIGHBORS:-5}
+      HAAR_MIN_SIZE_PX: ${HAAR_MIN_SIZE_PX:-30}
+      # Manhattan (L1) distance threshold for FaceNet 128-d embeddings.
+      # Tuned range: ~10 (high confidence) to ~25 (low confidence) for close-range faces.
+      # NOTE: accuracy is inversely proportional to camera-to-subject distance (paper §4.2).
+      # For wide-angle CCTV, expect worse results than the paper's 97.5% close-range number.
+      MANHATTAN_THRESHOLD: ${MANHATTAN_THRESHOLD:-15.0}
+      CONF_HIGH_THRESHOLD: ${CONF_HIGH_THRESHOLD:-10.0}
+      CONF_MED_THRESHOLD: ${CONF_MED_THRESHOLD:-15.0}
       RABBITMQ_WORKER_ENABLED: ${RABBITMQ_WORKER_ENABLED:-false}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -152,7 +164,8 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
-      ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-0.6}
+      # Manhattan L1 threshold — must match MANHATTAN_THRESHOLD in face-service
+      ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-15.0}
       RECOGNITION_MODE: ${RECOGNITION_MODE:-sync}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672

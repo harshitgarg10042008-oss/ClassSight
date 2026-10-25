@@ -64,14 +64,14 @@ The platform provides a dual-mode recognition pipeline (synchronous HTTP for ins
 2. **Classroom Photo Capture**: Faculty snaps a live classroom photo via the browser's HTML5 webcam feed (`getUserMedia` → `<canvas>`) or uploads a high-resolution photo file.
 3. **Capture Ingestion & Deduplication**: Spring computes a SHA-256 fingerprint over image bytes + metadata. Identical captures within a 30-second window return the existing session rather than duplicating data.
 4. **Photo Persistence**: Raw image is saved to MinIO S3 storage under `classsight-captures/captures/session-{id}-{uuid}.jpg`.
-5. **Facial Recognition**:
-   - **Sync Mode**: Spring calls FastAPI `/recognize`. FastAPI extracts 128-d face encodings using dlib HOG, evaluates quality metrics (blur, brightness, liveness texture, face size), and matches encodings against enrolled student reference vectors.
+5. **Facial Recognition (Alniemi 2023 Replicated Pipeline)**:
+   - **Sync Mode**: Spring calls FastAPI `/recognize`. FastAPI detects faces using OpenCV Haar Cascade (`scaleFactor=1.2`), normalizes crops to 160×160×3, generates 128-d FaceNet embeddings (InceptionResnetV1 pretrained on VGGFace2), and matches using Manhattan (L1) distance against enrolled students.
    - **Async Mode**: Spring publishes an AMQP event to RabbitMQ `classsight.capture.recognition`. FastAPI worker consumes the message, streams image from MinIO, processes recognition, and publishes results back to Spring.
-6. **Automated Absent Detection & Finalization**:
-   - Detected faces matching enrolled students with Euclidean distance `< 0.6` are marked `PRESENT / APPROVED`.
-   - Enrolled students **not detected** in a clean-quality image are automatically marked `ABSENT / APPROVED`.
-   - If all students are cleanly resolved with zero quality warnings or unknown intruders, the session **auto-finalizes instantly** to `FINALIZED`.
-   - If blur, poor lighting, or low-confidence matches occur, the session transitions to `REVIEW_REQUIRED` for teacher confirmation.
+6. **Automated Absent Detection, Multi-Shot De-duplication & Finalization**:
+   - Detected faces matching enrolled students with Manhattan distance `< 15.0` (configurable) are marked `PRESENT / APPROVED`.
+   - Multi-shot attendance sessions accumulate observations across multiple lecture frames, keeping the best confidence per student and producing exactly one attendance record.
+   - Enrolled students **not detected** across all frames are marked `ABSENT / APPROVED`.
+   - Low-confidence matches (`manhattan_distance >= 15.0`) or unknown intruders transition the session to `REVIEW_REQUIRED` for teacher confirmation.
 
 #### B. Student Biometric Onboarding Flow
 1. **Bulk Enrollment**: Admin/Teacher downloads `students-template.csv`, prepares student rows (`roll_number,name`), and uploads the CSV alongside a ZIP archive or multi-selected photo files (`<roll_number>.jpg`).
@@ -90,8 +90,8 @@ The platform provides a dual-mode recognition pipeline (synchronous HTTP for ins
 | **Backend API** | Java, Spring Boot, Spring Security | Java 17 / 3.4.3 | REST API, JWT auth, RBAC, Flyway migrations, attendance lifecycle, deduplication, S3/AMQP integration. |
 | **Database** | PostgreSQL | 15 Alpine | Relational storage for users, rooms, cameras, students, multi-reference embeddings, and attendance records. |
 | **Schema Migrations**| Flyway | 9.x | Version-controlled schema migrations (V1 baseline through V6 capture fingerprinting). |
-| **Face Recognition** | Python, FastAPI, Uvicorn | Python 3.11 | Image quality analysis, dlib HOG face detector, 128-d Euclidean embedding matcher, AMQP worker. |
-| **Biometric Libraries**| `face_recognition`, dlib, OpenCV, Pillow | Latest stable | Face detection, facial landmarks, 128-d vector extraction, Laplacian blur variance calculation. |
+| **Face Recognition** | Python, FastAPI, Uvicorn | Python 3.11 | Haar Cascade (scale=1.2) + FaceNet (128-d InceptionResnetV1) + Manhattan (L1) matching, AMQP worker. |
+| **Biometric Libraries**| `facenet-pytorch`, PyTorch, OpenCV, Pillow | Torch 2.1.2 CPU | FaceNet vggface2 128-d embeddings, Haar frontal-face cascade, Manhattan distance matcher. |
 | **Object Storage** | MinIO S3 API | Latest | S3-compatible object storage for durable attendance photo captures (`classsight-captures`). |
 | **Message Broker** | RabbitMQ with Management UI | 3.13 Alpine | Feature-flagged asynchronous capture queues, recognition worker queues, and dead-letter exchanges. |
 | **Camera & Video** | FFmpeg, RTSP Adapter | FFmpeg 6.x | Live RTSP IP camera frame grabber, connection health probing, and SSRF URL validation. |
@@ -293,7 +293,13 @@ Key environment variables configured in `.env` / Docker Compose:
 | `NOTIFICATIONS_ENABLED` | `false` | Pluggable absence and defaulter alert notification service toggle |
 | `NOTIFICATIONS_PROVIDER` | `log` | Notification provider implementation (`log` or `email`) |
 | `TWO_CAPTURE_MODE_ENABLED`| `false` | Optional start-and-end period capture mode to detect early departures |
-| `ATTENDANCE_RECOGNITION_THRESHOLD` | `0.6` | Maximum Euclidean distance for an identity match |
+| `HAAR_SCALE_FACTOR` | `1.2` | Multi-scale face search zoom factor per Alniemi 2023 paper |
+| `HAAR_MIN_NEIGHBORS` | `5` | Candidate neighbor retention count for Haar Cascade detector |
+| `HAAR_MIN_SIZE_PX` | `30` | Minimum bounding box size in pixels for detected faces |
+| `MANHATTAN_THRESHOLD` | `15.0` | Maximum Manhattan (L1) distance for FaceNet 128-d match (paper metric) |
+| `CONF_HIGH_THRESHOLD` | `10.0` | Manhattan distance threshold below which confidence is HIGH |
+| `CONF_MED_THRESHOLD` | `15.0` | Manhattan distance threshold below which confidence is MEDIUM (>=15 is LOW → review) |
+| `ATTENDANCE_RECOGNITION_THRESHOLD` | `15.0` | Backend Spring threshold for auto-matching in Manhattan space |
 | `QUALITY_BLUR_THRESHOLD` | `30.0` | Minimum Laplacian variance before flagging an image as blurry |
 | `QUALITY_MIN_BRIGHTNESS` | `35.0` | Minimum acceptable grayscale brightness mean |
 | `QUALITY_MAX_BRIGHTNESS` | `220.0` | Maximum acceptable grayscale brightness mean |

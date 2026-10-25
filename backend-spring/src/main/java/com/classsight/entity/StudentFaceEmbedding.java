@@ -21,7 +21,7 @@ public class StudentFaceEmbedding {
     private List<Double> embedding;
 
     @Column(name = "model_version", nullable = false)
-    private String modelVersion = "face-recognition-small-v1";
+    private String modelVersion = "facenet-vggface2-128d-v1";
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

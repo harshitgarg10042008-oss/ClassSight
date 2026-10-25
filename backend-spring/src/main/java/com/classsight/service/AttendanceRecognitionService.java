@@ -360,10 +360,12 @@ public class AttendanceRecognitionService {
             };
             body.add("image", imageResource);
             body.add("enrolled_students", objectMapper.writeValueAsString(payload));
+            // Note: distanceThreshold is now a Manhattan (L1) threshold (default 15.0),
+            // not a Euclidean threshold.  The face-service uses it as MANHATTAN_THRESHOLD.
             body.add("distance_threshold", String.valueOf(distanceThreshold));
-            body.add("edge_crop", String.valueOf(edgeCropEnabled));
-            logger.info("Calling recognition: threshold={}, edge_crop={}, enrolled={}",
-                    distanceThreshold, edgeCropEnabled, payload.size());
+            body.add("edge_crop", "false"); // Haar+FaceNet pipeline always crops; this is kept for API compat
+            logger.info("Calling Haar+FaceNet+Manhattan recognition: manhattanThreshold={}, enrolled={}",
+                    distanceThreshold, payload.size());
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                     faceServiceUrl + "/recognize",
@@ -391,6 +393,17 @@ public class AttendanceRecognitionService {
     private List<List<Double>> embeddingsFor(Student student) {
         List<List<Double>> embeddings = new java.util.ArrayList<>();
         if (student.getFaceEmbeddings() != null) {
+            // Prefer new FaceNet (vggface2 128d) embeddings matching Alniemi 2023 paper pipeline
+            List<List<Double>> facenetEmbeddings = student.getFaceEmbeddings().stream()
+                    .filter(e -> "facenet-vggface2-128d-v1".equalsIgnoreCase(e.getModelVersion()))
+                    .map(com.classsight.entity.StudentFaceEmbedding::getEmbedding)
+                    .filter(java.util.Objects::nonNull)
+                    .filter(embedding -> embedding.size() == 128)
+                    .toList();
+            if (!facenetEmbeddings.isEmpty()) {
+                return facenetEmbeddings;
+            }
+            // Fallback to any 128-d embeddings
             student.getFaceEmbeddings().stream()
                     .map(com.classsight.entity.StudentFaceEmbedding::getEmbedding)
                     .filter(java.util.Objects::nonNull)
