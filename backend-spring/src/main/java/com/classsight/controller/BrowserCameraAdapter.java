@@ -84,6 +84,7 @@ public class BrowserCameraAdapter {
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Map<String, Object>> uploadCaptureMultipart(
             @RequestParam("image") MultipartFile image,
+            @RequestParam(value = "additionalImages", required = false) List<MultipartFile> additionalImages,
             @RequestParam(value = "roomId", required = false) Long roomId,
             @RequestParam(value = "cameraId", required = false) Long cameraId,
             @RequestParam(value = "assignmentId", required = false) Long assignmentId,
@@ -96,6 +97,10 @@ public class BrowserCameraAdapter {
         
         try {
             imageUploadValidator.validate(image);
+            List<MultipartFile> images = new java.util.ArrayList<>(); images.add(image);
+            if (additionalImages != null) images.addAll(additionalImages);
+            if (images.size() > 3) return ResponseEntity.badRequest().body(Map.of("error", "A session accepts at most three photos"));
+            for (MultipartFile shot : images) imageUploadValidator.validate(shot);
             // Extract faculty from authentication
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             User faculty = userRepository.findByUsername(userDetails.getUsername())
@@ -168,21 +173,24 @@ public class BrowserCameraAdapter {
                 
                 // Persist the original bytes before recognition so review can render
                 // the exact captured image after this request completes.
-                String capturedPhotoPath = capturePhotoStorageService.store(session.getId(), image);
+                List<String> capturedPhotoPaths = new java.util.ArrayList<>();
+                for (MultipartFile shot : images) capturedPhotoPaths.add(capturePhotoStorageService.store(session.getId(), shot));
+                String capturedPhotoPath = capturedPhotoPaths.get(0);
                 attendanceSessionService.setCapturedPhotoPath(session.getId(), capturedPhotoPath);
+                attendanceSessionService.setCapturedPhotoPaths(session.getId(), capturedPhotoPaths);
 
                 attendanceSessionService.transitionToCaptured(session.getId());
                 logger.info("Transitioned session {} to CAPTURED; photo stored at {}", session.getId(), capturedPhotoPath);
                 
                 AttendanceSession processedSession;
-                if ("async".equalsIgnoreCase(recognitionMode)) {
+                if ("async".equalsIgnoreCase(recognitionMode) && images.size() == 1) {
                     asyncRecognitionService.enqueue(session.getId(), capturedPhotoPath);
                     processedSession = attendanceSessionService.getSessionById(session.getId()).orElseThrow();
                     logger.info("Queued session {} for asynchronous recognition", session.getId());
                 } else {
                     // The uploaded image is still available here, so process it before
                     // returning and persist one AttendanceRecord per enrolled student.
-                    processedSession = attendanceRecognitionService.processCapturedSession(session.getId(), image);
+                    processedSession = attendanceRecognitionService.processCapturedSession(session.getId(), images);
                     logger.info("Processed session {} with status {}", processedSession.getId(), processedSession.getStatus());
                 }
 
@@ -194,6 +202,7 @@ public class BrowserCameraAdapter {
                 response.put("attendanceRecordCount", processedSession.getAttendanceRecords().size());
                 response.put("capturedPhotoPath", processedSession.getCapturedPhotoPath());
                 response.put("reviewUrl", "/api/attendance-sessions/" + processedSession.getId() + "/review");
+                response.put("captureCount", images.size());
                 response.put("size", image.getSize());
                 response.put("contentType", image.getContentType());
                 
@@ -203,6 +212,7 @@ public class BrowserCameraAdapter {
                 Map<String, Object> response = new HashMap<>();
                 response.put("status", "success");
                 response.put("message", "Image received via multipart successfully (no session created)");
+                response.put("captureCount", images.size());
                 response.put("size", image.getSize());
                 response.put("contentType", image.getContentType());
                 

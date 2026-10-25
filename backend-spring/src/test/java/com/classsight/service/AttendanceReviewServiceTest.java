@@ -60,7 +60,35 @@ class AttendanceReviewServiceTest {
         assertEquals(AttendanceRecord.AttendanceStatus.PRESENT, record.getStatus());
         assertEquals(AttendanceRecord.ReviewStatus.APPROVED, record.getReviewStatus());
         assertEquals(1L, record.getReviewedBy());
+        assertEquals(1L, result.getFinalizedBy());
+        assertNotNull(result.getFinalizedAt());
         System.out.println("ACTUAL_REVIEW_SUBMIT_STATUS=" + result.getStatus() + " RECORD_STATUS=" + record.getStatus() + " REVIEW_STATUS=" + record.getReviewStatus());
+    }
+
+
+    @Test
+    void unknownFacesRequireAcknowledgmentAndCanBeAssignedToEnrolledStudent() throws Exception {
+        AttendanceSessionRepository repository = Mockito.mock(AttendanceSessionRepository.class);
+        AttendanceReviewService service = new AttendanceReviewService(repository);
+        User owner = user(1L, "owner", User.Role.TEACHER);
+        Student student = student(7L, "S-7");
+        AttendanceSession session = new AttendanceSession();
+        session.setId(44L); session.setFaculty(owner); session.setStatus(AttendanceSession.SessionStatus.REVIEW_REQUIRED);
+        session.setRecognitionDiagnostics("[{\"face_index\":0,\"student_id\":null,\"matched\":false}]");
+        AttendanceRecord record = new AttendanceRecord(); record.setId(100L); record.setSession(session); record.setStudent(student);
+        record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW); session.getAttendanceRecords().add(record);
+        Mockito.when(repository.findById(44L)).thenReturn(Optional.of(session));
+        Mockito.when(repository.save(session)).thenReturn(session);
+
+        assertThrows(IllegalArgumentException.class, () -> service.submitReview(44L, owner,
+                List.of(Map.of("studentId", 7L, "decision", "PRESENT")), List.of(), false));
+        assertEquals(AttendanceRecord.AttendanceStatus.REVIEW, record.getStatus());
+        AttendanceSession result = service.submitReview(44L, owner, List.of(),
+                List.of(Map.of("faceIndex", 0, "studentId", 7L)), true);
+        assertEquals(AttendanceRecord.AttendanceStatus.PRESENT, record.getStatus());
+        assertEquals(AttendanceSession.SessionStatus.FINALIZED, result.getStatus());
+        assertTrue(result.isUnknownFacesReviewed());
+        assertEquals(1L, result.getFinalizedBy());
     }
 
     @Test

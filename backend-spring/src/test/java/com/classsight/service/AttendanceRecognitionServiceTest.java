@@ -11,6 +11,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,7 +26,9 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doReturn;
 
 class AttendanceRecognitionServiceTest {
 
@@ -48,7 +56,7 @@ class AttendanceRecognitionServiceTest {
     }
 
     @Test
-    void testUndetectedStudentsMarkedAbsentAndSessionFinalizesCleanly() {
+    void testUndetectedStudentsRequireFacultyConfirmationBeforeFinalization() {
         // Given: 5 enrolled students in ClassSection
         ClassSection section = new ClassSection();
         section.setId(1L);
@@ -63,6 +71,7 @@ class AttendanceRecognitionServiceTest {
             s.setLastName("Test");
             s.setClassSection(section);
             s.setActive(true);
+            s.setFaceEmbedding(java.util.Collections.nCopies(128, 0.1));
             enrolledStudents.add(s);
         }
 
@@ -105,9 +114,9 @@ class AttendanceRecognitionServiceTest {
         AttendanceSession processed = service.processRecognitionResult(10L, recognitionPayload);
 
         // Then:
-        // 1. Session must auto-finalize without requiring review
-        assertEquals(AttendanceSession.SessionStatus.FINALIZED, processed.getStatus(),
-                "Session must be FINALIZED when all detected faces match cleanly and remaining students are absent");
+        // 1. Recognized attendance is not committed until faculty reviews the expected roster.
+        assertEquals(AttendanceSession.SessionStatus.REVIEW_REQUIRED, processed.getStatus(),
+                "Faculty review is mandatory before attendance is finalized");
 
         // 2. Exactly 5 records created
         assertEquals(5, processed.getAttendanceRecords().size());
@@ -126,16 +135,48 @@ class AttendanceRecognitionServiceTest {
             assertEquals("RECOGNIZED", rec.getRecognitionState());
         }
 
-        // 4. Missing students 4 and 5 must be ABSENT and APPROVED (NOT REVIEW/PENDING!)
+        // 4. Missing students remain unresolved until the teacher confirms their absence.
         for (long i = 4; i <= 5; i++) {
             AttendanceRecord rec = recordsByStudentId.get(i);
             assertNotNull(rec, "Record for student " + i + " must exist");
-            assertEquals(AttendanceRecord.AttendanceStatus.ABSENT, rec.getStatus(),
-                    "Missing student " + rec.getStudent().getRollNumber() + " must be ABSENT");
-            assertEquals(AttendanceRecord.ReviewStatus.APPROVED, rec.getReviewStatus(),
-                    "Missing student must be APPROVED, not PENDING review");
-            assertEquals("ABSENT", rec.getRecognitionState());
-            assertNull(rec.getQualityWarning());
+            assertEquals(AttendanceRecord.AttendanceStatus.REVIEW, rec.getStatus());
+            assertEquals(AttendanceRecord.ReviewStatus.PENDING, rec.getReviewStatus());
+            assertEquals("ABSENT_CANDIDATE", rec.getRecognitionState());
+            assertTrue(rec.getQualityWarning().contains("faculty must confirm"));
         }
     }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void multiShotDeduplicatesTheSameStudentAndKeepsHighestConfidence() {
+        ClassSection section = new ClassSection(); section.setId(7L); section.setName("CSE-A");
+        List<Student> roster = new ArrayList<>();
+        for (long id=1; id<=3; id++) { Student student=new Student();student.setId(id);student.setRollNumber("R"+id);student.setFirstName("Student"+id);student.setLastName("");student.setClassSection(section);student.setActive(true);student.setFaceEmbedding(java.util.Collections.nCopies(128,0.1));roster.add(student); }
+        AttendanceSession session=new AttendanceSession();session.setId(90L);session.setClassSection(section);session.setStatus(AttendanceSession.SessionStatus.CAPTURED);
+        when(sessionRepository.findById(90L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any(AttendanceSession.class))).thenAnswer(inv->inv.getArgument(0));
+        when(studentRepository.findByClassSectionAndActiveTrue(section)).thenReturn(roster);
+        Map<String,Object> first=recognitionPayload(List.of(testMatch(1L,.80,.34),testMatch(2L,.76,.36)));
+        Map<String,Object> second=recognitionPayload(List.of(testMatch(1L,.96,.22),testMatch(3L,.91,.27)));
+        ResponseEntity<Map> firstResponse=ResponseEntity.ok(first), secondResponse=ResponseEntity.ok(second);
+        doReturn(firstResponse).doReturn(secondResponse).when(restTemplate).exchange(anyString(),any(HttpMethod.class),any(HttpEntity.class),any(ParameterizedTypeReference.class));
+        List<MultipartFile> photos=List.of(new MockMultipartFile("image","one.jpg","image/jpeg",new byte[]{1}),new MockMultipartFile("image","two.jpg","image/jpeg",new byte[]{2}));
+
+        AttendanceSession result=service.processCapturedSession(90L,photos);
+
+        assertEquals(3,result.getAttendanceRecords().size());
+        assertEquals(AttendanceSession.SessionStatus.REVIEW_REQUIRED,result.getStatus());
+        AttendanceRecord studentOne=result.getAttendanceRecords().stream().filter(r->r.getStudent().getId().equals(1L)).findFirst().orElseThrow();
+        assertEquals(.96,studentOne.getConfidenceScore().doubleValue(),.0001);
+        assertTrue(result.getRecognitionDiagnostics().contains("shot_index"));
+    }
+
+    private Map<String,Object> recognitionPayload(List<Map<String,Object>> matches) {
+        return Map.of("matches",matches,"quality",Map.of("quality_passed",true,"blur_score",120.0,"brightness_mean",110.0,"liveness_score",.9,"warnings",List.of()));
+    }
+    private Map<String,Object> testMatch(Long id,double confidence,double distance) {
+        Map<String,Object> match=new HashMap<>();match.put("student_id",id);match.put("roll_number","R"+id);match.put("confidence_score",confidence);match.put("distance",distance);match.put("matched",true);match.put("face_size_ratio",.05);match.put("recognition_state","RECOGNIZED");match.put("quality_warnings",List.of());return match;
+    }
+
+
 }

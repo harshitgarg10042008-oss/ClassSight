@@ -54,9 +54,17 @@ public class AttendanceReviewService {
         response.put("capturePhase", session.getCapturePhase());
         response.put("capturedPhotoPath", session.getCapturedPhotoPath());
         response.put("photoUrl", "/api/attendance-sessions/" + sessionId + "/review/photo");
+        List<String> photoPaths = photoPaths(session);
+        response.put("photoUrls", java.util.stream.IntStream.range(0, photoPaths.size())
+                .mapToObj(index -> "/api/attendance-sessions/" + sessionId + "/review/photo?index=" + index).toList());
         response.put("records", records);
         response.put("allRecords", reviewRecords(session, false));
-        response.put("diagnostics", parseJsonArray(session.getRecognitionDiagnostics()));
+        List<?> diagnostics = parseJsonArray(session.getRecognitionDiagnostics());
+        response.put("diagnostics", diagnostics);
+        response.put("unknownDetections", unknownDetections(diagnostics));
+        response.put("unknownFacesReviewed", session.isUnknownFacesReviewed());
+        response.put("finalizedBy", session.getFinalizedBy());
+        response.put("finalizedAt", session.getFinalizedAt());
         response.put("timings", parseJsonObject(session.getRecognitionTimings()));
         Map<String, Object> quality = new HashMap<>();
         quality.put("blurScore", session.getBlurScore());
@@ -69,13 +77,15 @@ public class AttendanceReviewService {
     }
 
     @Transactional(readOnly = true)
-    public PhotoFile getPhoto(Long sessionId, User actor) {
+    public PhotoFile getPhoto(Long sessionId, User actor) { return getPhoto(sessionId, actor, 0); }
+
+    @Transactional(readOnly = true)
+    public PhotoFile getPhoto(Long sessionId, User actor, int index) {
         AttendanceSession session = authorizedSession(sessionId, actor);
-        if (session.getCapturedPhotoPath() == null || session.getCapturedPhotoPath().isBlank()) {
-            throw new IllegalStateException("No captured photo is stored for session " + sessionId);
-        }
+        List<String> paths = photoPaths(session);
+        if (index < 0 || index >= paths.size()) throw new IllegalArgumentException("Captured photo index is out of range");
         try {
-            StorageService.StoredObject stored = storageService.read(session.getCapturedPhotoPath());
+            StorageService.StoredObject stored = storageService.read(paths.get(index));
             String contentType = stored.contentType() == null
                     ? MediaType.APPLICATION_OCTET_STREAM_VALUE : stored.contentType();
             return new PhotoFile(new ByteArrayResource(stored.bytes()), MediaType.parseMediaType(contentType));
@@ -86,40 +96,78 @@ public class AttendanceReviewService {
 
     @Transactional
     public AttendanceSession submitReview(Long sessionId, User actor, List<Map<String, Object>> decisions) {
+        return submitReview(sessionId, actor, decisions, List.of(), false);
+    }
+
+    @Transactional
+    public AttendanceSession submitReview(Long sessionId, User actor, List<Map<String, Object>> decisions,
+            List<Map<String, Object>> unknownAssignments, boolean acknowledgeUnknownFaces) {
         AttendanceSession session = authorizedSession(sessionId, actor);
         if (session.getStatus() != AttendanceSession.SessionStatus.REVIEW_REQUIRED) {
             throw new IllegalStateException("Session is not awaiting review");
         }
 
+        List<?> diagnostics = parseJsonArray(session.getRecognitionDiagnostics());
+        int unknownCount = unknownDetections(diagnostics);
+        if (unknownCount > 0 && !acknowledgeUnknownFaces) {
+            throw new IllegalArgumentException("Review unknown faces: explicitly acknowledge ignored faces or assign them to a roster student");
+        }
+        Map<Integer, Map<?, ?>> unknownByIndex = new HashMap<>();
+        for (Object diagnostic : diagnostics) {
+            if (!(diagnostic instanceof Map<?, ?> item)) continue;
+            Object sid = item.get("student_id");
+            if (!(sid instanceof Number) && Boolean.FALSE.equals(item.get("matched"))) {
+                Object index = item.get("face_index");
+                if (index instanceof Number number) unknownByIndex.put(number.intValue(), item);
+            }
+        }
+
         Map<Long, String> decisionByStudent = new HashMap<>();
+        for (Map<String, Object> assignment : unknownAssignments) {
+            Object index = assignment.get("faceIndex");
+            Object studentId = assignment.get("studentId");
+            if (!(index instanceof Number faceIndex) || !(studentId instanceof Number studentNumber)
+                    || !unknownByIndex.containsKey(faceIndex.intValue())) {
+                throw new IllegalArgumentException("Unknown-face assignment must reference a detected unknown face and an enrolled student");
+            }
+            long id = studentNumber.longValue();
+            boolean belongsToSession = session.getAttendanceRecords().stream()
+                    .anyMatch(record -> record.getStudent().getId().equals(id));
+            if (!belongsToSession) throw new IllegalArgumentException("Assigned student is not enrolled in this class");
+            if (decisionByStudent.put(id, "PRESENT") != null) throw new IllegalArgumentException("A student cannot be assigned to multiple detections");
+        }
         for (Map<String, Object> decision : decisions) {
             Object studentId = decision.get("studentId");
             String value = String.valueOf(decision.get("decision")).toUpperCase();
             if (!(studentId instanceof Number) || !(value.equals("PRESENT") || value.equals("ABSENT"))) {
                 throw new IllegalArgumentException("Each decision requires studentId and PRESENT or ABSENT");
             }
-            decisionByStudent.put(((Number) studentId).longValue(), value);
+            Long id = ((Number) studentId).longValue();
+            if (session.getAttendanceRecords().stream().noneMatch(record -> record.getStudent().getId().equals(id))) {
+                throw new IllegalArgumentException("Attendance decision references a student outside this class");
+            }
+            String assigned = decisionByStudent.put(id, value);
+            if (assigned != null && !assigned.equals(value)) throw new IllegalArgumentException("Conflicting faculty decisions for a student");
         }
 
         for (AttendanceRecord record : session.getAttendanceRecords()) {
-            if (record.getStatus() != AttendanceRecord.AttendanceStatus.REVIEW) {
-                continue;
-            }
             String decision = decisionByStudent.get(record.getStudent().getId());
-            if (decision == null) {
-                continue;
-            }
+            if (decision == null) continue;
             record.setStatus(AttendanceRecord.AttendanceStatus.valueOf(decision));
             record.setReviewStatus(AttendanceRecord.ReviewStatus.APPROVED);
             record.setReviewedBy(actor.getId());
             record.setReviewedAt(LocalDateTime.now());
         }
 
+        if (unknownCount > 0) session.setUnknownFacesReviewed(true);
         boolean unresolved = session.getAttendanceRecords().stream()
                 .anyMatch(record -> record.getStatus() == AttendanceRecord.AttendanceStatus.REVIEW);
-        if (!unresolved) {
+        if (!unresolved && (unknownCount == 0 || session.isUnknownFacesReviewed())) {
             session.setStatus(AttendanceSession.SessionStatus.FINALIZED);
-            session.setEndedAt(LocalDateTime.now());
+            LocalDateTime finalizedAt = LocalDateTime.now();
+            session.setFinalizedBy(actor.getId());
+            session.setFinalizedAt(finalizedAt);
+            session.setEndedAt(finalizedAt);
         }
         return sessionRepository.save(session);
     }
@@ -140,6 +188,15 @@ public class AttendanceReviewService {
         return session;
     }
 
+    private int unknownDetections(List<?> diagnostics) {
+        int count = 0;
+        for (Object value : diagnostics) {
+            if (value instanceof Map<?, ?> item && !(item.get("student_id") instanceof Number)
+                    && Boolean.FALSE.equals(item.get("matched"))) count++;
+        }
+        return count;
+    }
+
     private List<Map<String, Object>> reviewRecords(AttendanceSession session, boolean onlyReview) {
         List<Map<String, Object>> result = new ArrayList<>();
         session.getAttendanceRecords().stream()
@@ -150,7 +207,7 @@ public class AttendanceReviewService {
                     item.put("recordId", record.getId());
                     item.put("studentId", record.getStudent().getId());
                     item.put("rollNumber", record.getStudent().getRollNumber());
-                    item.put("studentName", record.getStudent().getFirstName() + " " + record.getStudent().getLastName());
+                    item.put("studentName", (record.getStudent().getFirstName() + " " + record.getStudent().getLastName()).trim());
                     item.put("confidenceScore", record.getConfidenceScore());
                     item.put("recognitionState", record.getRecognitionState());
                     item.put("status", record.getStatus().toString());
@@ -181,6 +238,14 @@ public class AttendanceReviewService {
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Stored recognition timings are invalid", e);
         }
+    }
+
+    private List<String> photoPaths(AttendanceSession session) {
+        if (session.getCapturedPhotoPaths() != null && !session.getCapturedPhotoPaths().isBlank())
+            return java.util.Arrays.stream(session.getCapturedPhotoPaths().split("\\R"))
+                    .filter(path -> !path.isBlank()).toList();
+        return session.getCapturedPhotoPath() == null || session.getCapturedPhotoPath().isBlank()
+                ? List.of() : List.of(session.getCapturedPhotoPath());
     }
 
     public record PhotoFile(Resource resource, MediaType mediaType) {

@@ -1,9 +1,10 @@
 'use client';
 
 import {
-  ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState,
+  ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState,
 } from 'react';
 import './globals.css';
+import CameraCapture from '../components/CameraCapture';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Room = { id: number; name: string; building?: string; capacity?: number; active: boolean };
@@ -18,15 +19,23 @@ type ReviewRecord = {
   recordId: number; studentId: number; studentName: string; rollNumber: string;
   status: string; recognitionState?: string; confidenceScore?: number; qualityWarning?: string;
 };
+type RecognitionDiagnostic = {
+  face_index?: number; original_face_index?: number; shot_index?: number; student_id?: number | null; matched?: boolean; box?: number[];
+  image_width_px?: number; image_height_px?: number; confidence_score?: number;
+  recognition_state?: string; rejection_reason?: string;
+};
 type Review = {
   sessionId: number; status: string; records: ReviewRecord[]; allRecords?: ReviewRecord[];
-  photoUrl: string;
-  quality?: { warning?: string };
-  diagnostics?: { recognition_state?: string }[];
+  photoUrl: string; photoUrls?: string[]; quality?: { warning?: string };
+  diagnostics?: RecognitionDiagnostic[]; unknownDetections?: number; unknownFacesReviewed?: boolean;
 };
+type SubjectOption = { id:number; code:string; name:string };
 type StudentRosterItem = {
-  id: number; rollNumber: string; name: string; active: boolean;
-  createdAt: string; faceRegistered: boolean;
+  id: number; rollNumber: string; name: string; fullName?: string; active: boolean;
+  createdAt?: string; enrolledDate?: string; faceRegistered: boolean; hasFaceEmbedding?: boolean;
+  embeddingCount?: number; facePhotoAvailable?: boolean; classSectionId?: number; classSectionName?: string;
+  classSectionIds?: number[]; classSectionNames?: string[]; subjectIds?: number[]; sectionWideEnrollment?: boolean;
+  consentGiven?: boolean;
 };
 type BulkEnrollResponse = {
   totalRows: number; successCount: number; failureCount: number;
@@ -81,6 +90,27 @@ type AnalyticsSummary = {
 const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8080';
 
+function friendlyError(raw: string): string {
+  let value = raw.replace(/^\d{3}:\s*/, '').trim();
+  for (let i = 0; i < 4; i++) {
+    try {
+      const parsed = JSON.parse(value);
+      const nested = parsed?.message ?? parsed?.detail ?? parsed?.error;
+      if (typeof nested === 'string') { value = nested; continue; }
+      if (typeof nested === 'object' && nested !== null) { value = JSON.stringify(nested); continue; }
+    } catch { /* Plain text error; keep its content for mapping below. */ }
+    break;
+  }
+  const lower = value.toLowerCase();
+  if (lower.includes('no face')) return 'No face found. Move closer and face the camera.';
+  if (lower.includes('multiple') && lower.includes('face')) return 'More than one face found. Capture one student at a time.';
+  if (lower.includes('camera') && lower.includes('busy')) return 'Camera is busy in another app or browser tab. Close it and try again.';
+  if (lower.includes('class') && (lower.includes('required') || lower.includes('select'))) return 'Choose a class before continuing.';
+  if (lower.includes('duplicate') || lower.includes('already exists')) return value;
+  if (lower.includes('failed to fetch')) return 'Could not reach the ClassSight server. Check that the services are running.';
+  return value || 'The request could not be completed. Try again.';
+}
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function ClassSightApp() {
   const [token, setToken]           = useState('');
@@ -118,7 +148,7 @@ export default function ClassSightApp() {
     const headers = new Headers(opts.headers);
     if (token) headers.set('Authorization', `Bearer ${token}`);
     const res = await fetch(`${API}${path}`, { ...opts, headers });
-    if (!res.ok) { const t = await res.text(); throw new Error(`${res.status}: ${t}`); }
+    if (!res.ok) { const t = await res.text(); throw new Error(friendlyError(`${res.status}: ${t}`)); }
     return res;
   }, [token]);
 
@@ -224,20 +254,20 @@ function TeacherPage({ authFetch, getCsrf }: {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [roomId, setRoomId]           = useState<number | null>(null);
   const [assignmentId, setAssId]      = useState<number | null>(null);
-  const [photo, setPhoto]             = useState<File | null>(null);
-  const [photoUrl, setPhotoUrl]       = useState<string | null>(null);
+  const [shots, setShots] = useState<{file:File;url:string}[]>([]);
+  const photo = shots[0]?.file ?? null;
+  const photoUrl = shots[0]?.url ?? null;
   const [mode, setMode]               = useState<'webcam' | 'file'>('webcam');
   const [sessionId, setSessionId]     = useState<number | null>(null);
   const [review, setReview]           = useState<Review | null>(null);
+  const [reviewPhotoUrls, setReviewPhotoUrls] = useState<string[]>([]);
+  const [ackUnknown, setAckUnknown] = useState(false);
+  const [unknownAssignments, setUnknownAssignments] = useState<Record<number, number>>({});
   const [decisions, setDecisions]     = useState<Record<number, 'PRESENT' | 'ABSENT'>>({});
   const [step, setStep]               = useState<'select' | 'capture' | 'review'>('select');
   const [msg, setMsg]                 = useState('');
   const [busy, setBusy]               = useState(false);
   const [period, setPeriod]           = useState<TimetablePeriod | null>(null);
-  const [camErr, setCamErr]           = useState('');
-  const [camOn, setCamOn]             = useState(false);
-  const vidRef  = useRef<HTMLVideoElement | null>(null);
-  const strmRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -259,48 +289,22 @@ function TeacherPage({ authFetch, getCsrf }: {
     }).catch(err => setMsg(err.message));
   }, [authFetch]);
 
-  async function startCam() {
-    setCamErr('');
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
-      strmRef.current = s;
-      if (vidRef.current) { vidRef.current.srcObject = s; await vidRef.current.play(); }
-      setCamOn(true);
-    } catch (e) { setCamErr(`Camera: ${e instanceof Error ? e.message : 'error'}. Use File Upload instead.`); setCamOn(false); }
-  }
-
-  function stopCam() { strmRef.current?.getTracks().forEach(t => t.stop()); strmRef.current = null; setCamOn(false); }
-
-  useEffect(() => {
-    if (step === 'capture' && mode === 'webcam') startCam(); else stopCam();
-    return stopCam;
-  }, [step, mode]);
-
-  function snap() {
-    if (!vidRef.current) return;
-    const v = vidRef.current, c = document.createElement('canvas');
-    c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720;
-    c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
-    c.toBlob(blob => {
-      if (!blob) return;
-      const f = new File([blob], `att-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      setPhoto(f); setPhotoUrl(URL.createObjectURL(f)); setMsg('Photo ready!');
-    }, 'image/jpeg', 0.92);
-  }
-
   async function capture() {
-    if (!photo || !roomId || !assignmentId) { setMsg('Select room, subject, and take a photo.'); return; }
-    setBusy(true); setMsg('Running recognition pipeline…'); stopCam();
+    if (!photo || !roomId || !assignmentId || !cameras.some(c => c.room?.id === roomId)) { setMsg('Select a configured room, subject, and take a photo.'); return; }
+    setBusy(true); setMsg('Running recognition pipeline…');
     try {
       const csrf = await getCsrf();
       const form = new FormData();
       form.append('image', photo);
+      shots.slice(1).forEach(shot=>form.append('additionalImages',shot.file));
       form.append('roomId', String(roomId));
-      form.append('cameraId', String(cameras.find(c => c.room?.id === roomId)?.id ?? 1));
+      form.append('cameraId', String(cameras.find(c => c.room?.id === roomId)?.id ?? ''));
       form.append('assignmentId', String(assignmentId));
       if (period?.session?.id) form.append('classSessionId', String(period.session.id));
-      const d = await authFetch('/capture', { method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form }).then(r => r.json());
-      setSessionId(d.sessionId); setStep('review'); setMsg(`Session #${d.sessionId} created.`);
+      const response=await authFetch('/capture', { method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form });
+      if(!response.ok)throw new Error(await friendlyError(await response.text()));
+      const d = await response.json();
+      setSessionId(d.sessionId); setStep('review'); setMsg(`Session #${d.sessionId} created with ${d.captureCount||shots.length} capture(s).`);
       poll(d.sessionId);
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Capture failed'); }
     finally { setBusy(false); }
@@ -308,10 +312,15 @@ function TeacherPage({ authFetch, getCsrf }: {
 
   function poll(id: number) {
     let n = 0;
+    let photoRequested = false;
     const tick = async () => {
       try {
         const d: Review = await authFetch(`/api/attendance-sessions/${id}/review`).then(r => r.json());
         setReview(d);
+        if (!photoRequested && (d.photoUrls?.length || d.photoUrl)) {
+          photoRequested = true;
+          try { const urls=d.photoUrls?.length?d.photoUrls:[d.photoUrl];const blobs=await Promise.all(urls.map((url:string)=>authFetch(url).then(response=>{if(!response.ok)throw new Error('Photo unavailable');return response.blob();})));setReviewPhotoUrls(blobs.map(blob=>URL.createObjectURL(blob))); } catch { /* Detection details remain readable without stored images. */ }
+        }
         if ((d.status === 'CAPTURED' || d.status === 'PROCESSING') && n < 60) { n++; setTimeout(tick, 1500); }
         else setMsg(`Status: ${d.status}`);
       } catch (err) { setMsg(err instanceof Error ? err.message : 'Poll error'); }
@@ -327,9 +336,13 @@ function TeacherPage({ authFetch, getCsrf }: {
       const d = await authFetch(`/api/attendance-sessions/${sessionId}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf.token },
-        body: JSON.stringify({ decisions: review.records.filter(r => decisions[r.studentId]).map(r => ({ studentId: r.studentId, decision: decisions[r.studentId] })) }),
+        body: JSON.stringify({
+          decisions: review.records.filter(r => decisions[r.studentId]).map(r => ({ studentId: r.studentId, decision: decisions[r.studentId] })),
+          unknownFaceAssignments: Object.entries(unknownAssignments).filter(([, studentId]) => Number(studentId) > 0).map(([faceIndex, studentId]) => ({ faceIndex:Number(faceIndex), studentId:Number(studentId) })),
+          acknowledgeUnknownFaces: ackUnknown,
+        }),
       }).then(r => r.json());
-      setMsg(`Session #${d.sessionId} finalized.`);
+      setMsg(d.status === 'FINALIZED' ? `Session #${d.sessionId} finalized.` : `Session #${d.sessionId} still needs review.`);
       poll(sessionId);
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Error'); }
     finally { setBusy(false); }
@@ -339,6 +352,8 @@ function TeacherPage({ authFetch, getCsrf }: {
   const present = all.filter(r => r.status === 'PRESENT').length;
   const absent  = all.filter(r => r.status === 'ABSENT').length;
   const inReview = review?.records?.length ?? 0;
+  const unknownItems = review?.diagnostics?.filter(item => item.student_id == null && item.matched === false) ?? [];
+  const needsUnknownAck = unknownItems.length > 0 && !review?.unknownFacesReviewed;
 
   return (
     <div>
@@ -351,7 +366,7 @@ function TeacherPage({ authFetch, getCsrf }: {
         ))}
       </div>
 
-      {msg && <div className="alert alert-info">{msg}</div>}
+      {msg && <div className="alert alert-info" role="status" style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><span>{msg}</span><button type="button" className="btn-secondary btn-sm" aria-label="Close message" onClick={() => setMsg('')}>×</button></div>}
 
       {step === 'select' && (
         <div className="section-card">
@@ -399,30 +414,19 @@ function TeacherPage({ authFetch, getCsrf }: {
             <div><span className="eyebrow">Step 2</span><h2>Capture Classroom Photo</h2></div>
             <div style={{ display:'flex', gap:8 }}>
               <button className={mode === 'webcam' ? '' : 'btn-secondary'} onClick={() => setMode('webcam')}>📹 Webcam</button>
-              <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => { stopCam(); setMode('file'); }}>📂 File Upload</button>
+              <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => setMode('file')}>📂 File Upload</button>
             </div>
           </div>
-          {mode === 'webcam' && (camErr
-            ? <div className="alert alert-danger">{camErr}</div>
-            : <div className="webcam-wrap">
-                <video ref={vidRef} autoPlay playsInline muted style={{ width:'100%', maxHeight:420, display:'block', objectFit:'cover' }} />
-                <div className="webcam-actions">
-                  <button onClick={snap} style={{ boxShadow:'0 4px 16px rgba(0,0,0,.4)' }}>📸 Snap Photo</button>
-                  {camOn ? <button className="btn-secondary" onClick={stopCam}>Pause</button> : <button className="btn-secondary" onClick={startCam}>Restart</button>}
-                </div>
-              </div>
-          )}
+          <p className="hint">Capture up to three photos. The same student across shots is counted once using the highest-confidence match.</p>
+          {mode === 'webcam' && <CameraCapture disabled={busy||shots.length>=3} captureLabel="Capture attendance photo" onCapture={file => { if(shots.length>=3)return;setShots(current=>[...current,{file,url:URL.createObjectURL(file)}]);setMsg(`Photo ${shots.length+1} ready.`); }} />}
           {mode === 'file' && (
-            <label>Choose classroom photo
-              <input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) { setPhoto(f); setPhotoUrl(URL.createObjectURL(f)); } }} />
+            <label>Choose classroom photo(s)
+              <input type="file" accept="image/*" multiple onChange={e => { const files=Array.from(e.target.files||[]).slice(0,3-shots.length);if(files.length){setShots(current=>[...current,...files.map(file=>({file,url:URL.createObjectURL(file)}))]);}e.currentTarget.value=''; }} />
             </label>
           )}
-          {photoUrl && <div style={{ marginTop:12 }}>
-            <img src={photoUrl} alt="preview" style={{ width:'100%', borderRadius:12, border:'1px solid var(--line)', maxHeight:320, objectFit:'contain', background:'#0f1c1a' }} />
-            <p className="hint" style={{ marginTop:6 }}>Ready · {photo ? (photo.size / 1024).toFixed(0) + ' KB' : ''}</p>
-          </div>}
+          {shots.length>0&&<div className="form-grid-2" style={{marginTop:12}}>{shots.map((shot,index)=><div key={shot.url} className="section-card"><div className="section-head"><strong>Photo {index+1}</strong><button type="button" className="btn-danger btn-sm" onClick={()=>{URL.revokeObjectURL(shot.url);setShots(current=>current.filter(item=>item!==shot));}}>Remove</button></div><img src={shot.url} alt={`Attendance capture ${index+1}`} style={{ width:'100%', borderRadius:12, border:'1px solid var(--line)', maxHeight:320, objectFit:'contain', background:'#0f1c1a' }} /><p className="hint">{(shot.file.size/1024).toFixed(0)} KB</p></div>)}</div>}
           <div style={{ display:'flex', gap:10, marginTop:20 }}>
-            <button className="btn-secondary" onClick={() => { stopCam(); setStep('select'); }}>← Back</button>
+            <button className="btn-secondary" onClick={() => setStep('select')}>← Back</button>
             <button onClick={capture} disabled={busy || !photo}>{busy ? <><span className="spinner" />Processing…</> : 'Submit & Recognize →'}</button>
           </div>
         </div>
@@ -438,50 +442,43 @@ function TeacherPage({ authFetch, getCsrf }: {
               {inReview > 0 && <span className="badge badge-amber">{inReview} Review</span>}
             </div>
           </div>
-          {review?.quality?.warning && <div className="alert alert-warn">⚠️ {review.quality.warning}</div>}
+          {review?.quality?.warning && <div className="alert alert-warn">{review.quality.warning}</div>}
+          {review?.status === 'FAILED' && <div className="alert alert-danger">{review.quality?.warning || 'Recognition could not run. Verify that students are enrolled in the selected class and try again.'}</div>}
+          {reviewPhotoUrls.length > 0 && review?.diagnostics?.length ? <div className="section-card" style={{marginBottom:16}}>
+            <h3>Captured photos and unknown faces</h3>
+            <div className="form-grid-2">{reviewPhotoUrls.map((url,shotIndex)=><div key={url} style={{maxWidth:850,margin:'12px auto'}}>
+              <p className="hint">Photo {shotIndex+1}</p><div style={{position:'relative'}}><img src={url} alt={`Captured attendance photo ${shotIndex+1}`} style={{display:'block',width:'100%',height:'auto'}} />
+              {unknownItems.filter(item=>(item.shot_index??0)===shotIndex).map((item,index)=>{const [top,right,bottom,left]=item.box||[];const width=item.image_width_px||1,height=item.image_height_px||1;if(right==null||bottom==null||left==null)return null;return <div key={`${shotIndex}:${item.face_index??index}`} title={item.rejection_reason||'Unknown face'} style={{position:'absolute',top:`${top/height*100}%`,left:`${left/width*100}%`,width:`${(right-left)/width*100}%`,height:`${(bottom-top)/height*100}%`,border:'3px solid #ef4444',background:'rgba(239,68,68,.1)',pointerEvents:'none'}}><span style={{background:'#991b1b',color:'#fff',padding:'2px 6px',fontSize:12}}>Unknown {index+1}</span></div>;})}</div>
+            </div>)}</div>
+            {unknownItems.length>0&&<div className="form-grid">{unknownItems.map((item,index)=><label key={`${item.shot_index??0}:${item.face_index??index}`}>Photo {(item.shot_index??0)+1} · Unknown face {item.original_face_index??item.face_index??index+1} · {item.rejection_reason||'No class match'}
+              <select value={unknownAssignments[item.face_index??index]||''} onChange={event=>{const faceId=item.face_index??index;const nextId=Number(event.target.value)||0;const previousId=unknownAssignments[faceId];if(nextId&&Object.entries(unknownAssignments).some(([other,id])=>Number(other)!==faceId&&id===nextId)){setMsg('Assign each student to at most one unknown face.');return;}setUnknownAssignments(current=>({...current,[faceId]:nextId}));setDecisions(current=>{const next={...current};if(previousId&&!Object.values(unknownAssignments).some((id,other)=>other!==faceId&&id===previousId))delete next[previousId];if(nextId)next[nextId]='PRESENT';return next;});}}><option value="">Ignore this face after review</option>{all.map(record=><option key={record.studentId} value={record.studentId}>{record.studentName} · {record.rollNumber}</option>)}</select>
+            </label>)}</div>}
+          </div>:null}
           {all.length > 0 && <div className="stat-grid" style={{ marginBottom:20 }}>
-            <div className="stat-card blue"><div className="stat-value">{all.length}</div><div className="stat-label">Faces / roster</div></div>
-            <div className="stat-card green"><div className="stat-value">{all.filter(r => r.recognitionState === 'MATCHED' || r.status === 'PRESENT').length}</div><div className="stat-label">Recognized</div></div>
-            <div className="stat-card red"><div className="stat-value">{all.filter(r => r.status === 'ABSENT').length}</div><div className="stat-label">Absent</div></div>
-            <div className="stat-card amber"><div className="stat-value">{all.filter(r => r.recognitionState === 'UNKNOWN' || r.status === 'REVIEW').length}</div><div className="stat-label">Unknown / review</div></div>
+            <div className="stat-card blue"><div className="stat-value">{all.length}</div><div className="stat-label">Enrolled students</div></div>
+            <div className="stat-card green"><div className="stat-value">{all.filter(r => r.status === 'PRESENT').length}</div><div className="stat-label">Present (recognized)</div></div>
+            <div className="stat-card red"><div className="stat-value">{all.filter(r => r.status === 'ABSENT').length}</div><div className="stat-label">Absent after review</div></div>
+            <div className="stat-card amber"><div className="stat-value">{inReview}</div><div className="stat-label">Needs review</div></div>
           </div>}
           {all.length > 0 ? (<>
             <div className="records-list">
               {all.map(rec => {
-                const ip = rec.status === 'PRESENT', ia = rec.status === 'ABSENT';
-                return (
-                  <div className="record-item" key={rec.recordId}>
-                    <div className="record-info">
-                      <strong>{rec.studentName}
-                        <span className={`badge ${ip ? 'badge-green' : ia ? 'badge-red' : 'badge-amber'}`} style={{ marginLeft:8 }}>{rec.status}</span>
-                        {rec.recognitionState && <span className="badge badge-gray" style={{ marginLeft:4, fontSize:10 }}>{rec.recognitionState}</span>}
-                      </strong>
-                      <small>Roll: <code>{rec.rollNumber}</code>{rec.confidenceScore != null && <> · {(rec.confidenceScore * 100).toFixed(1)}%</>}</small>
-                    </div>
-                    <div className="record-actions">
-                      <button className={`btn-sm ${decisions[rec.studentId] === 'PRESENT' || (ip && !decisions[rec.studentId]) ? '' : 'btn-secondary'}`}
-                        onClick={() => setDecisions({ ...decisions, [rec.studentId]: 'PRESENT' })}>✓ Present</button>
-                      <button className={`btn-sm ${decisions[rec.studentId] === 'ABSENT' || (ia && !decisions[rec.studentId]) ? 'btn-danger' : 'btn-secondary'}`}
-                        onClick={() => setDecisions({ ...decisions, [rec.studentId]: 'ABSENT' })}>✗ Absent</button>
-                    </div>
-                  </div>
-                );
+                const ip = decisions[rec.studentId] === 'PRESENT' || (rec.status === 'PRESENT' && !decisions[rec.studentId]);
+                const ia = decisions[rec.studentId] === 'ABSENT' || (rec.status === 'ABSENT' && !decisions[rec.studentId]);
+                return <div className="record-item" key={rec.recordId}>
+                  <div className="record-info"><strong>{rec.studentName}<span className={`badge ${ip ? 'badge-green' : ia ? 'badge-red' : 'badge-amber'}`} style={{ marginLeft:8 }}>{decisions[rec.studentId] || rec.status}</span>{rec.recognitionState&&<span className="badge badge-gray" style={{marginLeft:4,fontSize:10}}>{rec.recognitionState}</span>}</strong><small>Roll: <code>{rec.rollNumber}</code>{rec.confidenceScore!=null&&<> · {(rec.confidenceScore*100).toFixed(1)}%</>}{rec.qualityWarning&&<> · {rec.qualityWarning}</>}</small></div>
+                  <div className="record-actions"><button className={`btn-sm ${ip?'':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'PRESENT'})}>✓ Present</button><button className={`btn-sm ${ia?'btn-danger':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'ABSENT'})}>✗ Absent</button></div>
+                </div>;
               })}
             </div>
-            {inReview > 0
-              ? <div style={{ marginTop:20, paddingTop:16, borderTop:'1px solid var(--line)' }}>
-                  <p className="hint" style={{ marginBottom:12 }}>{inReview} item(s) require manual confirmation.</p>
-                  <button className="btn-lg" onClick={finalize} disabled={busy || review!.records.some(r => !decisions[r.studentId])}>
-                    {busy ? <><span className="spinner" />Finalizing…</> : 'Finalize Attendance Session'}
-                  </button>
-                </div>
-              : <div className="alert alert-success" style={{ marginTop:16 }}>✅ Auto-finalized — all students resolved with zero pending reviews.</div>
-            }
-          </>) : (
-            <div className="empty-state"><span className="empty-icon">⏳</span><p>Recognition engine processing… polling every 1.5 s</p></div>
-          )}
+            {review?.status === 'REVIEW_REQUIRED' ? <div style={{marginTop:20,paddingTop:16,borderTop:'1px solid var(--line)'}}>
+              <p className="hint" style={{marginBottom:12}}>{inReview} student(s) await a faculty decision. Every expected student must be marked present or absent after review.</p>
+              {unknownItems.length>0&&<label style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><input type="checkbox" checked={ackUnknown} onChange={event=>setAckUnknown(event.target.checked)} /><span>I reviewed {unknownItems.length} unknown face(s); unassigned faces are intentionally ignored.</span></label>}
+              <button className="btn-lg" onClick={finalize} disabled={busy||review.records.some(record=>!decisions[record.studentId])||(unknownItems.length>0&&!ackUnknown)}>{busy?<><span className="spinner"/>Finalizing…</>:'Finalize Attendance Session'}</button>
+            </div>:review?.status==='FINALIZED'?<div className="alert alert-success" style={{marginTop:16}}>Attendance finalized after faculty review. ERP-ready payload is local only, not sent.</div>:null}
+          </>) : review?.status === 'FAILED' ? null : <div className="empty-state"><span className="empty-icon">⏳</span><p>Recognition engine processing… polling every 1.5 s</p></div>}
           <div style={{ marginTop:20 }}>
-            <button className="btn-secondary" onClick={() => { setStep('capture'); setReview(null); setPhoto(null); setPhotoUrl(null); }}>← Take Another Photo</button>
+            <button className="btn-secondary" onClick={() => { setStep('capture'); setReview(null); reviewPhotoUrls.forEach(url=>URL.revokeObjectURL(url)); setReviewPhotoUrls([]); setAckUnknown(false); setUnknownAssignments({}); setDecisions({}); shots.forEach(shot=>URL.revokeObjectURL(shot.url)); setShots([]); }}>← Take Another Photo</button>
           </div>
         </div>
       )}
@@ -489,370 +486,401 @@ function TeacherPage({ authFetch, getCsrf }: {
   );
 }
 
+
+function FaceCropPreview({ src, box, imageWidth, imageHeight }: { src:string; box:number[]; imageWidth:number; imageHeight:number }) {
+  const [preview, setPreview] = useState('');
+  useEffect(() => {
+    let current = '';
+    const image = new Image(); image.src = src;
+    image.onload = () => {
+      const [top,right,bottom,left] = box;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, right-left); canvas.height = Math.max(1, bottom-top);
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      context.drawImage(image, left, top, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => { if (blob) { current = URL.createObjectURL(blob); setPreview(current); } }, 'image/jpeg', 0.9);
+    };
+    return () => { if (current) URL.revokeObjectURL(current); };
+  }, [src, box, imageWidth, imageHeight]);
+  return <span style={{display:'inline-flex',alignItems:'center',gap:8}}>{preview?<img src={preview} alt="Cropped face thumbnail" style={{width:64,height:64,objectFit:'cover',borderRadius:8}}/>:<span className="hint">Preparing face crop…</span>}</span>;
+}
+
+
+function StudentFaceThumbnail({ student, authFetch }: { student:StudentRosterItem; authFetch:(path:string,options?:RequestInit)=>Promise<Response> }) {
+  const root = useRef<HTMLSpanElement>(null); const [imageUrl,setImageUrl]=useState('');
+  useEffect(()=>{
+    if(!student.facePhotoAvailable||!root.current)return;
+    let disposed=false;let objectUrl='';const element=root.current;
+    const load=async()=>{try{const response=await authFetch(`/students/${student.id}/photo`);if(!response.ok)throw new Error('Unavailable');const blob=await response.blob();if(!disposed){objectUrl=URL.createObjectURL(blob);setImageUrl(objectUrl);}}catch{/* initials remain as a privacy-safe fallback */}};
+    if('IntersectionObserver'in window){const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){observer.disconnect();void load();}});observer.observe(element);return()=>{disposed=true;observer.disconnect();if(objectUrl)URL.revokeObjectURL(objectUrl);};}
+    void load();return()=>{disposed=true;if(objectUrl)URL.revokeObjectURL(objectUrl);};
+  },[authFetch,student.id,student.facePhotoAvailable]);
+  const initials=student.name.split(/\s+/).map(part=>part[0]||'').slice(0,2).join('').toUpperCase();
+  return <span ref={root} className="user-avatar" aria-label={imageUrl?`Face thumbnail for ${student.name}`:`Face thumbnail unavailable for ${student.name}`} style={{overflow:'hidden',padding:0}}>{imageUrl?<img src={imageUrl} alt={`Face thumbnail for ${student.name}`} style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'inherit'}}/>:initials}</span>;
+}
+
 // ─── ENROLLMENT PAGE ──────────────────────────────────────────────────────────
 function EnrollmentPage({ authFetch, getCsrf }: {
   authFetch: (p: string, o?: RequestInit) => Promise<Response>;
   getCsrf: () => Promise<{ token: string }>;
 }) {
-  const [tab, setTab]               = useState<'quick'|'bulk'|'single'|'roster'|'test'>('quick');
-  const [roster, setRoster]         = useState<StudentRosterItem[]>([]);
-  const [loadingRoster, setLR]      = useState(false);
-  const [busy, setBusy]             = useState(false);
-  const [msg, setMsg]               = useState('');
-  const [bulkCsv, setBulkCsv]       = useState<File|null>(null);
-  const [bulkZip, setBulkZip]       = useState<File|null>(null);
-  const [bulkPhotos, setBulkPhotos] = useState<FileList|null>(null);
-  const [bulkRes, setBulkRes]       = useState<BulkEnrollResponse|null>(null);
-  const [sName, setSName]           = useState('');
-  const [sRoll, setSRoll]           = useState('');
-  const [sPhoto, setSPhoto]         = useState<File|null>(null);
-  const [sUrl, setSUrl]             = useState<string|null>(null);
-  const [camOn, setCamOn]           = useState(false);
-  const [quickPhoto, setQuickPhoto] = useState<File|null>(null);
-  const [quickUrl, setQuickUrl]     = useState<string|null>(null);
-  const [quickDetection, setQuickDetection] = useState<QuickDetection|null>(null);
+  type Shot = { id: number; file: File; url: string; image_width: number; image_height: number; faces: QuickDetection['faces'] };
+  type FaceDraft = { name: string; roll: string; mergeWith?: string };
+  const [tab, setTab] = useState<'quick'|'bulk'|'single'|'roster'|'test'>('quick');
+  const [roster, setRoster] = useState<StudentRosterItem[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [cameras, setCameras] = useState<Camera[]>([]);
+  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+  const [createSubjectId, setCreateSubjectId] = useState('');
+  const [assignmentId, setAssignmentId] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [msgKind, setMsgKind] = useState<'info'|'success'|'error'>('info');
+  const [quickShots, setQuickShots] = useState<Shot[]>([]);
+  const [faceDrafts, setFaceDrafts] = useState<Record<string, FaceDraft>>({});
   const [quickConsent, setQuickConsent] = useState(false);
-  const [quickBatchId, setQuickBatchId] = useState('');
-  const [testPhoto, setTestPhoto] = useState<File | null>(null);
-  const [testReview, setTestReview] = useState<Review | null>(null);
-  const [testAssignments, setTestAssignments] = useState<Assignment[]>([]);
-  const [testRooms, setTestRooms] = useState<Room[]>([]);
-  const vidRef = useRef<HTMLVideoElement|null>(null);
-  const strmRef = useRef<MediaStream|null>(null);
+  const [quickCameraOpen, setQuickCameraOpen] = useState(false);
+  const [testPhoto, setTestPhoto] = useState<File|null>(null);
+  const [testPhotoUrl, setTestPhotoUrl] = useState('');
+  const [testReview, setTestReview] = useState<Review|null>(null);
+  const [testCameraOpen, setTestCameraOpen] = useState(false);
+  const [singleName, setSingleName] = useState('');
+  const [singleRoll, setSingleRoll] = useState('');
+  const [singlePhoto, setSinglePhoto] = useState<File|null>(null);
+  const [singlePhotoUrl, setSinglePhotoUrl] = useState('');
+  const [singleCameraOpen, setSingleCameraOpen] = useState(false);
+  const [bulkCsv, setBulkCsv] = useState<File|null>(null);
+  const [bulkZip, setBulkZip] = useState<File|null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkEnrollResponse|null>(null);
+  const [search, setSearch] = useState('');
+  const [classFilter, setClassFilter] = useState('');
+  const [editDraft, setEditDraft] = useState<{ id: number; name: string; roll: string; classSectionId: string }|null>(null);
+  const [recaptureStudent, setRecaptureStudent] = useState<StudentRosterItem|null>(null);
+  const [recaptureConsent, setRecaptureConsent] = useState(false);
+  const [drawShotId, setDrawShotId] = useState<number|null>(null);
+  const [drawStart, setDrawStart] = useState<{ x: number; y: number }|null>(null);
+  const [createClass, setCreateClass] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+  const [newAcademicYear, setNewAcademicYear] = useState(String(new Date().getFullYear()));
+
+  const notify = (text: string, kind: 'info'|'success'|'error' = 'info') => { setMsg(text); setMsgKind(kind); };
+  const selectedAssignment = assignments.find(item => String(item.id) === assignmentId);
+  const availableAssignments = assignments.filter(item => item.id > 0);
+  const selectedTestAssignment = availableAssignments.find(item => String(item.id) === assignmentId);
 
   const loadRoster = useCallback(async () => {
-    setLR(true);
-    try { setRoster(await authFetch('/students').then(r => r.json())); } catch {}
-    finally { setLR(false); }
+    const response = await authFetch('/students');
+    const data = await response.json();
+    if (!Array.isArray(data)) throw new Error('Student roster response was not a list.');
+    setRoster(data.map((student: any) => ({
+      ...student,
+      name: student.name || student.fullName || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+      faceRegistered: Boolean(student.faceRegistered ?? student.hasFaceEmbedding),
+      enrolledDate: student.enrolledDate || student.createdAt,
+      embeddingCount: Number(student.embeddingCount || 0),
+    })));
   }, [authFetch]);
 
   useEffect(() => {
-    loadRoster();
-    Promise.all([authFetch('/teacher/assignments').then(r => r.json()), authFetch('/api/rooms').then(r => r.json())])
-      .then(([assignments, rooms]) => { setTestAssignments(assignments); setTestRooms(rooms); })
-      .catch(() => setMsg('Unable to load test recognition context.'));
-  }, [loadRoster, authFetch]);
+    void loadRoster().catch(error => notify(error instanceof Error ? error.message : 'Could not load the student roster.', 'error'));
+    Promise.allSettled([
+      authFetch('/teacher/assignments').then(response => response.json()),
+      authFetch('/api/rooms').then(response => response.json()),
+      authFetch('/api/cameras').then(response => response.json()),
+      authFetch('/students/subjects').then(response => response.json()),
+    ]).then(results => {
+      const [as, rms, cams, subs] = results;
+      if (as.status === 'fulfilled' && Array.isArray(as.value)) {
+        setAssignments(as.value);
+        if (as.value.length) setAssignmentId(String(as.value[0].id));
+      } else notify(as.status === 'rejected' ? as.reason?.message || 'Could not load classes.' : 'Class list was invalid.', 'error');
+      if (rms.status === 'fulfilled' && Array.isArray(rms.value)) {
+        setRooms(rms.value); if (rms.value.length) setRoomId(String(rms.value[0].id));
+      }
+      if (cams.status === 'fulfilled' && Array.isArray(cams.value)) setCameras(cams.value);
+      if (subs.status === 'fulfilled' && Array.isArray(subs.value)) {
+        setSubjects(subs.value);
+        if (subs.value.length) setCreateSubjectId(String(subs.value[0].id));
+      }
+    });
+  }, [authFetch, loadRoster]);
+
+  function switchTab(next: typeof tab) {
+    setMsg(''); setTab(next);
+    setQuickCameraOpen(false); setTestCameraOpen(false); setSingleCameraOpen(false);
+  }
+
+  async function addQuickPhoto(file: File) {
+    if (quickShots.length >= 3) { notify('Capture up to 3 class photos.', 'error'); return; }
+    if (!selectedAssignment) { notify('Choose or create the class and subject before capturing a class photo.', 'error'); return; }
+    setBusy(true); setMsg('');
+    const url = URL.createObjectURL(file);
+    try {
+      const csrf = await getCsrf(); const form = new FormData(); form.append('photo', file);
+      const result: QuickDetection = await authFetch('/students/quick-detect', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form }).then(r => r.json());
+      if (!result || !Array.isArray(result.faces)) throw new Error('Face detector returned an invalid response.');
+      const shot: Shot = { id: Date.now(), file, url, image_width: result.image_width, image_height: result.image_height, faces: result.faces };
+      setQuickShots(current => [...current, shot]);
+      setQuickCameraOpen(false);
+      notify(`${result.face_count} face(s) detected in this photo. Review the boxes and enter each student's name and roll number.`, 'success');
+    } catch (error) { URL.revokeObjectURL(url); notify(error instanceof Error ? error.message : 'Face detection failed.', 'error'); }
+    finally { setBusy(false); }
+  }
+
+  function removeFace(shotId: number, faceIndex: number) {
+    const removedKey = `${shotId}:${faceIndex}`;
+    setQuickShots(current => current.map(shot => shot.id === shotId ? { ...shot, faces:shot.faces.filter(face => face.face_index !== faceIndex) } : shot));
+    setFaceDrafts(current => { const next = { ...current }; delete next[removedKey]; for (const [key,draft] of Object.entries(next)) if (draft.mergeWith===removedKey) next[key]={...draft,mergeWith:undefined}; return next; });
+  }
+
+  function beginBox(event: ReactPointerEvent<HTMLDivElement>, shot: Shot) {
+    if (drawShotId !== shot.id) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    setDrawStart({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function finishBox(event: ReactPointerEvent<HTMLDivElement>, shot: Shot) {
+    if (drawShotId !== shot.id || !drawStart) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x2 = event.clientX - rect.left, y2 = event.clientY - rect.top;
+    const leftPx = Math.min(drawStart.x, x2) / rect.width * shot.image_width;
+    const rightPx = Math.max(drawStart.x, x2) / rect.width * shot.image_width;
+    const topPx = Math.min(drawStart.y, y2) / rect.height * shot.image_height;
+    const bottomPx = Math.max(drawStart.y, y2) / rect.height * shot.image_height;
+    setDrawStart(null); setDrawShotId(null);
+    if (rightPx - leftPx < 12 || bottomPx - topPx < 12) { notify('Draw a larger box around the missed face.', 'error'); return; }
+    const faceIndex = Math.max(0, ...quickShots.flatMap(item => item.faces.map(face => face.face_index))) + 1;
+    setQuickShots(current => current.map(item => item.id === shot.id ? { ...item, faces:[...item.faces, { face_index:faceIndex, box:[Math.round(topPx), Math.round(rightPx), Math.round(bottomPx), Math.round(leftPx)], quality_warnings:['Added manually by faculty'] }] } : item));
+    notify('Manual face box added. Verify it contains exactly one face.');
+  }
+
+  async function enrollQuickFaces() {
+    if (!selectedAssignment || !quickConsent || quickShots.length === 0) { notify('Choose the class, capture at least one photo, and confirm consent before saving.', 'error'); return; }
+    const allFaces = quickShots.flatMap(shot => shot.faces.map(face => ({ key:`${shot.id}:${face.face_index}`, shot, face })));
+    if (!allFaces.length) { notify('No face boxes are selected. Keep or draw at least one face.', 'error'); return; }
+    const rootFor = (key:string) => { let current=key; const seen=new Set<string>(); while(faceDrafts[current]?.mergeWith&&!seen.has(current)){seen.add(current);current=faceDrafts[current].mergeWith!;} return current; };
+    const grouped = new Map<string, typeof allFaces>();
+    for (const item of allFaces) { const root=rootFor(item.key); if(!grouped.has(root))grouped.set(root,[]); grouped.get(root)!.push(item); }
+    const groups = [...grouped.entries()].map(([root,items])=>({root,items,draft:faceDrafts[root]||{name:'',roll:''}}));
+    if (groups.some(group=>!group.draft.name.trim()||!group.draft.roll.trim())) { notify('Enter a name and roll number for every student group.', 'error'); return; }
+    const names=groups.map(group=>group.draft.name.trim().toLocaleLowerCase()); const rolls=groups.map(group=>group.draft.roll.trim().toLocaleLowerCase());
+    if(new Set(names).size!==names.length||new Set(rolls).size!==rolls.length){notify('Duplicate names or roll numbers are not allowed. Use “Same student as…” to merge duplicate detections across photos.', 'error');return;}
+    setBusy(true); setMsg(''); let enrolled=0; let extraReferences=0;
+    try {
+      const cropFile = async (item:typeof allFaces[number], roll:string) => {
+        const image=new Image(); image.src=item.shot.url;
+        await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error('Could not read the class photo.'));});
+        const source=document.createElement('canvas'); source.width=item.shot.image_width; source.height=item.shot.image_height;
+        const sourceContext=source.getContext('2d'); if(!sourceContext)throw new Error('Could not prepare the face crop.'); sourceContext.drawImage(image,0,0,source.width,source.height);
+        const [top,right,bottom,left]=item.face.box; const width=Math.max(1,Math.min(source.width-left,right-left)); const height=Math.max(1,Math.min(source.height-top,bottom-top));
+        const crop=document.createElement('canvas');crop.width=width;crop.height=height;const context=crop.getContext('2d');if(!context)throw new Error('Could not crop the detected face.');
+        context.drawImage(source,left,top,width,height,0,0,width,height);const blob=await new Promise<Blob|null>(resolve=>crop.toBlob(resolve,'image/jpeg',0.95));if(!blob)throw new Error('Could not encode a face crop.');
+        return new File([blob],`face-${roll}-${item.shot.id}.jpg`,{type:'image/jpeg'});
+      };
+      for(const group of groups){
+        const first=group.items[0];const name=group.draft.name.trim();const roll=group.draft.roll.trim();
+        const firstPhoto=await cropFile(first,roll);const csrf=await getCsrf();const form=new FormData();
+        form.append('name',name);form.append('rollNumber',roll);form.append('classSectionId',String(selectedAssignment.classSection.id));form.append('subjectId',String(selectedAssignment.subject.id));form.append('consentGiven','true');form.append('photo',firstPhoto);
+        const created=await authFetch('/students/enroll-single',{method:'POST',headers:{'X-XSRF-TOKEN':csrf.token},body:form}).then(response=>response.json());
+        const studentId=Number(created.student?.id);if(!studentId)throw new Error('Student enrolled but the server did not return its record ID.');enrolled++;
+        for(const extra of group.items.slice(1)){
+          const extraPhoto=await cropFile(extra,roll);const recaptureCsrf=await getCsrf();const recaptureForm=new FormData();
+          recaptureForm.append('consentGiven','true');recaptureForm.append('subjectId',String(selectedAssignment.subject.id));recaptureForm.append('photo',extraPhoto);
+          await authFetch(`/students/${studentId}/recapture`,{method:'POST',headers:{'X-XSRF-TOKEN':recaptureCsrf.token},body:recaptureForm});extraReferences++;
+        }
+      }
+      await loadRoster();
+      notify(`${enrolled} student(s) enrolled in ${selectedAssignment.classSection.name} / ${selectedAssignment.subject.name}; ${extraReferences} extra angle(s) merged as additional face references.`, 'success');
+      setQuickShots([]);setFaceDrafts({});setQuickConsent(false);setQuickCameraOpen(false);
+    } catch(error){if(enrolled)await loadRoster();notify(`${enrolled?`${enrolled} enrolled before an error: `:''}${error instanceof Error?error.message:'Enrollment failed.'}`,'error');}
+    finally{setBusy(false);}
+  }
 
   async function runTestRecognition() {
-    if (!testPhoto || !testAssignments[0] || !testRooms[0]) {
-      setMsg('Enroll students and ensure a subject assignment and room are available.');
-      return;
-    }
+    setMsg(''); setTestReview(null);
+    if (!roster.some(student=>student.active&&student.faceRegistered)) { notify('No enrolled students yet. Enroll students first.', 'info'); return; }
+    if (!selectedTestAssignment || !testPhoto || !roomId) { notify('Select a class and room, then capture or upload a recognition photo.', 'error'); return; }
+    const classHasFaces=roster.some(student=>student.active&&student.faceRegistered&&(student.classSectionIds||[student.classSectionId]).includes(selectedTestAssignment.classSection.id)&&(student.sectionWideEnrollment||student.subjectIds?.includes(selectedTestAssignment.subject.id)));
+    if (!classHasFaces) { notify(`No enrolled students with face references in ${selectedTestAssignment.classSection.name} / ${selectedTestAssignment.subject.code}. Enroll students in this class first.`, 'info'); return; }
+    const camera = cameras.find(item => item.room?.id === Number(roomId));
+    if (!camera) { notify('No camera is registered for this room. Select a configured room or contact an administrator.', 'error'); return; }
     setBusy(true);
     try {
-      const csrf = await getCsrf();
-      const form = new FormData();
-      form.append('image', testPhoto);
-      form.append('roomId', String(testRooms[0].id));
-      form.append('cameraId', '1');
-      form.append('assignmentId', String(testAssignments[0].id));
-      form.append('sessionType', 'TEST');
-      const result = await authFetch('/capture', { method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form }).then(r => r.json());
-      const review = await authFetch(`/attendance-sessions/${result.sessionId}/review`).then(r => r.json());
-      setTestReview(review);
-      setMsg(`Test session #${result.sessionId} completed. It does not affect attendance analytics.`);
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : 'Test recognition failed');
-    } finally { setBusy(false); }
+      const csrf = await getCsrf(); const form = new FormData();
+      form.append('image', testPhoto); form.append('roomId', roomId); form.append('cameraId', String(camera.id));
+      form.append('assignmentId', String(selectedTestAssignment.id)); form.append('sessionType', 'TEST');
+      const response=await authFetch('/capture', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form });
+      if(!response.ok)throw new Error(friendlyError(await response.text()));
+      const result=await response.json();let review:Review|undefined;
+      for(let attempt=0;attempt<40;attempt++){
+        const reviewResponse=await authFetch(`/api/attendance-sessions/${result.sessionId}/review`);
+        if(!reviewResponse.ok)throw new Error(friendlyError(await reviewResponse.text()));
+        const currentReview:Review=await reviewResponse.json();review=currentReview;setTestReview(currentReview);
+        if(!['CAPTURED','PROCESSING'].includes(currentReview.status))break;
+        await new Promise(resolve=>setTimeout(resolve,1500));
+      }
+      if(review)setTestReview(review);
+      notify(`Test session #${result.sessionId} completed (${review?.status||'processing'}). This session does not affect attendance analytics.`, 'success');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Test recognition failed.', 'error'); }
+    finally { setBusy(false); }
   }
 
   async function clearTestRecognition() {
     if (!testReview) return;
-    await authFetch(`/attendance-sessions/${testReview.sessionId}`, { method: 'DELETE' });
-    setTestReview(null);
-    setMsg('Test recognition session cleared.');
-  }
-
-  async function startCam() {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'user' } });
-      strmRef.current = s;
-      if (vidRef.current) { vidRef.current.srcObject = s; await vidRef.current.play(); }
-      setCamOn(true);
-    } catch (e) { setMsg(`Camera: ${e instanceof Error ? e.message : 'error'}`); }
-  }
-  function stopCam() { strmRef.current?.getTracks().forEach(t => t.stop()); strmRef.current = null; setCamOn(false); }
-  function snap() {
-    if (!vidRef.current) return;
-    const v = vidRef.current, c = document.createElement('canvas');
-    c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
-    c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
-    c.toBlob(blob => { if (!blob) return; const f = new File([blob], `${sRoll||'student'}.jpg`, { type:'image/jpeg' }); setSPhoto(f); setSUrl(URL.createObjectURL(blob)); stopCam(); }, 'image/jpeg', 0.92);
-  }
-
-  async function doBulk(e: FormEvent) {
-    e.preventDefault();
-    if (!bulkCsv) { setMsg('Select a CSV file.'); return; }
-    if (!bulkZip && (!bulkPhotos || bulkPhotos.length === 0)) { setMsg('Provide ZIP or photos.'); return; }
-    setBusy(true); setMsg('Running facial pipeline…');
-    try {
-      const csrf = await getCsrf(), form = new FormData();
-      form.append('csvFile', bulkCsv);
-      if (bulkZip) form.append('zipFile', bulkZip);
-      if (bulkPhotos) for (let i = 0; i < bulkPhotos.length; i++) form.append('photos', bulkPhotos[i]);
-      const d: BulkEnrollResponse = await authFetch('/students/bulk-enroll', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form }).then(r => r.json());
-      setBulkRes(d); setMsg(`Done: ${d.successCount} enrolled, ${d.failureCount} failed.`); loadRoster();
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Error'); }
-    finally { setBusy(false); }
-  }
-
-  async function doSingle(e: FormEvent) {
-    e.preventDefault();
-    if (!sName.trim() || !sRoll.trim() || !sPhoto) { setMsg('Name, roll, and photo required.'); return; }
-    setBusy(true); setMsg('Enrolling…');
-    try {
-      const csrf = await getCsrf(), form = new FormData();
-      form.append('name', sName.trim()); form.append('rollNumber', sRoll.trim()); form.append('consentGiven', 'true'); form.append('photo', sPhoto);
-      const d = await authFetch('/students/enroll-single', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form }).then(r => r.json());
-      const s = d.student || d; setMsg(`✅ ${s.name} (${s.rollNumber}) enrolled!`);
-      setSName(''); setSRoll(''); setSPhoto(null); setSUrl(null); loadRoster();
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Error'); }
-    finally { setBusy(false); }
-  }
-
-  async function detectQuickPhoto(file: File) {
-    setQuickPhoto(file);
-    setQuickUrl(URL.createObjectURL(file));
-    setQuickDetection(null);
     setBusy(true);
-    setMsg('Detecting faces…');
-    try {
-      const csrf = await getCsrf(), form = new FormData();
-      form.append('photo', file);
-      const response = await authFetch('/students/quick-detect', {
-        method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form,
-      });
-      const result: QuickDetection = await response.json();
-      setQuickDetection(result);
-      setMsg(`${result.face_count} face(s) detected. Remove false detections before enrollment.`);
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : 'Face detection failed');
-    } finally { setBusy(false); }
-  }
-
-  async function enrollDetectedFaces() {
-    if (!quickPhoto || !quickDetection || !quickConsent) {
-      setMsg('Confirm consent before enrolling the detected faces.');
-      return;
-    }
-    setBusy(true); setMsg('Enrolling demo faces…');
-    try {
-      const image = new Image();
-      image.src = URL.createObjectURL(quickPhoto);
-      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error('Could not read class photo')); });
-      const source = document.createElement('canvas');
-      source.width = quickDetection.image_width; source.height = quickDetection.image_height;
-      source.getContext('2d')?.drawImage(image, 0, 0, source.width, source.height);
-      const batchId = quickBatchId || `CLASS-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${Date.now().toString().slice(-6)}`;
-      setQuickBatchId(batchId);
-      let enrolled = 0;
-      for (const face of quickDetection.faces) {
-        const [top, right, bottom, left] = face.box;
-        const crop = document.createElement('canvas');
-        crop.width = Math.max(96, right - left); crop.height = Math.max(96, bottom - top);
-        crop.getContext('2d')?.drawImage(source, left, top, right - left, bottom - top, 0, 0, crop.width, crop.height);
-        const blob = await new Promise<Blob|null>(resolve => crop.toBlob(resolve, 'image/jpeg', 0.95));
-        if (!blob) continue;
-        const form = new FormData(), csrf = await getCsrf();
-        const studentNumber = `${batchId}-${String(face.face_index + 1).padStart(2, '0')}`;
-        form.append('name', `Class Student ${String(face.face_index + 1).padStart(2, '0')}`);
-        form.append('rollNumber', studentNumber);
-        form.append('consentGiven', 'true');
-        form.append('photo', new File([blob], `demo-${face.face_index + 1}.jpg`, { type:'image/jpeg' }));
-        await authFetch('/students/enroll-single', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form });
-        enrolled++;
-      }
-      setMsg(`✅ Enrolled ${enrolled} student(s) with stable numbers from ${batchId}. Use Test Recognition after students leave the room.`);
-      loadRoster();
-    } catch (err) { setMsg(err instanceof Error ? err.message : 'Demo enrollment failed'); }
+    try { await authFetch(`/api/attendance-sessions/${testReview.sessionId}`, { method:'DELETE' }); setTestReview(null); notify('Test recognition session cleared.', 'success'); }
+    catch (error) { notify(error instanceof Error ? error.message : 'Could not clear the test session.', 'error'); }
     finally { setBusy(false); }
   }
 
-  return (
-    <div>
-      {msg && <div className="alert alert-info">{msg}</div>}
-      <div className="inner-tabs">
-        {(['bulk','single','roster'] as const).map(t => (
-          <button key={t} className={`inner-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'bulk' ? '📦 Bulk Import' : t === 'single' ? '👤 Single Student' : `📋 Roster (${roster.length})`}
-          </button>
-        ))}
-        <button className={`inner-tab ${tab === 'quick' ? 'active' : ''}`} onClick={() => setTab('quick')}>
-          ⚡ Quick Class Enrollment
-        </button>
-        <button className={`inner-tab ${tab === 'test' ? 'active' : ''}`} onClick={() => setTab('test')}>
-          🧪 Test Recognition
-        </button>
-      </div>
+  async function enrollSingle(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedAssignment || !singlePhoto || !singleName.trim() || !singleRoll.trim()) { notify("Choose a class and provide the student name, roll number, and photo.", 'error'); return; }
+    setBusy(true);
+    try {
+      const csrf = await getCsrf(); const form = new FormData();
+      form.append('name', singleName.trim()); form.append('rollNumber', singleRoll.trim());
+      form.append('classSectionId', String(selectedAssignment.classSection.id)); form.append('subjectId', String(selectedAssignment.subject.id));
+      form.append('consentGiven', 'true'); form.append('photo', singlePhoto);
+      await authFetch('/students/enroll-single', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form });
+      await loadRoster(); notify(`${singleName.trim()} (${singleRoll.trim()}) enrolled in ${selectedAssignment.classSection.name} / ${selectedAssignment.subject.name}.`, 'success');
+      setSingleName(''); setSingleRoll(''); setSinglePhoto(null); setSinglePhotoUrl(''); setSingleCameraOpen(false);
+    } catch (error) { notify(error instanceof Error ? error.message : 'Student enrollment failed.', 'error'); }
+    finally { setBusy(false); }
+  }
 
-      {tab === 'test' && (
-        <div className="section-card">
-          <span className="eyebrow">Isolated TEST session</span><h2>Test Recognition</h2>
-          <p className="hint">Run recognition against the currently enrolled roster. TEST sessions never count toward attendance or analytics.</p>
-          <label>Recognition photo
-            <input type="file" accept="image/*" disabled={busy} onChange={e => setTestPhoto(e.target.files?.[0] ?? null)} />
-          </label>
-          <button type="button" className="btn-lg" disabled={busy || !testPhoto} onClick={runTestRecognition}>
-            {busy ? 'Testing…' : 'Run Test Recognition'}
-          </button>
-          {testReview && (
-            <>
-              <div className="metric-row" style={{ marginTop: 16 }}>
-                <span className="badge badge-green">{testReview.diagnostics?.filter(d => d.recognition_state === 'RECOGNIZED').length ?? 0} Recognised</span>
-                <span className="badge badge-amber">{testReview.diagnostics?.filter(d => d.recognition_state === 'LOW_CONFIDENCE').length ?? 0} Low confidence</span>
-                <span className="badge badge-red">{testReview.diagnostics?.filter(d => d.recognition_state === 'UNKNOWN').length ?? 0} Unknown</span>
-                <span className="badge badge-red">{testReview.allRecords?.filter(r => r.status === 'ABSENT').length ?? 0} Absent</span>
-              </div>
-              <div className="student-grid">
-                {(testReview.allRecords ?? []).map(record => (
-                  <div className="student-card" key={record.recordId}>
-                    <strong>{record.studentName}</strong><div className="hint">{record.rollNumber}</div>
-                    <span className={`status-pill ${record.status === 'PRESENT' ? 'status-green' : 'status-red'}`}>{record.status}</span>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="btn-secondary" onClick={clearTestRecognition}>Clear TEST session</button>
-            </>
-          )}
-        </div>
-      )}
+  async function enrollBulk(event: FormEvent) {
+    event.preventDefault();
+    if (!bulkCsv || !selectedAssignment || (!bulkZip)) { notify('Choose a class, CSV file, and ZIP of student photos.', 'error'); return; }
+    setBusy(true);
+    try {
+      const csrf = await getCsrf(); const form = new FormData(); form.append('csvFile', bulkCsv); form.append('zipFile', bulkZip);
+      form.append('classSectionId', String(selectedAssignment.classSection.id)); form.append('subjectId',String(selectedAssignment.subject.id)); form.append('consentGiven','true');
+      const result: BulkEnrollResponse = await authFetch('/students/bulk-enroll', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form }).then(r => r.json());
+      setBulkResult(result); await loadRoster(); notify(`${result.successCount} enrolled, ${result.failureCount} failed.`, result.failureCount ? 'info' : 'success');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Bulk enrollment failed.', 'error'); }
+    finally { setBusy(false); }
+  }
 
-      {tab === 'quick' && (
-        <div className="section-card">
-          <span className="eyebrow">Class roster enrollment</span><h2>Enroll a class from one photo</h2>
-          <p className="hint">Upload the first classroom photo. Every detected student receives a stable number and face reference. Later, use Test Recognition after students leave to see who is absent.</p>
-          <label>Class photo
-            <input type="file" accept="image/*" disabled={busy}
-              onChange={e => { const file = e.target.files?.[0]; if (file) detectQuickPhoto(file); }} />
-          </label>
-          <label style={{ display:'flex', gap:8, alignItems:'center', marginTop:16 }}>
-            <input type="checkbox" checked={quickConsent} onChange={e => setQuickConsent(e.target.checked)} required /> Everyone in this photo has agreed to biometric enrollment.
-          </label>
-          {quickUrl && quickDetection && (
-            <div style={{ marginTop:20 }}>
-              <div style={{ position:'relative', maxWidth:800 }}>
-                {/* Detection coordinates are returned in the resized image coordinate system. */}
-                <img src={quickUrl} alt="Class photo" style={{ display:'block', width:'100%' }} />
-                {quickDetection.faces.map(face => {
-                  const [top, right, bottom, left] = face.box;
-                  return <div key={face.face_index} style={{
-                    position:'absolute', top:`${top / quickDetection.image_height * 100}%`,
-                    left:`${left / quickDetection.image_width * 100}%`,
-                    width:`${(right-left) / quickDetection.image_width * 100}%`,
-                    height:`${(bottom-top) / quickDetection.image_height * 100}%`,
-                    border:'2px solid #22c55e', color:'#fff', fontWeight:800,
-                    background:'rgba(34,197,94,.15)', textShadow:'0 1px 2px #000',
-                  }}>{quickBatchId ? `${quickBatchId}-${String(face.face_index + 1).padStart(2, '0')}` : `Student-${String(face.face_index + 1).padStart(2, '0')}`}</div>;
-                })}
-              </div>
-              <p><strong>{quickDetection.face_count}</strong> detected · {quickDetection.timings?.total_ms?.toFixed(0) ?? '—'} ms</p>
-              <button type="button" className="btn-lg" disabled={busy || !quickConsent || quickDetection.faces.length === 0} onClick={enrollDetectedFaces}>
-                {busy ? 'Enrolling…' : 'Enroll Demo Faces'}
-              </button>
-              <div className="table-wrap"><table><thead><tr><th>Label</th><th>Quality warnings</th><th>Action</th></tr></thead>
-                <tbody>{quickDetection.faces.map(face => <tr key={face.face_index}>
-                  <td><strong>{quickBatchId ? `${quickBatchId}-${String(face.face_index + 1).padStart(2, '0')}` : `Student-${String(face.face_index + 1).padStart(2, '0')}`}</strong></td>
-                  <td>{face.quality_warnings.length ? face.quality_warnings.join('; ') : 'Good'}</td>
-                  <td><button type="button" className="btn-secondary" onClick={() => setQuickDetection(d => d ? ({ ...d, faces:d.faces.filter(f => f.face_index !== face.face_index) }) : d)}>Remove</button></td>
-                </tr>)}</tbody></table></div>
-              <p className="hint">Review and remove false detections before enrollment. The generated numbers remain linked to these face references, so the next classroom photo can report present and absent students.</p>
-            </div>
-          )}
-        </div>
-      )}
+  async function createClassSection(event: FormEvent) {
+    event.preventDefault();
+    const createSubject=subjects.find(subject=>String(subject.id)===createSubjectId);
+    if (!createSubject || !newClassName.trim() || !roomId) { notify('Select a subject and room and enter a class/section name.', 'error'); return; }
+    setBusy(true);
+    try {
+      const csrf = await getCsrf();
+      const section = await authFetch('/students/classes', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-XSRF-TOKEN':csrf.token }, body:JSON.stringify({ name:newClassName.trim(), subjectId:createSubject.id, roomId:Number(roomId), academicYear:Number(newAcademicYear) }) }).then(r => r.json());
+      const localAssignment: Assignment = { id:Number(section.assignmentId), subject:{id:createSubject.id,code:createSubject.code,name:createSubject.name}, classSection:{ id:Number(section.id), name:section.name, academicYear:Number(section.academicYear || newAcademicYear) }, active:true };
+      setAssignments(current => [...current.filter(item => item.classSection.id !== localAssignment.classSection.id), localAssignment]);
+      setAssignmentId(String(localAssignment.id)); setNewClassName(''); setCreateClass(false);
+      notify(`Class section ${section.name} created for enrollment. The class and subject are now available for attendance.`, 'success');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Could not create the class section.', 'error'); }
+    finally { setBusy(false); }
+  }
 
-      {tab === 'bulk' && (
-        <div className="section-card">
-          <div className="section-head">
-            <div><span className="eyebrow">Bulk Onboarding</span><h2>Import from CSV</h2></div>
-            <a href={`${API}/students/template.csv`} download="students-template.csv"
-              style={{ padding:'10px 16px', background:'var(--card-2)', border:'1px solid var(--line)', borderRadius:10, textDecoration:'none', fontSize:13, fontWeight:700, color:'var(--ink)', display:'inline-block' }}>
-              ⬇ Template
-            </a>
-          </div>
-          <form onSubmit={doBulk} className="form-grid">
-            <div className="form-grid-2">
-              <label>CSV file (*.csv)<input type="file" accept=".csv" onChange={e => setBulkCsv(e.target.files?.[0] ?? null)} /><span className="hint">Columns: <code>roll_number,name</code></span></label>
-              <label>Photos ZIP (*.zip)<input type="file" accept=".zip" onChange={e => setBulkZip(e.target.files?.[0] ?? null)} /><span className="hint">Files named <code>rollnumber.jpg</code></span></label>
-            </div>
-            <label>Or select multiple photo files<input type="file" multiple accept="image/*" onChange={e => setBulkPhotos(e.target.files)} /><span className="hint">{bulkPhotos ? `${bulkPhotos.length} selected` : 'Multiple files ok'}</span></label>
-            <button type="submit" className="btn-lg" disabled={busy || !bulkCsv || (!bulkZip && (!bulkPhotos || bulkPhotos.length === 0))}>
-              {busy ? <><span className="spinner" />Running…</> : '🚀 Start Bulk Enrollment'}
-            </button>
-          </form>
-          {bulkRes && (
-            <div style={{ marginTop:24 }}>
-              <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:14 }}>
-                <h3>Results</h3>
-                <span className="badge badge-green">{bulkRes.successCount} OK</span>
-                {bulkRes.failureCount > 0 && <span className="badge badge-red">{bulkRes.failureCount} Failed</span>}
-              </div>
-              <div className="table-wrap"><table>
-                <thead><tr><th>Roll</th><th>Name</th><th>Status</th><th>Message</th></tr></thead>
-                <tbody>{bulkRes.results.map(row => (
-                  <tr key={row.rollNumber}>
-                    <td><code>{row.rollNumber}</code></td><td><strong>{row.name}</strong></td>
-                    <td><span className={`badge ${row.success ? 'badge-green' : 'badge-red'}`}>{row.success ? 'OK' : 'FAIL'}</span></td>
-                    <td style={{ fontSize:12, color: row.success ? 'var(--success-text)' : 'var(--danger-text)' }}>{row.message}</td>
-                  </tr>
-                ))}</tbody>
-              </table></div>
-            </div>
-          )}
-        </div>
-      )}
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault(); if (!editDraft) return;
+    setBusy(true);
+    try {
+      const csrf = await getCsrf();
+      await authFetch(`/students/${editDraft.id}`, { method:'PUT', headers:{ 'Content-Type':'application/json', 'X-XSRF-TOKEN':csrf.token }, body:JSON.stringify({ name:editDraft.name, rollNumber:editDraft.roll, classSectionId:Number(editDraft.classSectionId) }) });
+      setEditDraft(null); await loadRoster(); notify('Student details updated.', 'success');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Could not update student.', 'error'); }
+    finally { setBusy(false); }
+  }
 
-      {tab === 'single' && (
-        <div className="section-card">
-          <span className="eyebrow">Manual Enrollment</span><h2>Add Single Student</h2>
-          <form onSubmit={doSingle} className="form-grid" style={{ marginTop:20 }}>
-            <div className="form-grid-2">
-              <label>Full Name<input placeholder="e.g. Harsh Garg" value={sName} onChange={e => setSName(e.target.value)} /></label>
-              <label>Roll Number<input placeholder="e.g. 2501320100129" value={sRoll} onChange={e => setSRoll(e.target.value)} /></label>
-            </div>
-            <div>
-              <div style={{ display:'flex', gap:8, marginBottom:10 }}>
-                <button type="button" onClick={startCam} className={camOn ? '' : 'btn-secondary'}>📸 Camera</button>
-                {camOn && <button type="button" className="btn-secondary" onClick={stopCam}>Close</button>}
-              </div>
-              {camOn && <div className="webcam-wrap" style={{ maxWidth:400 }}>
-                <video ref={vidRef} autoPlay playsInline muted style={{ width:'100%', display:'block' }} />
-                <div className="webcam-actions"><button type="button" onClick={snap}>Snap Face</button></div>
-              </div>}
-              <label style={{ marginTop:10 }}>Or upload photo<input type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0] ?? null; setSPhoto(f); if (f) setSUrl(URL.createObjectURL(f)); }} /></label>
-              {sUrl && <img src={sUrl} alt="preview" style={{ width:'100%', borderRadius:12, border:'1px solid var(--line)', maxHeight:180, objectFit:'contain', marginTop:10 }} />}
-            </div>
-            <button type="submit" className="btn-lg" disabled={busy || !sName.trim() || !sRoll.trim() || !sPhoto}>
-              {busy ? <><span className="spinner" />Enrolling…</> : '✅ Enroll Student'}
-            </button>
-          </form>
-        </div>
-      )}
+  async function deleteStudent(student: StudentRosterItem) {
+    if (!window.confirm(`Delete ${student.name} (${student.rollNumber}) and remove their biometric references?`)) return;
+    setBusy(true);
+    try { const csrf = await getCsrf(); await authFetch(`/students/${student.id}`, { method:'DELETE', headers:{ 'X-XSRF-TOKEN':csrf.token } }); await loadRoster(); notify(`${student.name} was removed from the active roster.`, 'success'); }
+    catch (error) { notify(error instanceof Error ? error.message : 'Could not delete student.', 'error'); }
+    finally { setBusy(false); }
+  }
 
-      {tab === 'roster' && (
-        <div className="section-card">
-          <div className="section-head">
-            <div><span className="eyebrow">Database</span><h2>Enrolled Students ({roster.length})</h2></div>
-            <button className="btn-secondary btn-sm" onClick={loadRoster}>{loadingRoster ? '↻ Refreshing…' : '↻ Refresh'}</button>
-          </div>
-          {roster.length === 0
-            ? <div className="empty-state"><span className="empty-icon">📭</span><p>No students enrolled yet.</p></div>
-            : <div className="table-wrap"><table>
-                <thead><tr><th>Roll</th><th>Name</th><th>Face</th><th>Enrolled</th><th>Status</th></tr></thead>
-                <tbody>{roster.map(s => (
-                  <tr key={s.id}>
-                    <td><code>{s.rollNumber}</code></td><td><strong>{s.name}</strong></td>
-                    <td><span className={`badge ${s.faceRegistered ? 'badge-green' : 'badge-red'}`}>{s.faceRegistered ? '✓ Registered' : '✗ Missing'}</span></td>
-                    <td><small>{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—'}</small></td>
-                    <td><span className={`badge ${s.active ? 'badge-blue' : 'badge-gray'}`}>{s.active ? 'ACTIVE' : 'INACTIVE'}</span></td>
-                  </tr>
-                ))}</tbody>
-              </table></div>
-          }
-        </div>
-      )}
+  async function recapture(file: File) {
+    if (!recaptureStudent) return;
+    const memberships=recaptureStudent.classSectionIds||[recaptureStudent.classSectionId];
+    const assignment = assignments.find(item => memberships.includes(item.classSection.id) && item.id > 0);
+    if (!assignment) { notify('No active subject assignment matches this student\'s class.', 'error'); return; }
+    setBusy(true);
+    try {
+      const csrf = await getCsrf(); const form = new FormData(); form.append('consentGiven','true'); form.append('subjectId',String(assignment.subject.id)); form.append('photo',file);
+      await authFetch(`/students/${recaptureStudent.id}/recapture`, { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form });
+      setRecaptureStudent(null); setRecaptureConsent(false); await loadRoster(); notify(`New face reference added for ${recaptureStudent.name}.`, 'success');
+    } catch (error) { notify(error instanceof Error ? error.message : 'Could not recapture the face.', 'error'); }
+    finally { setBusy(false); }
+  }
+
+  const visibleRoster = roster.filter(student => {
+    const classNames=student.classSectionNames?.join(' ')||student.classSectionName||'';
+    const matchesSearch = `${student.name} ${student.rollNumber} ${classNames}`.toLowerCase().includes(search.toLowerCase());
+    const classIds=student.classSectionIds||[student.classSectionId];
+    return student.active && matchesSearch && (!classFilter || classIds.includes(Number(classFilter)));
+  });
+  const alertClass = msgKind === 'success' ? 'alert alert-success' : msgKind === 'error' ? 'alert alert-danger' : 'alert alert-info';
+
+  return <div>
+    {msg && <div className={alertClass} role="status" style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><span>{msg}</span><button className="btn-secondary btn-sm" aria-label="Close message" onClick={() => setMsg('')}>×</button></div>}
+    <div className="inner-tabs">
+      {(['bulk','single','roster','quick','test'] as const).map(item => <button key={item} className={`inner-tab ${tab===item?'active':''}`} onClick={() => switchTab(item)}>{item==='bulk'?'Bulk Import':item==='single'?'Single Student':item==='roster'?`Roster (${roster.filter(s=>s.active).length})`:item==='quick'?'Quick Class Enrollment':'Test Recognition'}</button>)}
     </div>
-  );
+
+    {tab==='quick' && <div className="section-card">
+      <span className="eyebrow">Class-based live enrollment</span><h2>Quick Class Enrollment</h2>
+      <p className="hint">Choose the class before capture. Capture up to three photos, review every detected face, and enter real names and roll numbers. Capture up to three photos; explicitly merge repeated detections of the same student to add each angle as a reference. Faculty reviews each merge before saving.</p>
+      <div className="form-grid-2">
+        <label>Room<select value={roomId} onChange={event=>setRoomId(event.target.value)}><option value="">Select room</option>{rooms.map(room=><option key={room.id} value={room.id}>{room.name}</option>)}</select></label>
+        <label>Class / Subject / Section<select value={assignmentId} onChange={event=>setAssignmentId(event.target.value)}><option value="">Select class</option>{assignments.map(item=><option key={item.id} value={item.id}>{rooms.find(r=>String(r.id)===roomId)?.name || 'Room'} · {item.subject.code} — {item.subject.name} · {item.classSection.name}</option>)}</select></label>
+      </div>
+      <div style={{marginTop:10}}><button className="btn-secondary btn-sm" type="button" onClick={()=>setCreateClass(value=>!value)}>+ Create class section</button></div>
+      {createClass && <form onSubmit={createClassSection} className="form-grid" style={{marginTop:12}}><div className="form-grid-2"><label>Subject<select value={createSubjectId} onChange={event=>setCreateSubjectId(event.target.value)} required><option value="">Select subject</option>{subjects.map(subject=><option key={subject.id} value={subject.id}>{subject.code} — {subject.name}</option>)}</select></label><label>Class / Section name<input value={newClassName} onChange={e=>setNewClassName(e.target.value)} required placeholder="e.g. CSE-A" /></label><label>Academic year<input type="number" value={newAcademicYear} onChange={e=>setNewAcademicYear(e.target.value)} required /></label></div><button type="submit" disabled={busy || !subjects.length || !roomId}>Create class section</button></form>}
+      {selectedAssignment && <p className="hint" style={{marginTop:10}}>Selected: {rooms.find(r=>String(r.id)===roomId)?.name || 'No room selected'} / {selectedAssignment.subject.name} / {selectedAssignment.classSection.name}</p>}
+      {!selectedAssignment && <div className="alert alert-warn">Select a class and subject before enrolling. If no class is listed, use Create class section.</div>}
+      {selectedAssignment && <>
+        {quickCameraOpen && <CameraCapture disabled={busy || quickShots.length>=3} captureLabel="Capture class photo" onCapture={file=>void addQuickPhoto(file)} />}
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:14}}><button type="button" disabled={!selectedAssignment || quickShots.length>=3 || busy} onClick={()=>setQuickCameraOpen(value=>!value)}>{quickCameraOpen?'Close camera':'Open live camera'}</button><label className="btn-secondary" style={{cursor:'pointer'}}>Upload photo instead<input type="file" accept="image/*" disabled={quickShots.length>=3 || busy} style={{display:'none'}} onChange={event=>{const file=event.target.files?.[0];if(file)void addQuickPhoto(file);event.currentTarget.value='';}} /></label><span className="hint">{quickShots.length}/3 photos</span></div>
+      </>}
+      {quickShots.map((shot, shotIndex)=><div key={shot.id} className="section-card" style={{marginTop:18}}><div className="section-head"><h3>Photo {shotIndex+1}</h3><button type="button" className="btn-danger btn-sm" onClick={()=>{URL.revokeObjectURL(shot.url);setQuickShots(current=>current.filter(item=>item.id!==shot.id));setFaceDrafts(current=>{const next={...current};for(const face of shot.faces)delete next[`${shot.id}:${face.face_index}`];for(const [key,draft] of Object.entries(next))if(draft.mergeWith?.startsWith(`${shot.id}:`))next[key]={...draft,mergeWith:undefined};return next;});}}>Remove photo</button></div>
+        <div style={{position:'relative',maxWidth:850,margin:'12px auto'}} onPointerDown={event=>beginBox(event,shot)} onPointerUp={event=>finishBox(event,shot)}>
+          <img src={shot.url} alt={`Class photo ${shotIndex+1}`} style={{display:'block',width:'100%',height:'auto'}} />
+          {shot.faces.map(face=>{const [top,right,bottom,left]=face.box;return <button type="button" title="Click to discard this detection" key={face.face_index} onClick={()=>removeFace(shot.id,face.face_index)} style={{position:'absolute',top:`${top/shot.image_height*100}%`,left:`${left/shot.image_width*100}%`,width:`${(right-left)/shot.image_width*100}%`,height:`${(bottom-top)/shot.image_height*100}%`,border:'2px solid #22c55e',background:'rgba(34,197,94,.14)',color:'#fff',textShadow:'0 1px 3px #000',fontWeight:800,cursor:'pointer'}}>{face.face_index+1} ×</button>;})}
+          {drawShotId===shot.id && <div style={{position:'absolute',inset:0,cursor:'crosshair',touchAction:'none',border:'2px dashed #2563eb'}} />}
+        </div>
+        <p className="hint">{shot.faces.length} face(s) kept. Click any green box to discard it. {drawShotId===shot.id?'Drag around a missed face to add a box.':''}</p>
+        <button type="button" className="btn-secondary btn-sm" onClick={()=>{setDrawShotId(drawShotId===shot.id?null:shot.id);setDrawStart(null);}}>＋ Draw missed face</button>
+        {shot.faces.map(face=>{const key=`${shot.id}:${face.face_index}`;const draft=faceDrafts[key]||{name:'',roll:''};return <div key={key} className="form-grid-2" style={{marginTop:10,borderTop:'1px solid var(--line)',paddingTop:10}}><div><span className="hint">Face {face.face_index+1} crop</span><FaceCropPreview src={shot.url} box={face.box} imageWidth={shot.image_width} imageHeight={shot.image_height}/></div><label>Same student as<select value={draft.mergeWith||''} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,mergeWith:event.target.value||undefined}}))}><option value="">New student</option>{quickShots.flatMap(otherShot=>otherShot.faces.map(otherFace=>({key:`${otherShot.id}:${otherFace.face_index}`,label:`Photo ${quickShots.findIndex(item=>item.id===otherShot.id)+1} · Face ${otherFace.face_index+1}`,draft:faceDrafts[`${otherShot.id}:${otherFace.face_index}`]}))).filter(other=>other.key!==key&&!other.draft?.mergeWith).map(other=><option key={other.key} value={other.key}>{other.label}</option>)}</select></label>{draft.mergeWith?<div className="hint" style={{alignSelf:'center'}}>Merged into {faceDrafts[draft.mergeWith]?.name||'student'}; this crop becomes an extra biometric reference.</div>:<><label>Name<input value={draft.name} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,name:event.target.value}}))} placeholder="Student name" /></label><label>Roll number<input value={draft.roll} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,roll:event.target.value}}))} placeholder="Roll number" /></label></>}{face.quality_warnings.length>0&&<span className="hint">Review warning: {face.quality_warnings.join(', ')}</span>}</div>;})}
+      </div>)}
+      <label style={{display:'flex',alignItems:'center',gap:8,marginTop:18}}><input type="checkbox" checked={quickConsent} onChange={event=>setQuickConsent(event.target.checked)} required /> <span>Everyone in this photo has agreed to biometric enrollment.</span></label>
+      <button type="button" className="btn-lg" disabled={busy || !selectedAssignment || !quickConsent || !quickShots.some(shot=>shot.faces.length)} onClick={()=>void enrollQuickFaces()} style={{marginTop:14}}>{busy?'Saving…':'Confirm and enroll students'}</button>
+    </div>}
+
+    {tab==='test' && <div className="section-card"><span className="eyebrow">Isolated TEST session</span><h2>Test Recognition</h2><p className="hint">Recognition runs against the selected class only. TEST sessions do not affect attendance analytics.</p>
+      {!roster.some(student=>student.active&&student.faceRegistered)&&<div className="alert alert-info">No enrolled students yet. Enroll students first.</div>}
+      <div className="form-grid-2"><label>Room<select value={roomId} onChange={event=>setRoomId(event.target.value)}><option value="">Select room</option>{rooms.map(room=><option key={room.id} value={room.id}>{room.name}</option>)}</select></label><label>Class / Subject<select value={assignmentId} onChange={event=>setAssignmentId(event.target.value)}><option value="">Select class</option>{availableAssignments.map(item=><option key={item.id} value={item.id}>{item.subject.code} · {item.classSection.name}</option>)}</select></label></div>
+      {testCameraOpen&&<CameraCapture disabled={busy} onCapture={file=>{setTestPhoto(file);setTestPhotoUrl(URL.createObjectURL(file));setTestCameraOpen(false);}} />}
+      <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap'}}><button type="button" onClick={()=>setTestCameraOpen(value=>!value)}>{testCameraOpen?'Close camera':'Capture with camera'}</button><label className="btn-secondary" style={{cursor:'pointer'}}>Upload photo<input type="file" accept="image/*" style={{display:'none'}} onChange={event=>{const file=event.target.files?.[0];if(file){setTestPhoto(file);setTestPhotoUrl(URL.createObjectURL(file));setTestReview(null);setMsg('');}}} /></label></div>
+      {testPhotoUrl&&<img src={testPhotoUrl} alt="Test recognition capture" style={{display:'block',maxWidth:600,width:'100%',marginTop:12,borderRadius:12}} />}
+      <button type="button" className="btn-lg" disabled={busy||!testPhoto||!availableAssignments.length||!roster.some(student=>student.active&&student.faceRegistered)} onClick={()=>void runTestRecognition()} style={{marginTop:12}}>{busy?'Testing…':'Run Test Recognition'}</button>
+      {testReview&&<><div className="metric-row" style={{marginTop:16}}><span className="badge badge-green">{testReview.diagnostics?.filter(item=>item.recognition_state==='RECOGNIZED').length??0} Recognised</span><span className="badge badge-amber">{testReview.diagnostics?.filter(item=>item.recognition_state==='LOW_CONFIDENCE').length??0} Low confidence</span><span className="badge badge-red">{testReview.diagnostics?.filter(item=>item.recognition_state==='UNKNOWN').length??0} Unknown</span><span className="badge badge-red">{testReview.allRecords?.filter(item=>item.status==='ABSENT').length??0} Absent</span></div><div className="student-grid">{(testReview.allRecords??[]).map(record=><div className="student-card" key={record.recordId}><strong>{record.studentName}</strong><div className="hint">{record.rollNumber}</div><span className={`status-pill ${record.status==='PRESENT'?'status-green':'status-red'}`}>{record.status}</span></div>)}</div><button type="button" className="btn-secondary" onClick={()=>void clearTestRecognition()} disabled={busy}>Clear TEST session</button></>}
+    </div>}
+
+    {tab==='single'&&<div className="section-card"><span className="eyebrow">Manual enrollment</span><h2>Add single student</h2><form onSubmit={enrollSingle} className="form-grid"><div className="form-grid-2"><label>Class / Subject / Section<select required value={assignmentId} onChange={event=>setAssignmentId(event.target.value)}><option value="">Select class</option>{assignments.map(item=><option key={item.id} value={item.id}>{item.subject.code} · {item.classSection.name}</option>)}</select></label><label>Name<input value={singleName} onChange={event=>setSingleName(event.target.value)} required /></label><label>Roll number<input value={singleRoll} onChange={event=>setSingleRoll(event.target.value)} required /></label></div>
+      {singleCameraOpen&&<CameraCapture disabled={busy} captureLabel="Capture student face" onCapture={file=>{setSinglePhoto(file);setSinglePhotoUrl(URL.createObjectURL(file));setSingleCameraOpen(false);}} />}
+      <div style={{display:'flex',gap:8}}><button type="button" className="btn-secondary" onClick={()=>setSingleCameraOpen(value=>!value)}>{singleCameraOpen?'Close camera':'Open camera'}</button><label className="btn-secondary" style={{cursor:'pointer'}}>Upload photo<input type="file" accept="image/*" style={{display:'none'}} onChange={event=>{const file=event.target.files?.[0];if(file){setSinglePhoto(file);setSinglePhotoUrl(URL.createObjectURL(file));}}} /></label></div>
+      {singlePhotoUrl&&<img src={singlePhotoUrl} alt="Student face preview" style={{maxWidth:420,width:'100%',borderRadius:12}} />}<label style={{display:'flex',alignItems:'center',gap:8}}><input type="checkbox" required /> <span>The student has given consent for biometric enrollment.</span></label><button type="submit" className="btn-lg" disabled={busy||!singlePhoto||!selectedAssignment}>Enroll student</button></form></div>}
+
+    {tab==='bulk'&&<div className="section-card"><span className="eyebrow">Bulk onboarding</span><h2>Import a class from CSV and ZIP</h2><p className="hint">CSV columns: roll_number,name. Photo filenames should match roll numbers. Class selection is mandatory.</p><form onSubmit={enrollBulk} className="form-grid"><label>Class / Subject / Section<select value={assignmentId} onChange={event=>setAssignmentId(event.target.value)} required><option value="">Select class</option>{assignments.map(item=><option key={item.id} value={item.id}>{item.subject.code} · {item.classSection.name}</option>)}</select></label><div className="form-grid-2"><label>CSV file<input type="file" accept=".csv" onChange={event=>setBulkCsv(event.target.files?.[0]??null)} required /></label><label>Photos ZIP<input type="file" accept=".zip" onChange={event=>setBulkZip(event.target.files?.[0]??null)} required /></label></div><label style={{display:'flex',alignItems:'center',gap:8}}><input type="checkbox" required /> <span>Students have consented to biometric enrollment.</span></label><button type="submit" disabled={busy||!selectedAssignment}>{busy?'Importing…':'Start import'}</button></form>{bulkResult&&<p className="hint">{bulkResult.successCount} enrolled, {bulkResult.failureCount} failed.</p>}</div>}
+
+    {tab==='roster'&&<div className="section-card"><div className="section-head"><div><span className="eyebrow">Student directory</span><h2>Roster ({visibleRoster.length})</h2></div><button className="btn-secondary btn-sm" onClick={()=>void loadRoster()}>Refresh</button></div><div className="form-grid-2" style={{marginBottom:16}}><label>Search by name or roll<input value={search} onChange={event=>setSearch(event.target.value)} placeholder="Search roster" /></label><label>Class filter<select value={classFilter} onChange={event=>setClassFilter(event.target.value)}><option value="">All classes</option>{assignments.map(item=><option key={item.id} value={item.classSection.id}>{item.classSection.name} · {item.subject.code}</option>)}</select></label></div>
+      {recaptureStudent&&<div className="section-card" style={{marginBottom:16}}><div className="section-head"><h3>Re-capture face · {recaptureStudent.name}</h3><button className="btn-secondary btn-sm" onClick={()=>{setRecaptureStudent(null);setRecaptureConsent(false);}}>Close</button></div><label style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}><input type="checkbox" checked={recaptureConsent} onChange={event=>setRecaptureConsent(event.target.checked)}/><span>The student consents to adding this biometric reference.</span></label><CameraCapture disabled={busy||!recaptureConsent} captureLabel="Save new face photo" onCapture={file=>void recapture(file)} /></div>}
+      {editDraft&&<form onSubmit={saveEdit} className="section-card form-grid" style={{marginBottom:16}}><h3>Edit student</h3><div className="form-grid-2"><label>Name<input value={editDraft.name} onChange={event=>setEditDraft({...editDraft,name:event.target.value})} required /></label><label>Roll number<input value={editDraft.roll} onChange={event=>setEditDraft({...editDraft,roll:event.target.value})} required /></label><label>Class section<select value={editDraft.classSectionId} onChange={event=>setEditDraft({...editDraft,classSectionId:event.target.value})} required>{assignments.map(item=><option key={item.id} value={item.classSection.id}>{item.classSection.name}</option>)}</select></label></div><div style={{display:'flex',gap:8}}><button type="submit" disabled={busy}>Save changes</button><button type="button" className="btn-secondary" onClick={()=>setEditDraft(null)}>Cancel</button></div></form>}
+      {visibleRoster.length===0?<div className="empty-state"><span className="empty-icon">No students</span><p>No students match this filter.</p></div>:<div className="table-wrap"><table><thead><tr><th>Face thumbnail</th><th>Name</th><th>Roll number</th><th>Class(es)</th><th>Face photos</th><th>Status / quality</th><th>Enrolled date</th><th>Actions</th></tr></thead><tbody>{visibleRoster.map(student=>{const count=student.embeddingCount||0;const state=student.faceRegistered?'Enrolled':!student.consentGiven?'Incomplete':'No face';const assignment=assignments.find(item=>(student.classSectionIds||[student.classSectionId]).includes(item.classSection.id));const classes=(student.classSectionNames?.length?student.classSectionNames:[student.classSectionName||assignment?.classSection.name||'—']).join(', ');return <tr key={student.id}><td><StudentFaceThumbnail student={student} authFetch={authFetch}/></td><td><strong>{student.name||'Name missing'}</strong></td><td><code>{student.rollNumber}</code></td><td>{classes}{assignment&&<small style={{display:'block'}}>{assignment.subject.code}</small>}</td><td>{count}</td><td><span className={`badge ${student.faceRegistered?'badge-green':state==='Incomplete'?'badge-amber':'badge-red'}`}>{state}</span>{count===1&&<small style={{display:'block'}}>Demo (single photo)</small>}</td><td>{student.enrolledDate?new Date(student.enrolledDate).toLocaleDateString():'—'}</td><td><div style={{display:'flex',gap:6,flexWrap:'wrap'}}><button type="button" className="btn-secondary btn-sm" onClick={()=>setRecaptureStudent(student)}>Re-capture face</button><button type="button" className="btn-secondary btn-sm" onClick={()=>setEditDraft({id:student.id,name:student.name||'',roll:student.rollNumber,classSectionId:String(student.classSectionId||'')})}>Edit</button><button type="button" className="btn-danger btn-sm" disabled={busy} onClick={()=>void deleteStudent(student)}>Delete</button></div></td></tr>;})}</tbody></table></div>}
+    </div>}
+  </div>;
 }
 
 // ─── ANALYTICS PAGE ───────────────────────────────────────────────────────────

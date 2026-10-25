@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, FormEvent } from 'react';
 import { PageLayout } from '@/components/PageLayout';
 import { api, type Room, type Camera, type Assignment, type Review, type TimetablePeriod } from '@/lib/api';
 import { resizeCapture } from '@/lib/image';
+import CameraCapture from '@/components/CameraCapture';
 
 export default function TeacherPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -16,17 +17,14 @@ export default function TeacherPage() {
   const [mode, setMode] = useState<'webcam' | 'file'>('webcam');
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [review, setReview] = useState<Review | null>(null);
+  const [reviewPhotoUrl, setReviewPhotoUrl] = useState<string|null>(null);
+  const [ackUnknown, setAckUnknown] = useState(false);
   const [decisions, setDecisions] = useState<Record<number, 'PRESENT' | 'ABSENT'>>({});
   const [step, setStep] = useState<'select' | 'capture' | 'review'>('select');
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [period, setPeriod] = useState<TimetablePeriod | null>(null);
-  const [camErr, setCamErr] = useState('');
-  const [camOn, setCamOn] = useState(false);
-  const [cameraResolution, setCameraResolution] = useState('');
   const [showDetails, setShowDetails] = useState(false);
-  const vidRef = useRef<HTMLVideoElement | null>(null);
-  const strmRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -51,64 +49,22 @@ export default function TeacherPage() {
     }).catch((err: unknown) => setMsg(err instanceof Error ? err.message : 'Unable to load the current period.'));
   }, []);
 
-  async function startCam() {
-    setCamErr('');
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } } });
-      strmRef.current = s;
-      if (vidRef.current) {
-        vidRef.current.srcObject = s;
-        await vidRef.current.play();
-        setCameraResolution(`${vidRef.current.videoWidth} × ${vidRef.current.videoHeight}px`);
-      }
-      setCamOn(true);
-    } catch (e) {
-      setCamErr(`Camera: ${e instanceof Error ? e.message : 'error'}. Use File Upload instead.`);
-      setCamOn(false);
-    }
-  }
-
-  function stopCam() {
-    strmRef.current?.getTracks().forEach(t => t.stop());
-    strmRef.current = null;
-    setCamOn(false);
-  }
-
-  useEffect(() => {
-    if (step === 'capture' && mode === 'webcam') startCam();
-    else stopCam();
-    return stopCam;
-  }, [step, mode]);
-
-  function snap() {
-    if (!vidRef.current) return;
-    const v = vidRef.current, c = document.createElement('canvas');
-    c.width = v.videoWidth || 1280;
-    c.height = v.videoHeight || 720;
-    c.getContext('2d')?.drawImage(v, 0, 0, c.width, c.height);
-    c.toBlob(blob => {
-      if (!blob) return;
-      const f = new File([blob], `att-${Date.now()}.jpg`, { type: 'image/jpeg' });
-      setPhoto(f);
-      setPhotoUrl(URL.createObjectURL(f));
-      setMsg('Photo ready!');
-    }, 'image/jpeg', 0.92);
-  }
+  useEffect(() => () => { if (reviewPhotoUrl) URL.revokeObjectURL(reviewPhotoUrl); }, [reviewPhotoUrl]);
 
   async function capture() {
-    if (!photo || !roomId || !assignmentId) {
-      setMsg('Select room, subject, and take a photo.');
+    if (!photo || !roomId || !assignmentId || !cameras.some(camera => camera.room?.id === roomId)) {
+      setMsg('Select a configured room, subject, and take a photo.');
       return;
     }
     setBusy(true);
+    setReviewPhotoUrl(null); setAckUnknown(false); setDecisions({});
     setMsg('Running recognition pipeline…');
-    stopCam();
     try {
       const csrf = await api.getCsrf();
       const form = new FormData();
       form.append('image', photo);
       form.append('roomId', String(roomId));
-      form.append('cameraId', String(cameras.find(c => c.room?.id === roomId)?.id ?? 1));
+      form.append('cameraId', String(cameras.find(c => c.room?.id === roomId)?.id ?? ''));
       form.append('assignmentId', String(assignmentId));
       if (period?.session?.id) form.append('classSessionId', String(period.session.id));
       const d = await api.capture(form, csrf.token);
@@ -125,10 +81,12 @@ export default function TeacherPage() {
 
   function poll(id: number) {
     let n = 0;
+    let photoRequested = false;
     const tick = async () => {
       try {
         const d: Review = await api.getReview(id);
         setReview(d);
+        if(!photoRequested){photoRequested=true;try{const blob=await api.getReviewPhoto(id);setReviewPhotoUrl(URL.createObjectURL(blob));}catch{/* text review remains available if photo storage is unavailable */}}
         if ((d.status === 'CAPTURED' || d.status === 'PROCESSING') && n < 60) {
           n++;
           setTimeout(tick, 1500);
@@ -150,9 +108,10 @@ export default function TeacherPage() {
       const d = await api.submitReview(
         sessionId,
         review.records.filter(r => decisions[r.studentId]).map(r => ({ studentId: r.studentId, decision: decisions[r.studentId] })),
-        csrf.token
+        csrf.token,
+        ackUnknown
       );
-      setMsg(`Session #${d.sessionId} finalized.`);
+      setMsg(d.status === 'FINALIZED' ? `Session #${d.sessionId} finalized.` : `Session #${d.sessionId} remains in review; resolve every student first.`);
       poll(sessionId);
     } catch (err) {
       setMsg(err instanceof Error ? err.message : 'Error');
@@ -265,22 +224,12 @@ export default function TeacherPage() {
                 <button className={mode === 'webcam' ? '' : 'btn-secondary'} onClick={() => setMode('webcam')}>
                   📹 Webcam
                 </button>
-                <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => { stopCam(); setMode('file'); }}>
+                <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => setMode('file')}>
                   📂 File Upload
                 </button>
               </div>
             </div>
-            {mode === 'webcam' && (camErr
-              ? <div className="alert alert-danger">{camErr}</div>
-              : <div className="webcam-wrap">
-                <video ref={vidRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 420, display: 'block', objectFit: 'cover' }} />
-                {cameraResolution && <div className="hint">Camera resolution: {cameraResolution}</div>}
-                <div className="webcam-actions">
-                  <button onClick={snap} style={{ boxShadow: '0 4px 16px rgba(0,0,0,.4)' }}>📸 Snap Photo</button>
-                  {camOn ? <button className="btn-secondary" onClick={stopCam}>Pause</button> : <button className="btn-secondary" onClick={startCam}>Restart</button>}
-                </div>
-              </div>
-            )}
+            {mode === 'webcam' && <CameraCapture disabled={busy} captureLabel="Snap photo" onCapture={file => { setPhoto(file); setPhotoUrl(URL.createObjectURL(file)); setMsg('Photo ready!'); }} />}
             {mode === 'file' && (
               <label>
                 Choose classroom photo
@@ -331,17 +280,19 @@ export default function TeacherPage() {
             </div>
             {(review.diagnostics?.length ?? 0) < (review.allRecords?.length ?? 0) && (
               <div className="alert alert-warning">
-                Many students may be too far or out of frame. Take a second photo of the back rows.
+                Many students may be too far or out of frame. Review the captured detections and resolve every expected student before finalizing.
               </div>
             )}
             {review.quality?.warning && <div className="alert alert-warning">{review.quality.warning}</div>}
+            {review.status==='FAILED'&&<div className="alert alert-danger">{review.quality?.warning||'Recognition could not run. Confirm the selected class has active students and face references.'}</div>}
+            {(review.unknownDetections||0)>0&&<div className="alert alert-warning">{review.unknownDetections} face(s) did not match the selected class roster. They are highlighted red; unassigned faces will be ignored after your acknowledgment.</div>}
             {review.diagnostics?.some(d => d.box?.length === 4) && (
               <div style={{ position: 'relative', marginBottom: 16 }}>
-                <img src={review.photoUrl} alt="Captured classroom photo with recognition boxes" style={{ display: 'block', width: '100%', borderRadius: 12 }} />
+                <img src={reviewPhotoUrl||undefined} alt="Captured classroom photo with recognition boxes" style={{ display: 'block', width: '100%', borderRadius: 12 }} />
                 {review.diagnostics.map((d, index) => {
                   if (!d.box || d.box.length !== 4 || !d.image_width_px || !d.image_height_px) return null;
                   const [top, right, bottom, left] = d.box;
-                  const color = d.recognition_state === 'RECOGNIZED' ? '#22c55e' : d.recognition_state === 'LOW_CONFIDENCE' ? '#f59e0b' : '#ef4444';
+                  const color = d.student_id == null ? '#ef4444' : d.recognition_state === 'RECOGNIZED' ? '#22c55e' : '#f59e0b';
                   return <div key={d.face_index ?? index} style={{
                     position: 'absolute', top: `${top / d.image_height_px * 100}%`, left: `${left / d.image_width_px * 100}%`,
                     width: `${(right - left) / d.image_width_px * 100}%`, height: `${(bottom - top) / d.image_height_px * 100}%`,
@@ -398,11 +349,13 @@ export default function TeacherPage() {
                 </div>
               ))}
             </div>
-            <div style={{ marginTop: 20 }}>
-              <button className="btn-lg" onClick={finalize} disabled={busy}>
+            {review.status==='REVIEW_REQUIRED'&&<div style={{ marginTop: 20 }}>
+              {(review.unknownDetections||0)>0&&<label style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}><input type="checkbox" checked={ackUnknown} onChange={event=>setAckUnknown(event.target.checked)}/><span>I reviewed unknown detections; unassigned faces are intentionally ignored.</span></label>}
+              <button className="btn-lg" onClick={finalize} disabled={busy||review.records.some(record=>!decisions[record.studentId])||((review.unknownDetections||0)>0&&!ackUnknown)}>
                 {busy ? <><span className="spinner" />Finalizing…</> : 'Finalize Attendance'}
               </button>
-            </div>
+            </div>}
+            {review.status==='FINALIZED'&&<div className="alert alert-success" style={{marginTop:20}}>Attendance finalized after faculty review{review.finalizedBy?` by user ${review.finalizedBy}`:''}. ERP integration remains a local stub.</div>}
           </div>
         )}
       </div>

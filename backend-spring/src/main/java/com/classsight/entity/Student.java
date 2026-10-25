@@ -23,9 +23,8 @@ public class Student {
     @Column(nullable = false)
     private String firstName;
 
-    @NotBlank
     @Column(nullable = false)
-    private String lastName;
+    private String lastName = "";
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
@@ -35,6 +34,9 @@ public class Student {
 
     @Column(name = "face_embedding")
     private List<Double> faceEmbedding;
+
+    @Column(name = "face_photo_path", columnDefinition = "text")
+    private String facePhotoPath;
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<StudentFaceEmbedding> faceEmbeddings = new ArrayList<>();
@@ -118,6 +120,9 @@ public class Student {
     public void setActive(Boolean active) {
         this.active = active;
     }
+
+    public String getFacePhotoPath() { return facePhotoPath; }
+    public void setFacePhotoPath(String facePhotoPath) { this.facePhotoPath = facePhotoPath; }
 
     public List<Double> getFaceEmbedding() {
         return faceEmbedding;

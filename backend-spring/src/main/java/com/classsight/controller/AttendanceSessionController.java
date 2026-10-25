@@ -60,6 +60,9 @@ public class AttendanceSessionController {
     public ResponseEntity<AttendanceSession> transitionStatus(
             @PathVariable Long id,
             @RequestParam AttendanceSession.SessionStatus newStatus) {
+        if (newStatus == AttendanceSession.SessionStatus.FINALIZED) {
+            return ResponseEntity.status(409).build();
+        }
         try {
             AttendanceSession updatedSession = attendanceSessionService.updateStatus(id, newStatus);
             return ResponseEntity.ok(updatedSession);
