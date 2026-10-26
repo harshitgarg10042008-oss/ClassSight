@@ -1,0 +1,187 @@
+{
+  "section_id": 2,
+  "assignment_id": 2,
+  "enrolled_students": [
+    {
+      "id": 2,
+      "rollNumber": "RTC_STU_01",
+      "firstName": "RTC_Tom_Coverdale",
+      "lastName": "",
+      "fullName": "RTC_Tom_Coverdale",
+      "name": "RTC_Tom_Coverdale",
+      "faceRegistered": true,
+      "enrolledDate": "2026-10-26T05:54:20.408011696",
+      "dateOfBirth": null,
+      "active": true,
+      "hasFaceEmbedding": true,
+      "embeddingCount": 1,
+      "consentGiven": true,
+      "facePhotoAvailable": true,
+      "consentedAt": "2026-10-26T05:54:20.407721392",
+      "classSectionId": 2,
+      "classSectionName": "RTC_SEC_A",
+      "classSectionIds": [
+        2
+      ],
+      "classSectionNames": [
+        "RTC_SEC_A"
+      ],
+      "subjectIds": [],
+      "sectionWideEnrollment": false
+    },
+    {
+      "id": 3,
+      "rollNumber": "RTC_STU_02",
+      "firstName": "RTC_Abid_Hamid_Mahmud_Al-Tikriti",
+      "lastName": "",
+      "fullName": "RTC_Abid_Hamid_Mahmud_Al-Tikriti",
+      "name": "RTC_Abid_Hamid_Mahmud_Al-Tikriti",
+      "faceRegistered": true,
+      "enrolledDate": "2026-10-26T05:54:20.598904339",
+      "dateOfBirth": null,
+      "active": true,
+      "hasFaceEmbedding": true,
+      "embeddingCount": 1,
+      "consentGiven": true,
+      "facePhotoAvailable": true,
+      "consentedAt": "2026-10-26T05:54:20.598657785",
+      "classSectionId": 2,
+      "classSectionName": "RTC_SEC_A",
+      "classSectionIds": [
+        2
+      ],
+      "classSectionNames": [
+        "RTC_SEC_A"
+      ],
+      "subjectIds": [],
+      "sectionWideEnrollment": false
+    },
+    {
+      "id": 4,
+      "rollNumber": "RTC_STU_03",
+      "firstName": "RTC_Reggie_Miller",
+      "lastName": "",
+      "fullName": "RTC_Reggie_Miller",
+      "name": "RTC_Reggie_Miller",
+      "faceRegistered": true,
+      "enrolledDate": "2026-10-26T05:54:20.716663359",
+      "dateOfBirth": null,
+      "active": true,
+      "hasFaceEmbedding": true,
+      "embeddingCount": 1,
+      "consentGiven": true,
+      "facePhotoAvailable": true,
+      "consentedAt": "2026-10-26T05:54:20.716191897",
+      "classSectionId": 2,
+      "classSectionName": "RTC_SEC_A",
+      "classSectionIds": [
+        2
+      ],
+      "classSectionNames": [
+        "RTC_SEC_A"
+      ],
+      "subjectIds": [],
+      "sectionWideEnrollment": false
+    }
+  ],
+  "session1_id": 58,
+  "session2_id": 59,
+  "steps": [
+    {
+      "step": "Teacher Login",
+      "endpoint": "POST /auth/login",
+      "status_code": 200,
+      "elapsed_ms": 89.85,
+      "result": "PASS",
+      "excerpt": "{\"token\":\"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZWFjaGVyIiwiaWF0IjoxNzkyOTk0MDYwLCJleHAiOjE3OTMwMTIwNjB9.J0dlb-Mi-7ELOnexRl7CEnxDO4pLasI0y3IzZJgNp2k\",\"type\":\"Bearer\",\"userId\":2,\"username\":\"teacher\",\"fullNa"
+    },
+    {
+      "step": "Create Class Section",
+      "endpoint": "POST /students/classes",
+      "status_code": 200,
+      "elapsed_ms": 108.16,
+      "result": "PASS",
+      "excerpt": "{\"assignmentId\":2,\"name\":\"RTC_SEC_A\",\"academicYear\":2026,\"roomName\":\"Room 101\",\"subjectId\":1,\"id\":2,\"roomId\":1}"
+    },
+    {
+      "step": "Enroll RTC_STU_01 (Tom_Coverdale)",
+      "endpoint": "POST /students/enroll-single",
+      "status_code": 200,
+      "elapsed_ms": 238.38,
+      "result": "PASS",
+      "excerpt": "{\"message\":\"Student enrolled successfully\",\"status\":\"success\",\"student\":{\"id\":2,\"rollNumber\":\"RTC_STU_01\",\"firstName\":\"RTC_Tom_Coverdale\",\"lastName\":\"\",\"fullName\":\"RTC_Tom_Coverdale\",\"name\":\"RTC_Tom_C"
+    },
+    {
+      "step": "Enroll RTC_STU_02 (Abid_Hamid_Mahmud_Al-Tikriti)",
+      "endpoint": "POST /students/enroll-single",
+      "status_code": 200,
+      "elapsed_ms": 106.69,
+      "result": "PASS",
+      "excerpt": "{\"message\":\"Student enrolled successfully\",\"status\":\"success\",\"student\":{\"id\":3,\"rollNumber\":\"RTC_STU_02\",\"firstName\":\"RTC_Abid_Hamid_Mahmud_Al-Tikriti\",\"lastName\":\"\",\"fullName\":\"RTC_Abid_Hamid_Mahmud"
+    },
+    {
+      "step": "Enroll RTC_STU_03 (Reggie_Miller)",
+      "endpoint": "POST /students/enroll-single",
+      "status_code": 200,
+      "elapsed_ms": 132.76,
+      "result": "PASS",
+      "excerpt": "{\"message\":\"Student enrolled successfully\",\"status\":\"success\",\"student\":{\"id\":4,\"rollNumber\":\"RTC_STU_03\",\"firstName\":\"RTC_Reggie_Miller\",\"lastName\":\"\",\"fullName\":\"RTC_Reggie_Miller\",\"name\":\"RTC_Reggi"
+    },
+    {
+      "step": "Verify Roster (GET /students)",
+      "endpoint": "GET /students?classSectionId=2",
+      "status_code": 200,
+      "elapsed_ms": 149.6,
+      "result": "PASS",
+      "excerpt": "Found 3 RTC_ students: ['RTC_STU_01', 'RTC_STU_02', 'RTC_STU_03']"
+    },
+    {
+      "step": "Session 1 Capture (3 faces)",
+      "endpoint": "POST /capture",
+      "status_code": 200,
+      "elapsed_ms": 312.08,
+      "result": "PASS",
+      "excerpt": "sessionId=58, status=REVIEW_REQUIRED"
+    },
+    {
+      "step": "Session 1 Get Review",
+      "endpoint": "GET /api/attendance-sessions/58/review",
+      "status_code": 200,
+      "elapsed_ms": 41.41,
+      "result": "PASS",
+      "excerpt": "records=3"
+    },
+    {
+      "step": "Session 1 Finalize",
+      "endpoint": "POST /api/attendance-sessions/58/review",
+      "status_code": 200,
+      "elapsed_ms": 39.52,
+      "result": "PASS",
+      "excerpt": "status=FINALIZED, finalizedBy=2"
+    },
+    {
+      "step": "Session 2 Capture (2 of 3 faces)",
+      "endpoint": "POST /capture",
+      "status_code": 200,
+      "elapsed_ms": 234.5,
+      "result": "PASS",
+      "excerpt": "sessionId=59, status=REVIEW_REQUIRED"
+    },
+    {
+      "step": "Session 2 Get Review",
+      "endpoint": "GET /api/attendance-sessions/59/review",
+      "status_code": 200,
+      "elapsed_ms": 38.88,
+      "result": "PASS",
+      "excerpt": "records=3"
+    },
+    {
+      "step": "Session 2 Finalize",
+      "endpoint": "POST /api/attendance-sessions/59/review",
+      "status_code": 200,
+      "elapsed_ms": 46.74,
+      "result": "PASS",
+      "excerpt": "status=FINALIZED"
+    }
+  ]
+}
