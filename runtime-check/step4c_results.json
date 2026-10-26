@@ -1,0 +1,51 @@
+{
+  "disclaimer": "simulated on LFW, NOT classroom accuracy",
+  "method": "Classroom grid simulation on 1920x1080 canvas with rotation +/-8 deg, brightness jitter +/-15%, evaluated through live POST /capture",
+  "runs": {
+    "70_110px": {
+      "size_label": "70-110 px (Primary)",
+      "size_mode": "variable_70_110",
+      "session_30_id": 60,
+      "session_25_id": 61,
+      "faces_detected_of_30": 17,
+      "correct_identity_count": 17,
+      "wrong_identity_count": 0,
+      "missed_count": 13,
+      "detection_rate_pct": 56.67,
+      "session_25_removed_5_all_absent": true,
+      "session_25_present_detected": 12,
+      "session_25_present_undetected_due_to_haar": 13,
+      "capture_latency_ms": 1013.21
+    },
+    "50px": {
+      "size_label": "50 px",
+      "size_mode": "fixed_50",
+      "session_30_id": 62,
+      "session_25_id": 63,
+      "faces_detected_of_30": 0,
+      "correct_identity_count": 0,
+      "wrong_identity_count": 0,
+      "missed_count": 30,
+      "detection_rate_pct": 0.0,
+      "session_25_removed_5_all_absent": true,
+      "session_25_present_detected": 0,
+      "session_25_present_undetected_due_to_haar": 25,
+      "capture_latency_ms": 337.53
+    },
+    "140px": {
+      "size_label": "140 px",
+      "size_mode": "fixed_140",
+      "session_30_id": 64,
+      "session_25_id": 65,
+      "faces_detected_of_30": 29,
+      "correct_identity_count": 29,
+      "wrong_identity_count": 0,
+      "missed_count": 1,
+      "detection_rate_pct": 96.67,
+      "session_25_removed_5_all_absent": true,
+      "session_25_present_detected": 24,
+      "session_25_present_undetected_due_to_haar": 1,
+      "capture_latency_ms": 2907.61
+    }
+  }
+}
