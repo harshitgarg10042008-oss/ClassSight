@@ -1,0 +1,438 @@
+{
+  "disclaimer": "simulated on LFW, NOT classroom accuracy",
+  "method": "Class simulation with 30 enrolled students in 1 class section, probed with 30 class test photos and 30 outsider photos using Manhattan L1 distance",
+  "evaluations": {
+    "current_15_0": {
+      "threshold": 15.0,
+      "rank1_correct_rate_pct": 100.0,
+      "wrong_identity_rate_pct": 0.0,
+      "class_unknown_rate_pct": 0.0,
+      "outsider_false_accept_rate_pct": 100.0,
+      "outsider_unknown_rate_pct": 0.0,
+      "counts": {
+        "class_correct": 30,
+        "class_wrong": 0,
+        "class_unknown": 0,
+        "outsider_false_accept": 30,
+        "outsider_unknown": 0,
+        "total_class_probes": 30,
+        "total_outsider_probes": 30
+      }
+    },
+    "eer": {
+      "threshold": 9.5622,
+      "rank1_correct_rate_pct": 100.0,
+      "wrong_identity_rate_pct": 0.0,
+      "class_unknown_rate_pct": 0.0,
+      "outsider_false_accept_rate_pct": 26.67,
+      "outsider_unknown_rate_pct": 73.33,
+      "counts": {
+        "class_correct": 30,
+        "class_wrong": 0,
+        "class_unknown": 0,
+        "outsider_false_accept": 8,
+        "outsider_unknown": 22,
+        "total_class_probes": 30,
+        "total_outsider_probes": 30
+      }
+    },
+    "far_1pct": {
+      "threshold": 9.3734,
+      "rank1_correct_rate_pct": 100.0,
+      "wrong_identity_rate_pct": 0.0,
+      "class_unknown_rate_pct": 0.0,
+      "outsider_false_accept_rate_pct": 23.33,
+      "outsider_unknown_rate_pct": 76.67,
+      "counts": {
+        "class_correct": 30,
+        "class_wrong": 0,
+        "class_unknown": 0,
+        "outsider_false_accept": 7,
+        "outsider_unknown": 23,
+        "total_class_probes": 30,
+        "total_outsider_probes": 30
+      }
+    },
+    "far_01pct": {
+      "threshold": 7.6582,
+      "rank1_correct_rate_pct": 86.67,
+      "wrong_identity_rate_pct": 0.0,
+      "class_unknown_rate_pct": 13.33,
+      "outsider_false_accept_rate_pct": 0.0,
+      "outsider_unknown_rate_pct": 100.0,
+      "counts": {
+        "class_correct": 26,
+        "class_wrong": 0,
+        "class_unknown": 4,
+        "outsider_false_accept": 0,
+        "outsider_unknown": 30,
+        "total_class_probes": 30,
+        "total_outsider_probes": 30
+      }
+    }
+  },
+  "class_probe_distances": [
+    {
+      "person": "Tom_Coverdale",
+      "true_idx": 0,
+      "closest_idx": 0,
+      "min_dist": 6.620130773022538,
+      "correct_id": true
+    },
+    {
+      "person": "Abid_Hamid_Mahmud_Al-Tikriti",
+      "true_idx": 1,
+      "closest_idx": 1,
+      "min_dist": 7.061866880161688,
+      "correct_id": true
+    },
+    {
+      "person": "Reggie_Miller",
+      "true_idx": 2,
+      "closest_idx": 2,
+      "min_dist": 5.069832898079767,
+      "correct_id": true
+    },
+    {
+      "person": "Corinne_Coman",
+      "true_idx": 3,
+      "closest_idx": 3,
+      "min_dist": 4.868341974317445,
+      "correct_id": true
+    },
+    {
+      "person": "Robert_Blake",
+      "true_idx": 4,
+      "closest_idx": 4,
+      "min_dist": 8.190774495364167,
+      "correct_id": true
+    },
+    {
+      "person": "Brian_Heidik",
+      "true_idx": 5,
+      "closest_idx": 5,
+      "min_dist": 7.482483134866925,
+      "correct_id": true
+    },
+    {
+      "person": "Dennis_Kucinich",
+      "true_idx": 6,
+      "closest_idx": 6,
+      "min_dist": 4.139429979157285,
+      "correct_id": true
+    },
+    {
+      "person": "Leszek_Miller",
+      "true_idx": 7,
+      "closest_idx": 7,
+      "min_dist": 8.660014602239244,
+      "correct_id": true
+    },
+    {
+      "person": "Yukiko_Okudo",
+      "true_idx": 8,
+      "closest_idx": 8,
+      "min_dist": 8.549692976812366,
+      "correct_id": true
+    },
+    {
+      "person": "Billy_Sollie",
+      "true_idx": 9,
+      "closest_idx": 9,
+      "min_dist": 3.948300168151036,
+      "correct_id": true
+    },
+    {
+      "person": "Lynn_Abraham",
+      "true_idx": 10,
+      "closest_idx": 10,
+      "min_dist": 3.474956444290001,
+      "correct_id": true
+    },
+    {
+      "person": "Joseph_Deiss",
+      "true_idx": 11,
+      "closest_idx": 11,
+      "min_dist": 3.355449880269589,
+      "correct_id": true
+    },
+    {
+      "person": "Annette_Bening",
+      "true_idx": 12,
+      "closest_idx": 12,
+      "min_dist": 5.529497009600163,
+      "correct_id": true
+    },
+    {
+      "person": "Richard_Shelby",
+      "true_idx": 13,
+      "closest_idx": 13,
+      "min_dist": 6.862670964561403,
+      "correct_id": true
+    },
+    {
+      "person": "Julio_Iglesias_Jr",
+      "true_idx": 14,
+      "closest_idx": 14,
+      "min_dist": 6.418034894246375,
+      "correct_id": true
+    },
+    {
+      "person": "Muammar_Gaddafi",
+      "true_idx": 15,
+      "closest_idx": 15,
+      "min_dist": 6.71364513097069,
+      "correct_id": true
+    },
+    {
+      "person": "Diane_Green",
+      "true_idx": 16,
+      "closest_idx": 16,
+      "min_dist": 5.866008258955844,
+      "correct_id": true
+    },
+    {
+      "person": "Christian_Wulff",
+      "true_idx": 17,
+      "closest_idx": 17,
+      "min_dist": 5.684044577530585,
+      "correct_id": true
+    },
+    {
+      "person": "Mike_Price",
+      "true_idx": 18,
+      "closest_idx": 18,
+      "min_dist": 5.796103013737593,
+      "correct_id": true
+    },
+    {
+      "person": "Robert_Mugabe",
+      "true_idx": 19,
+      "closest_idx": 19,
+      "min_dist": 3.5472367876500357,
+      "correct_id": true
+    },
+    {
+      "person": "Franko_Simatovic",
+      "true_idx": 20,
+      "closest_idx": 20,
+      "min_dist": 6.820058259530924,
+      "correct_id": true
+    },
+    {
+      "person": "Jack_Grubman",
+      "true_idx": 21,
+      "closest_idx": 21,
+      "min_dist": 4.453702795522986,
+      "correct_id": true
+    },
+    {
+      "person": "Christopher_Reeve",
+      "true_idx": 22,
+      "closest_idx": 22,
+      "min_dist": 5.026794728224559,
+      "correct_id": true
+    },
+    {
+      "person": "Geno_Auriemma",
+      "true_idx": 23,
+      "closest_idx": 23,
+      "min_dist": 6.809414716495667,
+      "correct_id": true
+    },
+    {
+      "person": "Judi_Dench",
+      "true_idx": 24,
+      "closest_idx": 24,
+      "min_dist": 7.333412689622492,
+      "correct_id": true
+    },
+    {
+      "person": "S_Jayakumar",
+      "true_idx": 25,
+      "closest_idx": 25,
+      "min_dist": 6.98760939532076,
+      "correct_id": true
+    },
+    {
+      "person": "Allison_Janney",
+      "true_idx": 26,
+      "closest_idx": 26,
+      "min_dist": 8.221850214965343,
+      "correct_id": true
+    },
+    {
+      "person": "Mohamed_ElBaradei",
+      "true_idx": 27,
+      "closest_idx": 27,
+      "min_dist": 7.543137107626535,
+      "correct_id": true
+    },
+    {
+      "person": "Wang_Yi",
+      "true_idx": 28,
+      "closest_idx": 28,
+      "min_dist": 4.075758662354929,
+      "correct_id": true
+    },
+    {
+      "person": "Tom_Crean",
+      "true_idx": 29,
+      "closest_idx": 29,
+      "min_dist": 7.128343613338075,
+      "correct_id": true
+    }
+  ],
+  "outsider_probe_distances": [
+    {
+      "person": "Bruce_Van_De_Velde",
+      "closest_idx": 22,
+      "min_dist": 10.202465622320233
+    },
+    {
+      "person": "Alan_Zemaitis",
+      "closest_idx": 28,
+      "min_dist": 9.860861925244535
+    },
+    {
+      "person": "Sigourney_Weaver",
+      "closest_idx": 1,
+      "min_dist": 11.05103664950002
+    },
+    {
+      "person": "Jean-Claude_Van_Damme",
+      "closest_idx": 9,
+      "min_dist": 10.18026378180366
+    },
+    {
+      "person": "Ahmed_Ibrahim_Bilal",
+      "closest_idx": 28,
+      "min_dist": 10.978955160226178
+    },
+    {
+      "person": "Jeff_George",
+      "closest_idx": 6,
+      "min_dist": 8.438929967349395
+    },
+    {
+      "person": "Brian_Olson",
+      "closest_idx": 0,
+      "min_dist": 11.067101233784342
+    },
+    {
+      "person": "Alberto_Ruiz_Gallardon",
+      "closest_idx": 14,
+      "min_dist": 10.209539064497221
+    },
+    {
+      "person": "Tommy_Haas",
+      "closest_idx": 27,
+      "min_dist": 10.664519550686236
+    },
+    {
+      "person": "Xanana_Gusmao",
+      "closest_idx": 1,
+      "min_dist": 8.760697012941819
+    },
+    {
+      "person": "Heinrich_Wolfgang",
+      "closest_idx": 12,
+      "min_dist": 10.053340600439697
+    },
+    {
+      "person": "Eric_Rosser",
+      "closest_idx": 12,
+      "min_dist": 11.005224756067037
+    },
+    {
+      "person": "Martin_McCauley",
+      "closest_idx": 21,
+      "min_dist": 9.436035848542815
+    },
+    {
+      "person": "Richard_Harris",
+      "closest_idx": 11,
+      "min_dist": 10.138819157727994
+    },
+    {
+      "person": "Martha_Bowen",
+      "closest_idx": 26,
+      "min_dist": 10.222805378160956
+    },
+    {
+      "person": "Alex_Wallau",
+      "closest_idx": 11,
+      "min_dist": 8.321967285708524
+    },
+    {
+      "person": "Antonio_Bernardo",
+      "closest_idx": 8,
+      "min_dist": 10.522545656771399
+    },
+    {
+      "person": "Tim_Curry",
+      "closest_idx": 13,
+      "min_dist": 9.916518954334606
+    },
+    {
+      "person": "Georgi_Parvanov",
+      "closest_idx": 21,
+      "min_dist": 9.965080861453316
+    },
+    {
+      "person": "Koji_Uehara",
+      "closest_idx": 28,
+      "min_dist": 8.592780757277069
+    },
+    {
+      "person": "Duncan_Fletcher",
+      "closest_idx": 20,
+      "min_dist": 10.639945507864468
+    },
+    {
+      "person": "Jafar_Umar_Thalib",
+      "closest_idx": 1,
+      "min_dist": 9.974356191727566
+    },
+    {
+      "person": "Brian_Williams",
+      "closest_idx": 21,
+      "min_dist": 10.346352327003842
+    },
+    {
+      "person": "Patrick_Clawsen",
+      "closest_idx": 17,
+      "min_dist": 10.0471187683288
+    },
+    {
+      "person": "Ronald_Perelman",
+      "closest_idx": 18,
+      "min_dist": 8.352584538224619
+    },
+    {
+      "person": "Ivana_Trump",
+      "closest_idx": 24,
+      "min_dist": 9.86078198289033
+    },
+    {
+      "person": "Al_Pacino",
+      "closest_idx": 16,
+      "min_dist": 9.89476189413108
+    },
+    {
+      "person": "Herta_Daeubler-Gmelin",
+      "closest_idx": 10,
+      "min_dist": 8.372340257929523
+    },
+    {
+      "person": "Jim_Calhoun",
+      "closest_idx": 2,
+      "min_dist": 8.648744199235807
+    },
+    {
+      "person": "Charles_Bronson",
+      "closest_idx": 24,
+      "min_dist": 10.23630680970382
+    }
+  ]
+}
