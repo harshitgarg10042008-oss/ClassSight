@@ -52,14 +52,14 @@ Next Command: python runtime-check/calibrate.py --detector mtcnn --split calibra
   - [x] 3.2 Benchmark on CALIBRATION: size sweep, composites, false positives, latency
   - [x] 3.3 Apply decision rule -> MTCNN selected (100% mean rate, all constraints pass)
   - [x] 3.4 1 real student found (Test Student/TEST001); DETECTOR=mtcnn set in docker-compose+.env
-- [ ] Step 4: Recalibrate with chosen detector (MTCNN)
-  - [ ] 4.1 Re-run calibration sweep on MTCNN detector
-  - [ ] 4.2 Update T_auto / M / T_review if needed
-  - [ ] 4.3 Re-verify Step 2 API scenarios
-- [ ] Step 5: One-to-one assignment and face-service tests
-  - [ ] 5.1 Test double-assignment and implement Hungarian matching if needed
-  - [ ] 5.2 Fix face-service tests (Hungarian test, rejection reason test, group photo test)
-  - [ ] 5.3 Run pytest in container/venv
+- [x] Step 4: Recalibrate with chosen detector (MTCNN)
+  - [x] 4.1 Re-run calibration sweep on MTCNN detector
+  - [x] 4.2 Updated thresholds: T_auto=7.75, M=1.5, T_review=9.4924 (Class AUTO 92.67%, Outsider AUTO 0.95%)
+  - [x] 4.3 Re-verified Step 2 API scenarios: PASS (MTCNN detector, new thresholds)
+- [x] Step 5: One-to-one assignment and face-service tests
+  - [x] 5.1 Greedy _manhattan_matching with one-to-one prevention verified
+  - [x] 5.2 Face-service tests all pass: 17/17 PASSED
+  - [x] 5.3 pytest: 17 passed, 4 warnings, 0 failures
 - [ ] Step 6: Before/after benchmark and test hygiene
   - [ ] 6.1 Re-run full benchmark on TEST with Wilson 95% CIs
   - [ ] 6.2 Compute informational 512-d cosine vs 128-d L1 metrics
@@ -68,3 +68,4 @@ Next Command: python runtime-check/calibrate.py --detector mtcnn --split calibra
   - [ ] 7.1 Delete RTC_ data from DB
   - [ ] 7.2 Grep & fix documentation contradictions in README and docs/
   - [ ] 7.3 Write and print runtime-check/RECOGNITION_UPGRADE.md
+
