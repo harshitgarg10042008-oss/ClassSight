@@ -1,0 +1,66 @@
+{
+  "detector": "haar",
+  "split": "calibration",
+  "benchmark_a": {
+    "40": {
+      "width_px": 40,
+      "detected_count": 0,
+      "detection_rate_pct": 0.0,
+      "avg_detected_box_width_px": 0.0
+    },
+    "60": {
+      "width_px": 60,
+      "detected_count": 0,
+      "detection_rate_pct": 0.0,
+      "avg_detected_box_width_px": 0.0
+    },
+    "80": {
+      "width_px": 80,
+      "detected_count": 39,
+      "detection_rate_pct": 39.0,
+      "avg_detected_box_width_px": 38.5
+    },
+    "120": {
+      "width_px": 120,
+      "detected_count": 96,
+      "detection_rate_pct": 96.0,
+      "avg_detected_box_width_px": 51.6
+    },
+    "160": {
+      "width_px": 160,
+      "detected_count": 98,
+      "detection_rate_pct": 98.0,
+      "avg_detected_box_width_px": 64.8
+    },
+    "mean_rate_60_80_120": 45.0
+  },
+  "benchmark_b": {
+    "fixed_50": {
+      "mode": "fixed_50",
+      "detected_count": 0,
+      "total_faces": 30,
+      "rate_pct": 0.0
+    },
+    "variable_70_110": {
+      "mode": "variable_70_110",
+      "detected_count": 18,
+      "total_faces": 30,
+      "rate_pct": 60.0
+    },
+    "fixed_140": {
+      "mode": "fixed_140",
+      "detected_count": 29,
+      "total_faces": 30,
+      "rate_pct": 96.67
+    }
+  },
+  "benchmark_c": {
+    "total_false_positives": 0,
+    "n_images": 50,
+    "mean_false_positives": 0.0
+  },
+  "benchmark_d": {
+    "median_ms": 35.7,
+    "p95_ms": 57.4
+  }
+}
