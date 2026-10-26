@@ -1,0 +1,67 @@
+{
+  "summary": {
+    "maven_backend_tests": "PASS",
+    "face_service_pytest": "PARTIAL",
+    "e2e_test_enroll": "PASS",
+    "e2e_test_attendance_session": "FAIL",
+    "e2e_test_multishot_e2e": "PASS",
+    "e2e_test_pipeline_verification": "PASS",
+    "e2e_test_spring_enroll": "NOT_VERIFIED"
+  },
+  "maven_backend_tests": {
+    "status": "PASS",
+    "method": "docker run maven:3.9-eclipse-temurin-17 mvn test --no-transfer-progress",
+    "exit_code": 0,
+    "test_files": [
+      "AttendanceReviewControllerTest.java",
+      "AttendanceAnalyticsServiceTest.java",
+      "AttendanceRecognitionServiceTest.java",
+      "AttendanceReviewServiceTest.java",
+      "TimetableServiceTest.java"
+    ],
+    "notable_output": [
+      "ACTUAL_REVIEW_NEGATIVE_STATUS=403 BODY={error:FORBIDDEN, message:You do not own this attendance session}",
+      "ACTUAL_REVIEW_OWNER_STATUS=200 BODY={...sessionId:44,status:REVIEW_REQUIRED}",
+      "ACTUAL_REVIEW_PHOTO_STATUS=200 CONTENT_TYPE=image/jpeg BYTES=11",
+      "ACTUAL_REVIEW_SUBMIT_STATUS=FINALIZED RECORD_STATUS=PRESENT REVIEW_STATUS=APPROVED",
+      "ACTUAL_CAPTURE_PERSISTENCE_PATH=session-44-*.jpg"
+    ]
+  },
+  "face_service_pytest": {
+    "status": "PARTIAL",
+    "method": "python -m pytest face-service-fastapi/tests/ -v",
+    "tests_collected": 9,
+    "tests_passed": 8,
+    "tests_failed": 1,
+    "tests_error": 2,
+    "failures": [
+      "test_rejection_reason_explains_weak_and_unknown_faces: expected 'distance or top-1/top-2 margin did not meet the threshold', got 'Manhattan distance exceeded threshold - routed to faculty review'"
+    ],
+    "collection_errors": [
+      "test_hungarian_matching.py: ImportError - _vectorized_hungarian_matching not exported from main.py",
+      "test_recognize_group_photo.py: ModuleNotFoundError - face_recognition not installed"
+    ]
+  },
+  "e2e_scripts": {
+    "test_enroll.py": {
+      "status": "PASS",
+      "output": "zero faces=400, multi faces=400, single face=200 (154ms)"
+    },
+    "test_attendance_session.py": {
+      "status": "FAIL",
+      "reason": "Expected REVIEW_REQUIRED, got FAILED (no students enrolled in TEST-SEC-A)"
+    },
+    "test_multishot_e2e.py": {
+      "status": "PASS",
+      "output": "All endpoints passed: enroll-frame, multi-shot/start, multi-shot/frame, multi-shot/status, multi-shot/finalise"
+    },
+    "test_pipeline_verification.py": {
+      "status": "PASS",
+      "output": "All 8 checks passed: health, detector, embedder, distance_metric, scale_factor, threshold, facenet_available, cv2_available"
+    },
+    "test_spring_enroll.py": {
+      "status": "NOT_VERIFIED",
+      "reason": "HTTP 403 returned - endpoint requires authentication but script sends no JWT token"
+    }
+  }
+}
