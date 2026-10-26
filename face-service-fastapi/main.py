@@ -19,7 +19,7 @@ ACCURACY CAVEAT (paper §4.2):
   possible, and enroll students per the multi-angle protocol in the README.
 """
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Query
 from pydantic import BaseModel, Field, ValidationError
 import numpy as np
 from PIL import Image, ImageFilter
@@ -97,6 +97,9 @@ MAX_BRIGHTNESS = float(os.getenv("QUALITY_MAX_BRIGHTNESS", "220.0"))
 MIN_LIVENESS_TEXTURE = float(os.getenv("QUALITY_MIN_LIVENESS_TEXTURE", "2.5"))
 MIN_FACE_SIZE_RATIO = float(os.getenv("QUALITY_MIN_FACE_SIZE_RATIO", "0.0005"))
 RECOGNITION_MAX_DIMENSION = int(os.getenv("RECOGNITION_MAX_DIMENSION", "1600"))
+
+# Detector configuration: "haar", "yunet", or "mtcnn" (default: "haar")
+DETECTOR = os.getenv("DETECTOR", "haar").lower()
 
 # Haar Cascade parameters — scaleFactor=1.2 matches the paper's search-box zoom
 HAAR_SCALE_FACTOR = float(os.getenv("HAAR_SCALE_FACTOR", "1.2"))
@@ -207,8 +210,21 @@ class DetectionResponse(BaseModel):
 
 @app.on_event("startup")
 def preload_models():
-    """Warm up Haar Cascade and FaceNet at startup to eliminate first-request penalty."""
-    if CV2_AVAILABLE:
+    """Warm up active detector and FaceNet at startup to eliminate first-request penalty."""
+    det = DETECTOR.lower()
+    if det == "yunet":
+        try:
+            _get_yunet_detector(320, 320)
+            logger.info("YuNet FaceDetectorYN preloaded OK")
+        except Exception as exc:
+            logger.warning("YuNet preload error: %s", exc)
+    elif det == "mtcnn":
+        try:
+            _get_mtcnn_detector()
+            logger.info("MTCNN detector preloaded OK")
+        except Exception as exc:
+            logger.warning("MTCNN preload error: %s", exc)
+    elif CV2_AVAILABLE:
         try:
             cc = _get_haar_cascade()
             dummy = np.zeros((64, 64, 3), dtype=np.uint8)
@@ -230,10 +246,12 @@ def preload_models():
 
 @app.get("/health")
 def health():
+    det_name = "haar_cascade" if DETECTOR == "haar" else DETECTOR
     return {
         "status": "UP",
         "service": "face-service-fastapi",
-        "detector": "haar_cascade",
+        "detector": det_name,
+        "detector_type": DETECTOR,
         "embedder": "facenet_vggface2_128d",
         "distance_metric": "manhattan_L1",
         "haar_scale_factor": HAAR_SCALE_FACTOR,
@@ -259,16 +277,12 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
 
-# ── Haar Cascade Detection (paper §2.1, scaleFactor=1.2) ─────────────────────
+# ── Face Detectors: Haar, YuNet, MTCNN ────────────────────────────────────────
 
 def _detect_faces_haar(image_array: np.ndarray) -> list[tuple[int, int, int, int]]:
     """
     Detect faces using OpenCV Haar Cascade, scaleFactor=1.2 (paper-specified).
     Returns list of (top, right, bottom, left) tuples — same convention as dlib.
-
-    The paper uses the frontal-face Haar Cascade with a scale factor of 1.2 for
-    the multi-scale search pyramid.  minNeighbors=5 suppresses false positives
-    while preserving true detections in classroom-density images.
     """
     if not CV2_AVAILABLE:
         raise HTTPException(status_code=500, detail="OpenCV not available — cannot run Haar Cascade detection")
@@ -276,13 +290,12 @@ def _detect_faces_haar(image_array: np.ndarray) -> list[tuple[int, int, int, int
     gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
     faces = cc.detectMultiScale(
         gray,
-        scaleFactor=HAAR_SCALE_FACTOR,   # 1.2 — matches paper
+        scaleFactor=HAAR_SCALE_FACTOR,
         minNeighbors=HAAR_MIN_NEIGHBORS,
         minSize=(HAAR_MIN_SIZE_PX, HAAR_MIN_SIZE_PX),
     )
     if len(faces) == 0:
         return []
-    # Convert OpenCV (x, y, w, h) → dlib-convention (top, right, bottom, left)
     locations: list[tuple[int, int, int, int]] = []
     h_img, w_img = image_array.shape[:2]
     for (x, y, w, h) in faces:
@@ -292,6 +305,100 @@ def _detect_faces_haar(image_array: np.ndarray) -> list[tuple[int, int, int, int
         right = min(w_img, x + w)
         locations.append((top, right, bottom, left))
     return locations
+
+
+_YUNET_DETECTOR = None
+_YUNET_INPUT_SIZE = None
+
+def _get_yunet_detector(width: int, height: int):
+    global _YUNET_DETECTOR, _YUNET_INPUT_SIZE
+    if _YUNET_DETECTOR is None:
+        model_path = os.getenv("YUNET_MODEL_PATH", "models/face_detection_yunet_2023mar.onnx")
+        if not os.path.isabs(model_path):
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            candidate = os.path.join(base_dir, model_path)
+            if os.path.exists(candidate):
+                model_path = candidate
+        if not os.path.exists(model_path):
+            raise RuntimeError(f"YuNet ONNX model not found at {model_path}")
+        _YUNET_DETECTOR = cv2.FaceDetectorYN.create(
+            model_path,
+            "",
+            (width, height),
+            score_threshold=0.6,
+            nms_threshold=0.3,
+            top_k=5000,
+        )
+        _YUNET_INPUT_SIZE = (width, height)
+    elif _YUNET_INPUT_SIZE != (width, height):
+        _YUNET_DETECTOR.setInputSize((width, height))
+        _YUNET_INPUT_SIZE = (width, height)
+    return _YUNET_DETECTOR
+
+
+def _detect_faces_yunet(image_array: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """
+    Detect faces using OpenCV FaceDetectorYN (YuNet).
+    Run at full image resolution (input size = image size).
+    Returns list of (top, right, bottom, left) tuples.
+    """
+    if not CV2_AVAILABLE:
+        raise HTTPException(status_code=500, detail="OpenCV not available — cannot run YuNet detection")
+    h_img, w_img = image_array.shape[:2]
+    detector = _get_yunet_detector(w_img, h_img)
+    bgr = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+    _, faces = detector.detect(bgr)
+    if faces is None or len(faces) == 0:
+        return []
+    locations: list[tuple[int, int, int, int]] = []
+    for face in faces:
+        x, y, w, h = face[:4]
+        top = int(max(0, y))
+        left = int(max(0, x))
+        bottom = int(min(h_img, y + h))
+        right = int(min(w_img, x + w))
+        locations.append((top, right, bottom, left))
+    return locations
+
+
+_MTCNN_DETECTOR = None
+
+def _get_mtcnn_detector():
+    global _MTCNN_DETECTOR
+    if _MTCNN_DETECTOR is None:
+        from facenet_pytorch import MTCNN
+        _MTCNN_DETECTOR = MTCNN(min_face_size=20, keep_all=True, post_process=False, device="cpu")
+    return _MTCNN_DETECTOR
+
+
+def _detect_faces_mtcnn(image_array: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """
+    Detect faces using facenet_pytorch MTCNN (min_face_size=20).
+    Returns list of (top, right, bottom, left) tuples.
+    """
+    detector = _get_mtcnn_detector()
+    h_img, w_img = image_array.shape[:2]
+    boxes, probs = detector.detect(image_array)
+    if boxes is None or len(boxes) == 0:
+        return []
+    locations: list[tuple[int, int, int, int]] = []
+    for box in boxes:
+        left = int(max(0, box[0]))
+        top = int(max(0, box[1]))
+        right = int(min(w_img, box[2]))
+        bottom = int(min(h_img, box[3]))
+        locations.append((top, right, bottom, left))
+    return locations
+
+
+def _detect_faces(image_array: np.ndarray, detector_name: Optional[str] = None) -> list[tuple[int, int, int, int]]:
+    det = (detector_name or DETECTOR).lower()
+    if det == "yunet":
+        return _detect_faces_yunet(image_array)
+    elif det == "mtcnn":
+        return _detect_faces_mtcnn(image_array)
+    else:
+        return _detect_faces_haar(image_array)
 
 
 # ── FaceNet Embedding (paper §2.2, 160×160, pretrained vggface2) ──────────────
@@ -624,15 +731,20 @@ def _manhattan_matching(
 # ── Detection endpoint ────────────────────────────────────────────────────────
 
 @app.post("/detect-faces", response_model=DetectionResponse)
-async def detect_faces(image: UploadFile = File(...)):
+async def detect_faces(
+    image: UploadFile = File(...),
+    detector: Optional[str] = Query(None),
+    detector_form: Optional[str] = Form(None),
+):
     started = time.perf_counter()
+    active_detector = detector or detector_form or DETECTOR
     image_bytes = await image.read()
     try:
         decode_started = time.perf_counter()
         image_array = _load_rgb_image(image_bytes)
         decode_ms = (time.perf_counter() - decode_started) * 1000
         detection_started = time.perf_counter()
-        locations = _detect_faces_haar(image_array)
+        locations = _detect_faces(image_array, active_detector)
         detection_ms = (time.perf_counter() - detection_started) * 1000
         quality = _quality_metrics(image_array, locations)
         faces = [
@@ -663,7 +775,11 @@ async def detect_faces(image: UploadFile = File(...)):
 # ── Enrollment endpoint ───────────────────────────────────────────────────────
 
 @app.post("/enroll", response_model=EmbeddingResponse)
-async def enroll(image: UploadFile = File(...)):
+async def enroll(
+    image: UploadFile = File(...),
+    detector: Optional[str] = Query(None),
+    detector_form: Optional[str] = Form(None),
+):
     """
     Enroll a single face image → returns 128-d FaceNet embedding.
 
@@ -673,11 +789,12 @@ async def enroll(image: UploadFile = File(...)):
     extracted video frame and accumulate multiple embeddings per student via the
     /enroll-frame endpoint on the Spring backend.
     """
+    active_detector = detector or detector_form or DETECTOR
     if not FACENET_AVAILABLE:
         raise HTTPException(status_code=500, detail="FaceNet (facenet-pytorch) not available")
     try:
         image_array = _load_rgb_image(await image.read())
-        face_locations = _detect_faces_haar(image_array)
+        face_locations = _detect_faces(image_array, active_detector)
         face_count = len(face_locations)
         if face_count == 0:
             raise HTTPException(status_code=400, detail="No face detected in the image")
@@ -712,7 +829,7 @@ async def enroll(image: UploadFile = File(...)):
         return EmbeddingResponse(
             embedding=embedding.tolist(),
             face_count=face_count,
-            message="FaceNet 128-d embedding generated successfully (paper-aligned pipeline)",
+            message=f"FaceNet 128-d embedding generated successfully ({active_detector} detector)",
         )
     except HTTPException:
         raise
@@ -729,14 +846,17 @@ async def recognize(
     enrolled_students: str = Form(...),
     distance_threshold: float = Form(MANHATTAN_THRESHOLD, ge=0.0, le=200.0),
     edge_crop: bool = Form(False),   # kept for API compat; crops always used now
+    detector: Optional[str] = Query(None),
+    detector_form: Optional[str] = Form(None),
 ):
     """
-    Haar Cascade detection → FaceNet embedding → Manhattan distance matching.
+    Detector (Haar / YuNet / MTCNN) → FaceNet embedding → Manhattan distance matching.
 
     Results include `manhattan_distance` and `confidence_label` (HIGH/MEDIUM/LOW).
     Faces with distance >= threshold are flagged as LOW_CONFIDENCE and routed to the
     faculty review queue — never silently accepted or silently rejected.
     """
+    active_detector = detector or detector_form or DETECTOR
     t_start = time.perf_counter()
     try:
         try:
@@ -750,9 +870,9 @@ async def recognize(
         image_array = _load_rgb_image(raw_bytes)
         t_decode_end = time.perf_counter()
 
-        # Haar Cascade detection (paper §2.1, scaleFactor=1.2)
+        # Face detection
         t_detect_start = time.perf_counter()
-        face_locations = _detect_faces_haar(image_array)
+        face_locations = _detect_faces(image_array, active_detector)
         t_detect_end = time.perf_counter()
 
         # Quality assessment
@@ -773,6 +893,9 @@ async def recognize(
         valid_students = [s for s in students if _student_embeddings(s)]
         assignment_results = _manhattan_matching(face_embeddings, valid_students, distance_threshold)
         t_match_end = time.perf_counter()
+
+        det_label = "haar_cascade" if active_detector == "haar" else active_detector
+        det_scale = f"scaleFactor={HAAR_SCALE_FACTOR}" if active_detector == "haar" else active_detector
 
         matches: list[FaceMatch] = []
         for face_idx, result in enumerate(assignment_results):
@@ -804,8 +927,8 @@ async def recognize(
                 box=[top, right, bottom, left],
                 face_width_px=max(0, right - left),
                 face_height_px=max(0, bottom - top),
-                detector="haar_cascade",
-                detector_scale=f"scaleFactor={HAAR_SCALE_FACTOR}",
+                detector=det_label,
+                detector_scale=det_scale,
                 second_best_distance=result.get("second_best_distance"),
                 rejection_reason=_rejection_reason(rec_state, face_warnings, has_candidate),
                 image_width_px=int(image_array.shape[1]),
@@ -824,10 +947,10 @@ async def recognize(
 
         logger.info(
             "Recognized %d face(s) vs %d student(s) in %.1f ms "
-            "(detect: %.1f ms, embed: %.1f ms, match: %.1f ms) — threshold=%.1f (Manhattan)",
+            "(detect: %.1f ms, embed: %.1f ms, match: %.1f ms, detector=%s) — threshold=%.1f (Manhattan)",
             len(matches), len(valid_students), timings.total_ms,
             timings.detection_ms, timings.embedding_ms, timings.matching_ms,
-            distance_threshold,
+            active_detector, distance_threshold,
         )
 
         return RecognitionResponse(
@@ -835,8 +958,8 @@ async def recognize(
             matches=matches,
             quality=quality,
             message=(
-                f"Recognized via Haar+FaceNet+Manhattan pipeline "
-                f"(Alniemi 2023, scaleFactor={HAAR_SCALE_FACTOR}, threshold={distance_threshold})"
+                f"Recognized via {det_label}+FaceNet+Manhattan pipeline "
+                f"(threshold={distance_threshold})"
             ),
             timings=timings,
         )
@@ -865,7 +988,7 @@ def _recognize_message(
 ) -> dict:
     t_start = time.perf_counter()
     image_array = _load_rgb_image(image_bytes)
-    face_locations = _detect_faces_haar(image_array)
+    face_locations = _detect_faces(image_array, DETECTOR)
     quality = _quality_metrics(image_array, face_locations)
     face_embeddings = _encode_detected_faces(image_array, face_locations)
 

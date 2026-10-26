@@ -91,6 +91,7 @@ def load_or_build_embeddings(detector, split_name, manifest, max_identities=100)
                 with open(img_path, "rb") as f:
                     resp = requests.post(
                         f"{FACE_SERVICE}/enroll",
+                        params={"detector": detector},
                         files={"image": (img_name, f, "image/jpeg")},
                         timeout=10
                     )

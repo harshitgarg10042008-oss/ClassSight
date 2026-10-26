@@ -60,7 +60,7 @@
     "mean_false_positives": 0.0
   },
   "benchmark_d": {
-    "median_ms": 35.7,
-    "p95_ms": 57.4
+    "median_ms": 44.5,
+    "p95_ms": 74.7
   }
 }

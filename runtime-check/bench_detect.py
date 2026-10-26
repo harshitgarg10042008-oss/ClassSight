@@ -46,7 +46,7 @@ def get_split_images(split_name, manifest, n_needed=100):
     return images
 
 
-def run_benchmark_a(images, widths=[40, 60, 80, 120, 160]):
+def run_benchmark_a(images, detector, widths=[40, 60, 80, 120, 160]):
     print("\n--- Benchmark (a): Single Faces on 1920x1080 Canvas (100 faces per size) ---")
     results = {}
     for w in widths:
@@ -68,6 +68,7 @@ def run_benchmark_a(images, widths=[40, 60, 80, 120, 160]):
             try:
                 resp = requests.post(
                     f"{FACE_SERVICE}/detect-faces",
+                    params={"detector": detector},
                     files={"image": (f"tile_{w}_{i}.jpg", buf.getvalue(), "image/jpeg")},
                     timeout=15
                 )
@@ -100,7 +101,7 @@ def run_benchmark_a(images, widths=[40, 60, 80, 120, 160]):
     return results
 
 
-def run_benchmark_b(images):
+def run_benchmark_b(images, detector):
     print("\n--- Benchmark (b): 30-Face Classroom Composites (1920x1080) ---")
     if len(images) < 30:
         raise ValueError(f"Need 30 images, got {len(images)}")
@@ -147,6 +148,7 @@ def run_benchmark_b(images):
 
         resp = requests.post(
             f"{FACE_SERVICE}/detect-faces",
+            params={"detector": detector},
             files={"image": (f"composite_{mode_name}.jpg", buf.getvalue(), "image/jpeg")},
             timeout=15
         )
@@ -165,7 +167,7 @@ def run_benchmark_b(images):
     return results
 
 
-def run_benchmark_c(n_images=50):
+def run_benchmark_c(detector, n_images=50):
     print(f"\n--- Benchmark (c): False Positives on {n_images} Face-Free 1920x1080 Images ---")
     random.seed(42)
     np.random.seed(42)
@@ -210,6 +212,7 @@ def run_benchmark_c(n_images=50):
         try:
             resp = requests.post(
                 f"{FACE_SERVICE}/detect-faces",
+                params={"detector": detector},
                 files={"image": (f"face_free_{i}.jpg", buf.getvalue(), "image/jpeg")},
                 timeout=15
             )
@@ -225,7 +228,7 @@ def run_benchmark_c(n_images=50):
     return {"total_false_positives": total_false_positives, "n_images": n_images, "mean_false_positives": round(mean_fp, 4)}
 
 
-def run_benchmark_d(images, n_trials=20):
+def run_benchmark_d(images, detector, n_trials=20):
     print(f"\n--- Benchmark (d): Detector Latency on 1920x1080 Image (median of {n_trials}) ---")
     # Build a standard 1920x1080 test image (composite)
     canvas = Image.new("RGB", (1920, 1080), color=(220, 222, 225))
@@ -242,6 +245,7 @@ def run_benchmark_d(images, n_trials=20):
         t0 = time.perf_counter()
         resp = requests.post(
             f"{FACE_SERVICE}/detect-faces",
+            params={"detector": detector},
             files={"image": ("timing_test.jpg", data, "image/jpeg")},
             timeout=15
         )
@@ -267,10 +271,10 @@ def main():
     images = get_split_images(args.split, manifest, n_needed=120)
 
     print(f"=== Detection Benchmarks for Detector '{args.detector.upper()}' on {args.split.upper()} ===")
-    res_a = run_benchmark_a(images)
-    res_b = run_benchmark_b(images)
-    res_c = run_benchmark_c()
-    res_d = run_benchmark_d(images)
+    res_a = run_benchmark_a(images, args.detector)
+    res_b = run_benchmark_b(images, args.detector)
+    res_c = run_benchmark_c(args.detector)
+    res_d = run_benchmark_d(images, args.detector)
 
     results = {
         "detector": args.detector,

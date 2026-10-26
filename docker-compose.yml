@@ -112,7 +112,10 @@ services:
       QUALITY_MIN_LIVENESS_TEXTURE: ${QUALITY_MIN_LIVENESS_TEXTURE:-2.5}
       QUALITY_MIN_FACE_SIZE_RATIO: ${QUALITY_MIN_FACE_SIZE_RATIO:-0.0005}
       RECOGNITION_MAX_DIMENSION: ${RECOGNITION_MAX_DIMENSION:-1600}
-      # Paper pipeline — Alniemi 2023
+      # Detector: haar | yunet | mtcnn (default: mtcnn)
+      # Selected by benchmark: MTCNN mean detection rate 60/80/120px = 100%,
+      # YuNet = 99%, Haar = 45%. All detectors pass FP<=0.1 and latency<=1500ms.
+      DETECTOR: ${DETECTOR:-mtcnn}
       # Haar Cascade: scaleFactor=1.2 matches the paper's multi-scale search pyramid
       HAAR_SCALE_FACTOR: ${HAAR_SCALE_FACTOR:-1.2}
       HAAR_MIN_NEIGHBORS: ${HAAR_MIN_NEIGHBORS:-5}
