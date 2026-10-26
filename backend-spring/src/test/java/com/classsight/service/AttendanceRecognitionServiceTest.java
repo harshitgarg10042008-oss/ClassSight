@@ -171,12 +171,87 @@ class AttendanceRecognitionServiceTest {
         assertTrue(result.getRecognitionDiagnostics().contains("shot_index"));
     }
 
+    @Test
+    void testParseSecondBestDistanceHandlesNullAsInfinity() {
+        assertEquals(Double.POSITIVE_INFINITY, AttendanceRecognitionService.parseSecondBestDistance(null));
+        assertEquals(Double.POSITIVE_INFINITY, AttendanceRecognitionService.parseSecondBestDistance("not-a-number"));
+        assertEquals(5.25, AttendanceRecognitionService.parseSecondBestDistance(5.25), 0.001);
+    }
+
+    @Test
+    void testTierMappingAutoVsReview() {
+        ClassSection section = new ClassSection();
+        section.setId(20L);
+        section.setName("TEST-SEC-TIERS");
+
+        List<Student> students = new ArrayList<>();
+        Student s1 = new Student();
+        s1.setId(101L);
+        s1.setRollNumber("S101");
+        s1.setActive(true);
+        s1.setClassSection(section);
+        s1.setFaceEmbedding(java.util.Collections.nCopies(128, 0.1));
+        students.add(s1);
+
+        Student s2 = new Student();
+        s2.setId(102L);
+        s2.setRollNumber("S102");
+        s2.setActive(true);
+        s2.setClassSection(section);
+        s2.setFaceEmbedding(java.util.Collections.nCopies(128, 0.1));
+        students.add(s2);
+
+        AttendanceSession session = new AttendanceSession();
+        session.setId(200L);
+        session.setClassSection(section);
+        session.setStatus(AttendanceSession.SessionStatus.CAPTURED);
+
+        when(sessionRepository.findById(200L)).thenReturn(Optional.of(session));
+        when(sessionRepository.save(any(AttendanceSession.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(studentRepository.findByClassSectionAndActiveTrue(section)).thenReturn(students);
+
+        // s1 is AUTO tier, s2 is REVIEW tier
+        Map<String, Object> match1 = new HashMap<>();
+        match1.put("student_id", 101L);
+        match1.put("confidence_score", 0.95);
+        match1.put("distance", 5.5);
+        match1.put("second_best_distance", null); // null parsed as Infinity
+        match1.put("margin", null);
+        match1.put("tier", "AUTO");
+        match1.put("matched", true);
+        match1.put("recognition_state", "RECOGNIZED");
+
+        Map<String, Object> match2 = new HashMap<>();
+        match2.put("student_id", 102L);
+        match2.put("confidence_score", 0.70);
+        match2.put("distance", 8.8);
+        match2.put("second_best_distance", 9.1);
+        match2.put("margin", 0.3);
+        match2.put("tier", "REVIEW");
+        match2.put("matched", false);
+        match2.put("recognition_state", "REVIEW_REQUIRED");
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("matches", List.of(match1, match2));
+        payload.put("quality", Map.of("quality_passed", true, "blur_score", 100.0, "brightness_mean", 100.0, "liveness_score", 0.9, "warnings", List.of()));
+
+        AttendanceSession processed = service.processRecognitionResult(200L, payload);
+
+        AttendanceRecord r1 = processed.getAttendanceRecords().stream().filter(r -> r.getStudent().getId().equals(101L)).findFirst().orElseThrow();
+        assertEquals(AttendanceRecord.AttendanceStatus.PRESENT, r1.getStatus());
+        assertEquals(AttendanceRecord.ReviewStatus.APPROVED, r1.getReviewStatus());
+        assertEquals("RECOGNIZED", r1.getRecognitionState());
+
+        AttendanceRecord r2 = processed.getAttendanceRecords().stream().filter(r -> r.getStudent().getId().equals(102L)).findFirst().orElseThrow();
+        assertEquals(AttendanceRecord.AttendanceStatus.REVIEW, r2.getStatus());
+        assertEquals(AttendanceRecord.ReviewStatus.PENDING, r2.getReviewStatus());
+        assertEquals("ABSENT_CANDIDATE", r2.getRecognitionState());
+    }
+
     private Map<String,Object> recognitionPayload(List<Map<String,Object>> matches) {
         return Map.of("matches",matches,"quality",Map.of("quality_passed",true,"blur_score",120.0,"brightness_mean",110.0,"liveness_score",.9,"warnings",List.of()));
     }
     private Map<String,Object> testMatch(Long id,double confidence,double distance) {
         Map<String,Object> match=new HashMap<>();match.put("student_id",id);match.put("roll_number","R"+id);match.put("confidence_score",confidence);match.put("distance",distance);match.put("matched",true);match.put("face_size_ratio",.05);match.put("recognition_state","RECOGNIZED");match.put("quality_warnings",List.of());return match;
     }
-
-
 }

@@ -118,12 +118,12 @@ services:
       HAAR_MIN_NEIGHBORS: ${HAAR_MIN_NEIGHBORS:-5}
       HAAR_MIN_SIZE_PX: ${HAAR_MIN_SIZE_PX:-30}
       # Manhattan (L1) distance threshold for FaceNet 128-d embeddings.
-      # Tuned range: ~10 (high confidence) to ~25 (low confidence) for close-range faces.
-      # NOTE: accuracy is inversely proportional to camera-to-subject distance (paper §4.2).
-      # For wide-angle CCTV, expect worse results than the paper's 97.5% close-range number.
-      MANHATTAN_THRESHOLD: ${MANHATTAN_THRESHOLD:-15.0}
-      CONF_HIGH_THRESHOLD: ${CONF_HIGH_THRESHOLD:-10.0}
-      CONF_MED_THRESHOLD: ${CONF_MED_THRESHOLD:-15.0}
+      # Calibrated: T_review (FAR 1%) = 9.74, T_auto = 8.0, Margin M = 0.5
+      MANHATTAN_THRESHOLD: ${MANHATTAN_THRESHOLD:-9.74}
+      MANHATTAN_AUTO_ACCEPT: ${MANHATTAN_AUTO_ACCEPT:-8.0}
+      MATCH_MARGIN: ${MATCH_MARGIN:-0.5}
+      CONF_HIGH_THRESHOLD: ${CONF_HIGH_THRESHOLD:-8.0}
+      CONF_MED_THRESHOLD: ${CONF_MED_THRESHOLD:-9.74}
       RABBITMQ_WORKER_ENABLED: ${RABBITMQ_WORKER_ENABLED:-false}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
@@ -165,7 +165,7 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-classsight-captures}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
       # Manhattan L1 threshold — must match MANHATTAN_THRESHOLD in face-service
-      ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-15.0}
+      ATTENDANCE_RECOGNITION_THRESHOLD: ${ATTENDANCE_RECOGNITION_THRESHOLD:-9.74}
       RECOGNITION_MODE: ${RECOGNITION_MODE:-sync}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672

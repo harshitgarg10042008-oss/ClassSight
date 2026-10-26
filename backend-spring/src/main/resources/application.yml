@@ -44,7 +44,7 @@ privacy:
 
 attendance:
   recognition:
-    threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:0.6}
+    threshold: ${ATTENDANCE_RECOGNITION_THRESHOLD:9.74}
     mode: ${RECOGNITION_MODE:sync}
     edge-crop-enabled: ${EDGE_CROP_ENABLED:false}
   capture:

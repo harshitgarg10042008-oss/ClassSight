@@ -107,9 +107,14 @@ HAAR_MIN_SIZE_PX = int(os.getenv("HAAR_MIN_SIZE_PX", "30"))
 FACENET_INPUT_SIZE = 160
 
 # Manhattan distance threshold.  The paper reports results using L1.
-# Tuned range: ~10–25 for FaceNet(vggface2) 128-d embeddings on well-lit close-range faces.
-# Default 15.0 is a conservative middle value; expose via env so it can be tuned live.
-MANHATTAN_THRESHOLD = float(os.getenv("MANHATTAN_THRESHOLD", "15.0"))
+# Manhattan distance threshold (T_review, pair FAR=1% baseline ~9.74)
+MANHATTAN_THRESHOLD = float(os.getenv("MANHATTAN_THRESHOLD", "9.74"))
+
+# Manhattan auto-accept threshold (T_auto, calibrated safe threshold)
+MANHATTAN_AUTO_ACCEPT = float(os.getenv("MANHATTAN_AUTO_ACCEPT", "8.0"))
+
+# Margin between best and second-best candidate (M)
+MATCH_MARGIN = float(os.getenv("MATCH_MARGIN", "0.5"))
 
 # Confidence labels derived from Manhattan distance
 CONF_HIGH_THRESHOLD = float(os.getenv("CONF_HIGH_THRESHOLD", "10.0"))   # D < 10 → HIGH
@@ -153,6 +158,7 @@ class FaceMatch(BaseModel):
     face_size_ratio: Optional[float] = None
     quality_warnings: list[str] = []
     recognition_state: str = "UNKNOWN"
+    tier: str = "UNKNOWN"                        # AUTO / REVIEW / UNKNOWN
     margin: Optional[float] = None
     box: list[int] = Field(default_factory=list)
     face_width_px: int = 0
@@ -232,6 +238,8 @@ def health():
         "distance_metric": "manhattan_L1",
         "haar_scale_factor": HAAR_SCALE_FACTOR,
         "manhattan_threshold": MANHATTAN_THRESHOLD,
+        "manhattan_auto_accept": MANHATTAN_AUTO_ACCEPT,
+        "match_margin": MATCH_MARGIN,
         "facenet_available": FACENET_AVAILABLE,
         "cv2_available": CV2_AVAILABLE,
     }
@@ -504,6 +512,7 @@ def _manhattan_matching(
         "student_id": None, "roll_number": None, "distance": None,
         "manhattan_distance": None, "confidence_score": 0.0,
         "matched": False, "confidence_label": "UNKNOWN",
+        "tier": "UNKNOWN", "recognition_state": "UNKNOWN",
         "margin": None, "second_best_distance": None,
     }
     if M == 0 or K == 0:
@@ -564,18 +573,36 @@ def _manhattan_matching(
         student = valid_students[si]
         d1 = float(cost_matrix[face_idx, si])
 
-        # Top-2 margin
+        # Top-2 margin: if fewer than 2 enrolled students, d2 does not exist (null in JSON, Infinity backend)
         other_cols = [c for c in range(K) if c != si]
         if other_cols:
             d2 = float(np.min(cost_matrix[face_idx, other_cols]))
             margin = float(abs(d2 - d1))
         else:
             d2 = None
-            margin = 1e9
+            margin = None
 
-        matched = d1 < distance_threshold
+        # Tiered Decision:
+        # UNKNOWN if d1 > T_review (distance_threshold)
+        # REVIEW if (d1 > MANHATTAN_AUTO_ACCEPT) or (d2 is not None and (d2 - d1) < MATCH_MARGIN)
+        # AUTO if (d1 <= MANHATTAN_AUTO_ACCEPT) and (d2 is None or (d2 - d1) >= MATCH_MARGIN)
+        if d1 > distance_threshold:
+            tier = "UNKNOWN"
+            matched = False
+            conf_label = "LOW"
+            rec_state = "UNKNOWN"
+        elif (d1 > MANHATTAN_AUTO_ACCEPT) or (d2 is not None and (d2 - d1) < MATCH_MARGIN):
+            tier = "REVIEW"
+            matched = False
+            conf_label = "MEDIUM"
+            rec_state = "REVIEW_REQUIRED"
+        else:
+            tier = "AUTO"
+            matched = True
+            conf_label = "HIGH"
+            rec_state = "RECOGNIZED"
+
         conf_score = _confidence_score_from_manhattan(d1, distance_threshold)
-        conf_label = _confidence_label(d1) if matched else "LOW"
 
         results.append({
             "student_id": student.student_id,
@@ -585,7 +612,9 @@ def _manhattan_matching(
             "confidence_score": conf_score,
             "matched": matched,
             "confidence_label": conf_label,
-            "margin": round(margin, 6) if d2 is not None else None,
+            "tier": tier,
+            "recognition_state": rec_state,
+            "margin": round(margin, 6) if margin is not None else None,
             "second_best_distance": round(d2, 6) if d2 is not None else None,
         })
 
@@ -753,7 +782,10 @@ async def recognize(
 
             has_candidate = result["student_id"] is not None
             matched = result["matched"]
-            rec_state = _recognition_state(matched, face_warnings, has_candidate)
+            rec_state = result.get("recognition_state") or _recognition_state(matched, face_warnings, has_candidate)
+            if face_warnings:
+                rec_state = "RECAPTURE_REQUIRED"
+                matched = False
 
             matches.append(FaceMatch(
                 face_index=face_idx,
@@ -764,6 +796,7 @@ async def recognize(
                 manhattan_distance=result["manhattan_distance"],
                 confidence_label=result.get("confidence_label", "UNKNOWN"),
                 matched=matched,
+                tier=result.get("tier", "UNKNOWN"),
                 face_size_ratio=face_size_ratio,
                 quality_warnings=face_warnings,
                 recognition_state=rec_state,
@@ -850,7 +883,10 @@ def _recognize_message(
         face_size_ratio = round(max(0, bottom - top) * max(0, right - left) / float(image_array.shape[0] * image_array.shape[1]), 6)
         has_candidate = result["student_id"] is not None
         matched = result["matched"]
-        rec_state = _recognition_state(matched, face_warnings, has_candidate)
+        rec_state = result.get("recognition_state") or _recognition_state(matched, face_warnings, has_candidate)
+        if face_warnings:
+            rec_state = "RECAPTURE_REQUIRED"
+            matched = False
         matches.append(FaceMatch(
             face_index=face_idx,
             student_id=result["student_id"],
@@ -860,6 +896,7 @@ def _recognize_message(
             manhattan_distance=result["manhattan_distance"],
             confidence_label=result.get("confidence_label", "UNKNOWN"),
             matched=matched,
+            tier=result.get("tier", "UNKNOWN"),
             face_size_ratio=face_size_ratio,
             quality_warnings=face_warnings,
             recognition_state=rec_state,
