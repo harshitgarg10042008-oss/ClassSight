@@ -17,6 +17,5 @@ exports/*.csv
 runtime-check/backups/
 .work/
 FINAL_RESULT.md
-FINAL_WINDUP.md
 tools/eval/out/
 tests/e2e/screenshots/
