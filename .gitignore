@@ -14,3 +14,4 @@ frontend-next/.next/
 # Runtime capture frames and generated local ERP exports
 data/captures/camera-frames/
 exports/*.csv
+runtime-check/backups/
