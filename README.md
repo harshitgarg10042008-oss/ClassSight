@@ -287,7 +287,7 @@ Key environment variables configured in `.env` / Docker Compose:
 | `TILED_DETECTION_ENABLED` | `true` | Split high-res classroom photos into overlapping tiles for fast parallel detection |
 | `TILED_DETECTION_MIN_DIM` | `1000` | Minimum dimension triggering tiled sub-crop detection |
 | `TILED_OVERLAP` | `0.15` | Overlap percentage between adjacent detection quadrants |
-| `DETECTOR_BACKEND` | `dlib_hog` | Pluggable face detector backend (`dlib_hog`, `yunet`, `dlib_cnn`) |
+| `DETECTOR` | `mtcnn` | Pluggable face detector backend (`haar`, `yunet`, `mtcnn`) |
 | `MATCH_MARGIN_THRESHOLD` | `0.05` | Minimum margin delta between top-1 and top-2 candidates to prevent ambiguity |
 | `CAPTURE_GRACE_MINUTES` | `15` | Grace window in minutes after period end time allowing attendance capture |
 | `NOTIFICATIONS_ENABLED` | `false` | Pluggable absence and defaulter alert notification service toggle |

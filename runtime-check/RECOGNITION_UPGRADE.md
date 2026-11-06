@@ -58,7 +58,7 @@ MTCNN was selected by the fixed rule (highest mean rate, FP <=0.1, latency <=150
 * `a22adb3` — tiered AUTO/REVIEW/UNKNOWN decision and backend mapping.
 * `8e75c47` — detector plumbing and MTCNN selection.
 * `31eb3eb` — MTCNN recalibration, API verification, and face-service tests.
-* Current change — Hungarian assignment, current environment defaults, stale documentation cleanup, and this report.
+* `a2efb98` — Hungarian assignment, current environment defaults, stale documentation cleanup, and this report.
 
 Rollback to the pre-upgrade tag `before-recognition-upgrade` (or select the previous commit), and set:
 
