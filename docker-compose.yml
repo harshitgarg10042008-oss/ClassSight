@@ -6,6 +6,9 @@ services:
     build:
       context: ./frontend-next
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_DEMO_DATA: ${NEXT_PUBLIC_DEMO_DATA:-false}
+        NEXT_PUBLIC_DEMO_PLAN: ${NEXT_PUBLIC_DEMO_PLAN:-essential}
     networks:
       - classsight-net
     ports:
@@ -13,6 +16,8 @@ services:
     environment:
       # This URL is used by the browser, so it must be reachable from Windows host
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      NEXT_PUBLIC_DEMO_DATA: ${NEXT_PUBLIC_DEMO_DATA:-false}
+      NEXT_PUBLIC_DEMO_PLAN: ${NEXT_PUBLIC_DEMO_PLAN:-essential}
     depends_on:
       backend-spring:
         condition: service_healthy

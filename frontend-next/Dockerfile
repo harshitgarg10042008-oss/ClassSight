@@ -7,6 +7,10 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_DEMO_DATA=false
+ARG NEXT_PUBLIC_DEMO_PLAN=essential
+ENV NEXT_PUBLIC_DEMO_DATA=$NEXT_PUBLIC_DEMO_DATA
+ENV NEXT_PUBLIC_DEMO_PLAN=$NEXT_PUBLIC_DEMO_PLAN
 RUN npm run build
 
 FROM node:22-alpine AS runner
