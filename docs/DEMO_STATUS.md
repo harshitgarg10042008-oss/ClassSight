@@ -21,7 +21,7 @@ The Docker Compose stack was rebuilt and started successfully on `main`.
 | MinIO | Healthy |
 | FastAPI face service | Healthy |
 | Spring Boot backend | Healthy; `/actuator/health` returned `{"status":"UP"}` |
-| Next.js frontend | Healthy on `http://localhost:3000` |
+| Next.js frontend | Marketing at `http://localhost:3000`; wired workspace at `http://localhost:3000/app` |
 
 ### Baseline checks
 

@@ -28,7 +28,8 @@ def up():
     for url in ("http://localhost:8000/health", "http://localhost:8080/actuator/health"):
         print(f"Health endpoint: {url}")
     print("Demo login: teacher / teacher123")
-    print("Frontend: http://localhost:3000")
+    print("Frontend marketing: http://localhost:3000")
+    print("Frontend workspace: http://localhost:3000/app")
 
 
 def reset():

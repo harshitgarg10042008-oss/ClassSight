@@ -18,5 +18,6 @@ runtime-check/backups/
 .work/
 FINAL_RESULT.md
 FINAL_WINDUP.md
+FINAL_UI.md
 tools/eval/out/
 tests/e2e/screenshots/

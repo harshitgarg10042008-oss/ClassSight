@@ -354,7 +354,7 @@ cd ..
 
 ### 3. Teacher demo
 
-Open `http://localhost:3000` and sign in with `teacher/teacher123`. For the
+Open `http://localhost:3000/app` and sign in with `teacher/teacher123`. For the
 complete ten-minute walkthrough, fallback plan, lighting guidance, and reset
 command, see [DEMO_GUIDE.md](DEMO_GUIDE.md). The repeatable reset command is:
 
@@ -380,7 +380,7 @@ Copy-Item .env.example .env
 python scripts/dev.py up
 ```
 
-Open `http://localhost:3000`. Development login is `teacher / teacher123`; it is not a production credential.
+Open `http://localhost:3000/app`. Development login is `teacher / teacher123`; it is not a production credential.
 
 Run the verified suites:
 

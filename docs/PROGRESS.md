@@ -81,7 +81,7 @@ This is an append-only implementation log for `docs/BUILD_PLAN.md`.
 - Rebuilt the face service without cache after confirming its current
   requirements include SciPy; all Compose services are now healthy.
 - Verified `http://localhost:8000/health`, `http://localhost:8080/actuator/health`,
-  and the frontend at `http://localhost:3000`.
+  and the frontend workspace at `http://localhost:3000/app`.
 - `frontend-next` TypeScript validation passes with `npm run typecheck`.
 - T-001 is DONE. Backend and Python test execution remain blocked locally
   because Maven and pytest are not installed/on PATH.

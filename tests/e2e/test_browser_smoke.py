@@ -15,7 +15,7 @@ def test_teacher_login_and_dashboard():
         page = context.new_page()
         errors = []
         page.on("console", lambda message: errors.append(message.text) if message.type == "error" else None)
-        page.goto(os.getenv("CLASSSIGHT_FRONTEND_URL", "http://localhost:3000"), wait_until="networkidle")
+        page.goto(os.getenv("CLASSSIGHT_FRONTEND_URL", "http://localhost:3000/app"), wait_until="networkidle")
         page.locator("input:not([type]), input[type='text']").first.fill("teacher")
         page.locator("input[type='password']").fill("teacher123")
         with page.expect_response(lambda response: response.url.endswith("/auth/login"), timeout=30000) as login_response:

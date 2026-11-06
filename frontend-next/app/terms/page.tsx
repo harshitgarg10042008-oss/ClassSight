@@ -14,7 +14,7 @@ export default function TermsPage() {
         <p>Only upload classroom images when the institution has the required permission and consent. Do not upload unrelated people, sensitive images, or content that you are not authorized to process.</p>
         <h2>Availability</h2>
         <p>Recognition can be affected by lighting, distance, pose, and image quality. Always provide a manual review path for students who are not confidently recognized.</p>
-        <p className="legal-links"><Link href="/privacy">Privacy notice</Link><Link href="/">Back to sign in</Link></p>
+        <p className="legal-links"><Link href="/privacy">Privacy notice</Link><Link href="/app">Back to workspace</Link></p>
       </article>
     </main>
   );

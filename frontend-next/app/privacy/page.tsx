@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <p>The system stores student identifiers, attendance results, and encrypted application data according to the institution&apos;s retention policy. Face embeddings are used for matching and are not a replacement for a student&apos;s name or identity record.</p>
         <h2>Access and deletion</h2>
         <p>Access is restricted by account role. Ask your institution&apos;s administrator to correct, export, or delete biometric enrollment and attendance data.</p>
-        <p className="legal-links"><Link href="/terms">Terms of use</Link><Link href="/">Back to sign in</Link></p>
+        <p className="legal-links"><Link href="/terms">Terms of use</Link><Link href="/app">Back to workspace</Link></p>
       </article>
     </main>
   );

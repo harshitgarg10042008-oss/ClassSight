@@ -3,8 +3,7 @@
 import {
   ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState,
 } from 'react';
-import './globals.css';
-import CameraCapture from '../components/CameraCapture';
+import CameraCapture from '../../components/CameraCapture';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Room = { id: number; name: string; building?: string; capacity?: number; active: boolean };

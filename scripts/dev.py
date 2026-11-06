@@ -19,7 +19,8 @@ def compose(*args):
 
 def up():
     compose("up", "--build", "-d")
-    print("Frontend: http://localhost:3000")
+    print("Frontend marketing: http://localhost:3000")
+    print("Frontend workspace: http://localhost:3000/app")
     print("Backend health: http://localhost:8080/actuator/health")
     print("Face-service health: http://localhost:8000/health")
     print("Development login: teacher / teacher123")

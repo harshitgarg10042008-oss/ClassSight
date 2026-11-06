@@ -10,9 +10,9 @@
 |---|-------|-----------------|
 | 1 | Docker Desktop running | Taskbar tray — whale icon must be green |
 | 2 | All services healthy | `docker compose up -d --build; docker compose ps` |
-| 3 | DB seeded (Room 101, CS101) | Log in at `http://localhost:3000` → "Select" step shows Room 101 |
+| 3 | DB seeded (Room 101, CS101) | Log in at `http://localhost:3000/app` → "Select" step shows Room 101 |
 | 4 | At least 5 students enrolled | Enrollment tab → roster shows ≥ 5 rows with "128-d Registered" |
-| 5 | Frontend accessible | `http://localhost:3000` loads ClassSight page |
+| 5 | Frontend accessible | `http://localhost:3000/app` loads the wired ClassSight workspace |
 | 6 | Take a test attendance photo | Go through the full flow once — verify you see PRESENT/ABSENT |
 
 ---
@@ -33,7 +33,7 @@ docker compose ps
 # Start the Next.js frontend (separate terminal)
 cd frontend-next
 npm run dev
-# Open: http://localhost:3000
+# Open: http://localhost:3000/app
 ```
 
 ---
@@ -53,7 +53,7 @@ npm run dev
 ## 3 · Comprehensive Live Demo Script (4 Scenarios)
 
 ### Scenario 1: Full-Class Attendance (All Students Present)
-1. Log in at `http://localhost:3000` as `teacher` (`teacher123`).
+1. Log in at `http://localhost:3000/app` as `teacher` (`teacher123`).
 2. Navigate to **"Take Attendance"**.
 3. Point webcam to full group of students. Click **"Snap Attendance Photo"** → **"Submit Capture & Recognize"**.
 4. **Observe:**
@@ -131,7 +131,7 @@ the 1024px safety resize. No 30-face before/after benchmark has been claimed.
 
 | Service | URL |
 |---------|-----|
-| **Frontend Web App** | http://localhost:3000 |
+| **Frontend Web App** | http://localhost:3000/app |
 | **Spring Boot API** | http://localhost:8080 |
 | **API Health** | http://localhost:8080/health |
 | **FastAPI Face Engine** | http://localhost:8000/health |

@@ -208,7 +208,7 @@ Open these URLs in a browser:
 
 | URL | Use |
 |---|---|
-| [http://localhost:3000](http://localhost:3000) | New Next.js faculty flow |
+| [http://localhost:3000/app](http://localhost:3000/app) | Wired Next.js faculty workspace |
 | [http://localhost:8080/login](http://localhost:8080/login) | Existing Thymeleaf login |
 | [http://localhost:9001](http://localhost:9001) | MinIO console |
 | [http://localhost:15672](http://localhost:15672) | RabbitMQ management UI |
@@ -226,7 +226,7 @@ MinIO console credentials are `minioadmin / minioadmin`. RabbitMQ management cre
 
 ## 8. Test the new Next.js faculty flow
 
-Open [http://localhost:3000](http://localhost:3000), then:
+Open [http://localhost:3000/app](http://localhost:3000/app), then:
 
 1. Sign in with `teacher` and `teacher123`.
 2. Select a room.
