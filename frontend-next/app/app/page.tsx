@@ -123,6 +123,7 @@ export default function ClassSightApp() {
 
   function onLoginSuccess(tok: string, name: string, role: string) {
     setToken(tok); setFullName(name); setRole(role);
+    window.localStorage.setItem('classsight_token', tok);
     if (role === 'ADMIN') setPage('admin');
     else if (role === 'HOD') setPage('hod');
     else if (role === 'STUDENT') setPage('student');
@@ -199,6 +200,7 @@ export default function ClassSightApp() {
 
   return (
     <div className="app-layout">
+      <h1 className="sr-only">Faculty attendance workspace</h1>
       <nav className="sidebar">
         <div className="sidebar-logo">
           <div className="logo-mark">
@@ -219,7 +221,7 @@ export default function ClassSightApp() {
           ))}
         </div>
         <div className="sidebar-footer">
-          <button onClick={() => { setToken(''); setFullName(''); setRole(''); }}>🚪 Sign Out</button>
+          <button onClick={() => { setToken(''); setFullName(''); setRole(''); window.localStorage.removeItem('classsight_token'); }}>🚪 Sign Out</button>
         </div>
       </nav>
 

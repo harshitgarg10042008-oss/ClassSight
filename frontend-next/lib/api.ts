@@ -105,14 +105,16 @@ function normalizedApiError(status:number, raw:string): string {
 
 // ─── API Client ────────────────────────────────────────────────────────────────
 export class ApiClient {
-  private token: string = '';
+  private token: string = typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_token') ?? '';
 
   setToken(token: string) {
     this.token = token;
+    if (typeof window !== 'undefined') window.localStorage.setItem('classsight_token', token);
   }
 
   clearToken() {
     this.token = '';
+    if (typeof window !== 'undefined') window.localStorage.removeItem('classsight_token');
   }
 
   async refresh(): Promise<AuthResponse> {

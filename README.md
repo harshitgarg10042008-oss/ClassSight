@@ -381,6 +381,7 @@ python scripts/dev.py up
 ```
 
 Open `http://localhost:3000/app`. Development login is `teacher / teacher123`; it is not a production credential.
+The public product site is at `http://localhost:3000/`, pricing is at `/pricing`, and demo-only `/admin` and `/owner` panels require `NEXT_PUBLIC_DEMO_DATA=true`.
 
 Run the verified suites:
 

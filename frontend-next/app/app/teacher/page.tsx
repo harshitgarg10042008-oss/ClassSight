@@ -128,6 +128,7 @@ export default function TeacherPage() {
 
   return (
     <PageLayout pageId="teacher">
+      <h1 className="sr-only">Teacher workspace</h1>
       <div>
         <div className="progress-steps">
           {(['select', 'capture', 'review'] as const).map((s, i) => (

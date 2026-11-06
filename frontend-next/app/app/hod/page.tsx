@@ -19,6 +19,7 @@ export default function HodPage() {
 
   return (
     <PageLayout pageId="hod">
+      <h1 className="sr-only">HOD workspace</h1>
       <div className="section-card">
         <div className="section-head">
           <div>

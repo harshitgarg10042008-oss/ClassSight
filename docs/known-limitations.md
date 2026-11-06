@@ -12,3 +12,11 @@
 - Next.js 14.2.12 has known vulnerabilities and is intentionally not upgraded in this release.
 - The multi-shot finalise path can finalize a clean accumulator by explicit faculty action; single-capture attendance requires the review call.
 - RTSP vendor compatibility, ONVIF discovery, network outage recovery, and production ERP integration are not verified.
+## Frontend Prompt 8 limitations
+
+- Admin and owner panels are static demo surfaces until role-aware APIs are wired.
+- Legal pages are draft templates with placeholders and require legal review.
+- Prices and plan limits remain unset; null prices render as "Contact us".
+- Notifications, retention controls, SSO, liveness, and external ERP integrations are not complete product workflows.
+- Face embeddings are currently not encrypted at rest.
+- The frontend does not provide dark mode.

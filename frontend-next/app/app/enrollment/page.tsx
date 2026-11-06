@@ -19,6 +19,7 @@ export default function EnrollmentPage() {
 
   return (
     <PageLayout pageId="enrollment">
+      <h1 className="sr-only">Enrollment workspace</h1>
       <div className="section-card">
         <div className="section-head">
           <div>

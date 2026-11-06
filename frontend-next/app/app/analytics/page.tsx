@@ -19,6 +19,7 @@ export default function AnalyticsPage() {
 
   return (
     <PageLayout pageId="analytics">
+      <h1 className="sr-only">Analytics workspace</h1>
       <div className="section-card">
         <div className="section-head">
           <div>
