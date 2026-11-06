@@ -50,7 +50,7 @@ class AttendanceRecognitionServiceTest {
                 restTemplate,
                 objectMapper,
                 "http://localhost:8000",
-                0.6,
+                9.4924,
                 false
         );
     }

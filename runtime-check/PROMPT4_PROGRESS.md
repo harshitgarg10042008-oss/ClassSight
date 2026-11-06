@@ -2,12 +2,12 @@
 
 | Phase | Status | Evidence |
 |---|---|---|
-| P0 Re-verify | IN_PROGRESS | Docker available; logs pending |
-| P1 Group-photo enrolment | TODO | — |
-| P2 Retake/review | TODO | — |
-| P3 Demo reset/start | TODO | — |
-| P4 Browser E2E | TODO | — |
-| P5 Wrap-up | TODO | — |
+| P0 Re-verify | DONE (partial) | `logs/p0-health.log`, `logs/p0-pytest.log`, `logs/p0-maven-pass.log`, API scenarios; composite/latency remain NOT VERIFIED |
+| P1 Group-photo enrolment | DONE (implementation) | Existing Quick Class Enrollment flow in `frontend-next/app/page.tsx`; live 30-face enrollment NOT VERIFIED |
+| P2 Retake/review | DONE (implementation) | `logs/p0-api-scenarios.log`; 1 removed and outsider scenarios PASS |
+| P3 Demo reset/start | DONE | `logs/p3-reset-1.log`, `logs/p3-reset-2.log`, commit pending |
+| P4 Browser E2E | DONE (smoke) | `logs/p4-browser-smoke.log`, `SCREENSHOTS.md`; full enrollment/capture workflow NOT VERIFIED |
+| P5 Wrap-up | DONE (partial) | `PROMPT4_RESULT.md`; unresolved measurements are explicitly marked NOT VERIFIED |
 
 ## Reused verified values
 

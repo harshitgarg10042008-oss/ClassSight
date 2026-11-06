@@ -338,7 +338,11 @@ public class AttendanceRecognitionService {
             } else {
                 double confidence = numericValue(match.get("confidence_score"));
                 double distance = numericValue(match.get("distance"));
-                boolean matched = Boolean.TRUE.equals(match.get("matched")) && distance < distanceThreshold;
+                String tier = String.valueOf(match.getOrDefault("tier", ""));
+                boolean isAutoTier = "AUTO".equalsIgnoreCase(tier);
+                boolean isReviewTier = "REVIEW".equalsIgnoreCase(tier);
+                boolean matched = (isAutoTier || (tier.isEmpty() && Boolean.TRUE.equals(match.get("matched"))))
+                        && distance < distanceThreshold;
                 record.setConfidenceScore(BigDecimal.valueOf(confidence).setScale(4, RoundingMode.HALF_UP));
                 record.setFaceSizeRatio(decimalValue(match.get("face_size_ratio")));
                 boolean stateRequiresRecapture = "RECAPTURE_REQUIRED"
@@ -350,8 +354,14 @@ public class AttendanceRecognitionService {
                 if (!matched) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
                     record.setReviewStatus(AttendanceRecord.ReviewStatus.PENDING);
-                    record.setQualityWarning(
-                            warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
+                    if (isReviewTier) {
+                        record.setRecognitionState("ABSENT_CANDIDATE");
+                        record.setQualityWarning("Suggested match requires faculty review (distance="
+                                + String.format(java.util.Locale.US, "%.2f", distance) + ")");
+                    } else {
+                        record.setQualityWarning(
+                                warnings.isEmpty() ? "Low-confidence or unmatched face" : String.join("; ", warnings));
+                    }
                     requiresReview = true;
                 } else if (!qualityPassed || stateRequiresRecapture) {
                     record.setStatus(AttendanceRecord.AttendanceStatus.REVIEW);
