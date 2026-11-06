@@ -989,6 +989,10 @@ h3 { font-size: 17px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 4px;
 }
 /* Public and demo surfaces */
 .marketing-shell { min-height: 100vh; background: var(--paper); }
+.skip-link { position: absolute; left: -9999px; top: 8px; z-index: 100; background: white; padding: 10px; }.skip-link:focus { left: 8px; }
+.cookie-banner { position: fixed; z-index: 90; bottom: 16px; left: 16px; right: 16px; max-width: 720px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow); }.cookie-banner p { margin: 0; color: var(--muted); font-size: 13px; }
+.draft-banner { padding: 10px 12px; margin-bottom: 20px; border: 1px solid #facc15; background: #fef9c3; color: #854d0e; border-radius: 8px; font-size: 13px; font-weight: 700; }
+.system-page { min-height: 70vh; max-width: 720px; margin: auto; padding: 120px 24px; }.system-page h1 { font-size: clamp(36px, 6vw, 64px); letter-spacing: -.05em; margin: 12px 0; }.system-page p { color: var(--muted); font-size: 18px; margin-bottom: 28px; }
 .marketing-header { max-width: 1200px; margin: auto; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .marketing-brand { color: var(--ink); text-decoration: none; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 9px; }
 .brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: white; }

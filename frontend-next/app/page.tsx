@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { MarketingLayout } from '@/components/MarketingLayout';
 
+export const metadata = { title: 'ClassSight | Reviewable classroom attendance', description: 'Capture, review, and finalize classroom attendance.' };
+
 export default function HomePage() {
   return <MarketingLayout>
     <main className="marketing-main">
