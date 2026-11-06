@@ -1,2 +1,0 @@
-http://localhost:8000/health 200 {"status":"UP","service":"face-service-fastapi","detector":"mtcnn","detector_type":"mtcnn","embedder":"facenet_vggface2_128d","distance_metric":"manhattan_L1","haar_scale_factor":1.2,"manhattan_threshold":9.4924,"manhattan_auto_accept":7.75,"match_margin":1.5,"facenet_available":true,"cv2_available":true}
-http://localhost:8080/actuator/health 200 123 34 115 116 97 116 117 115 34 58 34 85 80 34 125
