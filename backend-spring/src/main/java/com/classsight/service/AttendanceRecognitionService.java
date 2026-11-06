@@ -462,11 +462,11 @@ public class AttendanceRecognitionService {
             };
             body.add("image", imageResource);
             body.add("enrolled_students", objectMapper.writeValueAsString(payload));
-            // Note: distanceThreshold is now a Manhattan (L1) threshold (default 15.0),
+            // Note: distanceThreshold is a Manhattan (L1) threshold,
             // not a Euclidean threshold.  The face-service uses it as MANHATTAN_THRESHOLD.
             body.add("distance_threshold", String.valueOf(distanceThreshold));
             body.add("edge_crop", "false"); // Haar+FaceNet pipeline always crops; this is kept for API compat
-            logger.info("Calling Haar+FaceNet+Manhattan recognition: manhattanThreshold={}, enrolled={}",
+            logger.info("Calling detector+FaceNet+Manhattan recognition: manhattanThreshold={}, enrolled={}",
                     distanceThreshold, payload.size());
 
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(

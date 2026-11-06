@@ -1,14 +1,10 @@
 """
 test_hungarian_matching.py
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-Tests for the greedy nearest-neighbour matching logic (_manhattan_matching).
-
-The previous Euclidean-distance + scipy.optimize.linear_sum_assignment (Hungarian)
-implementation has been replaced by a greedy Manhattan distance matcher that
-processes faces most-confident-first and prevents double-assignment.
+Tests for globally optimal one-to-one matching (_manhattan_matching).
 
 These tests verify that:
-  1. two faces competing for two students each get the correct one-to-one assignment
+  1. two faces competing for two students each get a one-to-one assignment
   2. an ambiguous probe (small top-1/top-2 margin) is routed to REVIEW tier
 
 NOTE: MATCH_MARGIN is read from the environment; here we exercise the M=0.5 default.
@@ -24,8 +20,7 @@ from main import _manhattan_matching, EnrolledStudent
 
 def test_one_to_one_assignment():
     """
-    Two faces competing for two students: the greedy matcher must assign each
-    face to the correct nearest-neighbour student (one-to-one, no double-claim).
+    Two faces competing for two students must be assigned one-to-one.
     """
     # Student 1 unit vector on dim-0
     v1 = np.zeros(128, dtype=np.float64)

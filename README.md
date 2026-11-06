@@ -65,13 +65,13 @@ The platform provides a dual-mode recognition pipeline (synchronous HTTP for ins
 3. **Capture Ingestion & Deduplication**: Spring computes a SHA-256 fingerprint over image bytes + metadata. Identical captures within a 30-second window return the existing session rather than duplicating data.
 4. **Photo Persistence**: Raw image is saved to MinIO S3 storage under `classsight-captures/captures/session-{id}-{uuid}.jpg`.
 5. **Facial Recognition (Alniemi 2023 Replicated Pipeline)**:
-   - **Sync Mode**: Spring calls FastAPI `/recognize`. FastAPI detects faces using OpenCV Haar Cascade (`scaleFactor=1.2`), normalizes crops to 160×160×3, generates 128-d FaceNet embeddings (InceptionResnetV1 pretrained on VGGFace2), and matches using Manhattan (L1) distance against enrolled students.
+   - **Sync Mode**: Spring calls FastAPI `/recognize`. FastAPI detects faces using MTCNN (pluggable: `DETECTOR=haar|yunet|mtcnn`, default MTCNN selected by benchmark for best small-face detection), normalizes crops to 160×160×3, generates 128-d FaceNet embeddings (InceptionResnetV1 pretrained on VGGFace2), and matches using Manhattan (L1) distance against enrolled students. Matching uses a tiered decision: **AUTO** (distance ≤ T_auto=7.75 with margin ≥ 1.5 → PRESENT), **REVIEW** (T_auto < distance ≤ T_review=9.4924 or small margin → faculty review), **UNKNOWN** (> T_review → outsider/absent).
    - **Async Mode**: Spring publishes an AMQP event to RabbitMQ `classsight.capture.recognition`. FastAPI worker consumes the message, streams image from MinIO, processes recognition, and publishes results back to Spring.
 6. **Automated Absent Detection, Multi-Shot De-duplication & Finalization**:
-   - Detected faces matching enrolled students with Manhattan distance `< 15.0` (configurable) are marked `PRESENT / APPROVED`.
+   - Detected faces matching enrolled students with Manhattan distance ≤ T_review=9.4924 (calibrated; configurable via `MANHATTAN_THRESHOLD`) in **AUTO** tier are marked `PRESENT / APPROVED`.
    - Multi-shot attendance sessions accumulate observations across multiple lecture frames, keeping the best confidence per student and producing exactly one attendance record.
    - Enrolled students **not detected** across all frames are marked `ABSENT / APPROVED`.
-   - Low-confidence matches (`manhattan_distance >= 15.0`) or unknown intruders transition the session to `REVIEW_REQUIRED` for teacher confirmation.
+   - Low-confidence matches (distance > T_review) or outsider faces route the session to `REVIEW_REQUIRED` for teacher confirmation.
 
 #### B. Student Biometric Onboarding Flow
 1. **Bulk Enrollment**: Admin/Teacher downloads `students-template.csv`, prepares student rows (`roll_number,name`), and uploads the CSV alongside a ZIP archive or multi-selected photo files (`<roll_number>.jpg`).
@@ -90,8 +90,8 @@ The platform provides a dual-mode recognition pipeline (synchronous HTTP for ins
 | **Backend API** | Java, Spring Boot, Spring Security | Java 17 / 3.4.3 | REST API, JWT auth, RBAC, Flyway migrations, attendance lifecycle, deduplication, S3/AMQP integration. |
 | **Database** | PostgreSQL | 15 Alpine | Relational storage for users, rooms, cameras, students, multi-reference embeddings, and attendance records. |
 | **Schema Migrations**| Flyway | 9.x | Version-controlled schema migrations (V1 baseline through V6 capture fingerprinting). |
-| **Face Recognition** | Python, FastAPI, Uvicorn | Python 3.11 | Haar Cascade (scale=1.2) + FaceNet (128-d InceptionResnetV1) + Manhattan (L1) matching, AMQP worker. |
-| **Biometric Libraries**| `facenet-pytorch`, PyTorch, OpenCV, Pillow | Torch 2.1.2 CPU | FaceNet vggface2 128-d embeddings, Haar frontal-face cascade, Manhattan distance matcher. |
+| **Face Recognition** | Python, FastAPI, Uvicorn | Python 3.11 | MTCNN detector (pluggable: haar\|yunet\|mtcnn) + FaceNet (128-d InceptionResnetV1) + tiered Manhattan (L1) matching, AMQP worker. |
+| **Biometric Libraries**| `facenet-pytorch`, `mtcnn`, PyTorch, OpenCV, Pillow | Torch 2.1.2 CPU | FaceNet vggface2 128-d embeddings, MTCNN/YuNet/Haar detectors, tiered Manhattan distance matcher. |
 | **Object Storage** | MinIO S3 API | Latest | S3-compatible object storage for durable attendance photo captures (`classsight-captures`). |
 | **Message Broker** | RabbitMQ with Management UI | 3.13 Alpine | Feature-flagged asynchronous capture queues, recognition worker queues, and dead-letter exchanges. |
 | **Camera & Video** | FFmpeg, RTSP Adapter | FFmpeg 6.x | Live RTSP IP camera frame grabber, connection health probing, and SSRF URL validation. |
@@ -180,19 +180,19 @@ ClassSight/
 | **Backend** | Notification Service Interface | 🟢 Complete | Pluggable absence and defaulter alert dispatcher with configurable log/email providers. |
 | **Backend** | DPDP Act 2023 Biometric Erasure | 🟢 Complete | `DELETE /api/students/{id}/biometrics` deletes 128-d vectors and revokes consent upon request. |
 | **Backend** | Foundational Data Seeding | 🟢 Complete | V8 seeds 30 demo students (`DEMO001`-`DEMO030`), 3 teachers, weekly slots, and approved leave. |
-| **Backend** | Absent Student Auto-Finalization | 🟢 Complete | Unseen students marked `ABSENT / APPROVED`; clean sessions auto-finalize to `FINALIZED`. |
+| **Backend** | Absent Student Review | 🟢 Complete | Unseen students are marked `ABSENT_CANDIDATE` pending faculty confirmation; attendance sessions require explicit review before `FINALIZED`. |
 | **Backend** | Capture Deduplication Guard | 🟢 Complete | SHA-256 fingerprint over image + metadata rejects duplicate submissions within 30s. |
 | **Backend** | Global CORS Configuration | 🟢 Complete | `SecurityConfig.java` allows `localhost:*` and `127.0.0.1:*` with credentials. |
 | **Backend** | Multi-Reference Biometric Embeddings | 🟢 Complete | Additive `student_face_embeddings` table (Flyway V5); stores multiple reference vectors. |
 | **Backend** | MinIO S3 Object Storage | 🟢 Complete | `CapturePhotoStorageService` stores images in S3; streams review images via API. |
 | **Backend** | RabbitMQ Asynchronous Recognition | 🟢 Complete | Feature-flagged AMQP transport with durable capture/result queues and dead-letter exchange. |
 | **Face Service**| Tiled Multi-Crop Detection | 🟢 Complete | Splits high-res photos into overlapping 2x2 grid with NMS deduplication (`TILED_DETECTION_ENABLED`). |
-| **Face Service**| Pluggable Detector Backends | 🟢 Complete | Pluggable `DETECTOR_BACKEND`: `dlib_hog` (default), ONNX `yunet` OpenCV DNN, or `dlib_cnn`. |
-| **Face Service**| Vectorized Hungarian Matching | 🟢 Complete | Matrix `cdist` Euclidean distance + `scipy.optimize.linear_sum_assignment` for 1-to-1 matching. |
-| **Face Service**| Match Margin Ambiguity Guard | 🟢 Complete | Top-1 vs Top-2 margin check (`MATCH_MARGIN_THRESHOLD=0.05`) downgrades close matches to `LOW_CONFIDENCE`. |
+| **Face Service**| Pluggable Detector Backends | 🟢 Complete | `DETECTOR=haar|yunet|mtcnn`; MTCNN is the selected default, with Haar and YuNet retained as fallbacks. |
+| **Face Service**| Vectorized Hungarian Matching | 🟢 Complete | Matrix `cdist` Manhattan distance plus `scipy.optimize.linear_sum_assignment` provides globally optimal 1-to-1 assignment. |
+| **Face Service**| Match Margin Ambiguity Guard | 🟢 Complete | Top-1 vs Top-2 Manhattan margin check (`MATCH_MARGIN=1.5`) downgrades close matches to `REVIEW`. |
 | **Face Service**| Detailed Timing Instrumentation | 🟢 Complete | Exposes `timings` (`t_crop_ms`, `t_detect_ms`, `t_embed_ms`, `t_match_ms`) in response headers and JSON. |
 | **Face Service**| Single-Face Enrollment (`/enroll`) | 🟢 Complete | Rejects 0 faces or >1 face; outputs 128-dimensional embedding vector. |
-| **Face Service**| 4-Tier State Classification | 🟢 Complete | Outputs `RECOGNIZED`, `UNKNOWN`, `LOW_CONFIDENCE`, or `RECAPTURE_REQUIRED`. |
+| **Face Service**| Tiered Decision | 🟢 Complete | Outputs `AUTO`, `REVIEW`, or `UNKNOWN`, while retaining recognition states for API compatibility. |
 | **Face Service**| Quality Assessment Pipeline | 🟢 Complete | Laplacian blur variance, brightness mean, texture liveness, and face area ratio. |
 | **Hardware** | Commercial IP Camera Testing | 🟡 Provisional | Tested against simulated RTSP streams; physical ONVIF PoE hardware unverified. |
 | **Deployment** | Local Kubernetes Deployment | 🟡 Manifests Ready | 18 local Kubernetes resource manifests validated; k3s sandbox CNI restricted. |
@@ -208,7 +208,7 @@ ClassSight/
 - **Legacy Thymeleaf Server-Rendered MVC**: Located in `backend-spring/src/main/resources/templates/`, runs on port `8080`. Fully functional for login, room selection, camera setup, manual review, and analytics.
 
 ### 2. Biometric Recognition & Quality Intelligence
-- **128-d Euclidean Matching**: Evaluates distance between detected faces and enrolled embeddings. Values `< 0.6` trigger a match; confidence is computed using an exponential sigmoid curve.
+- **128-d Manhattan Matching**: Evaluates L1 distance between detected faces and enrolled embeddings. AUTO requires `d1 <= T_auto` and a sufficient top-1/top-2 margin; REVIEW suggests a candidate without marking it present; UNKNOWN is not matched.
 - **Multi-Reference Matching**: Evaluates distance against all registered photos for a student and picks the closest distance.
 - **Image Quality Guards**:
   - **Blur Detection**: Calculates the variance of the discrete 4-neighbour Laplacian. Photos below threshold (`30.0`) trigger a blur warning.
@@ -219,7 +219,7 @@ ClassSight/
 
 ### 3. Automated Attendance Logic
 - **Automated Absence Assignment**: Students enrolled in the selected class section who are not matched in the photo are automatically marked `status = ABSENT` with `reviewStatus = APPROVED`.
-- **Zero-Touch Auto-Finalization**: If an attendance photo has no quality warnings, all detected faces match enrolled students, and no unknown faces exist, the session automatically transitions to `FINALIZED`. Teachers do not need to click any review buttons.
+- **Faculty-gated finalization**: Attendance recognition always produces `REVIEW_REQUIRED`; `FINALIZED` is reached through the faculty review action. Multi-shot finalization also remains `REVIEW_REQUIRED` when any record is pending review.
 
 ### 4. Enterprise Storage & Asynchronous Transport
 - **MinIO S3 Object Storage**: Raw attendance captures are stored in the `classsight-captures` bucket. The Spring review endpoint streams images directly from MinIO with full SHA-256 hash preservation.
@@ -230,7 +230,7 @@ ClassSight/
 
 ## Recognition Latency Benchmark Results (Phase 1)
 
-Through tiled multi-crop face detection, vectorized Euclidean distance matrix computation (`scipy.spatial.distance.cdist`), Hungarian assignment (`scipy.optimize.linear_sum_assignment`), and client-side photo pre-scaling to 1920px (JPEG 0.85), recognition latency on commodity multi-core CPU was reduced by up to **7.0x**, meeting and exceeding the < 10.0s requirement for a 30-student classroom:
+The current benchmark uses the selected MTCNN detector, vectorized Manhattan distance computation (`scipy.spatial.distance.cdist`), Hungarian assignment (`scipy.optimize.linear_sum_assignment`), and CPU-only FaceNet inference. Results are reported in `runtime-check/RECOGNITION_UPGRADE.md`; older tiled-pipeline figures below are historical and are not production claims:
 
 | Cohort Size | Legacy HOG + Loop (ms) | Phase 1 Vectorized + Tiled (ms) | Speedup Factor | Latency SLA Status |
 |---|---|---|---|---|
@@ -238,7 +238,7 @@ Through tiled multi-crop face detection, vectorized Euclidean distance matrix co
 | **15 Students** | 4,650 ms | **790 ms** | **5.9x** | 🟢 PASS (< 4s) |
 | **30 Students** | 9,880 ms | **1,420 ms** | **7.0x** | 🟢 PASS (< 10.0s hard target) |
 
-*Tested on multi-core CPU without dedicated GPU acceleration. Pluggable YuNet detector (`DETECTOR_BACKEND=yunet`) provides further inference acceleration when enabled.*
+*Historical benchmark only; do not compare these values directly with the current MTCNN pipeline.*
 
 ---
 
@@ -293,13 +293,16 @@ Key environment variables configured in `.env` / Docker Compose:
 | `NOTIFICATIONS_ENABLED` | `false` | Pluggable absence and defaulter alert notification service toggle |
 | `NOTIFICATIONS_PROVIDER` | `log` | Notification provider implementation (`log` or `email`) |
 | `TWO_CAPTURE_MODE_ENABLED`| `false` | Optional start-and-end period capture mode to detect early departures |
-| `HAAR_SCALE_FACTOR` | `1.2` | Multi-scale face search zoom factor per Alniemi 2023 paper |
-| `HAAR_MIN_NEIGHBORS` | `5` | Candidate neighbor retention count for Haar Cascade detector |
-| `HAAR_MIN_SIZE_PX` | `30` | Minimum bounding box size in pixels for detected faces |
-| `MANHATTAN_THRESHOLD` | `15.0` | Maximum Manhattan (L1) distance for FaceNet 128-d match (paper metric) |
-| `CONF_HIGH_THRESHOLD` | `10.0` | Manhattan distance threshold below which confidence is HIGH |
-| `CONF_MED_THRESHOLD` | `15.0` | Manhattan distance threshold below which confidence is MEDIUM (>=15 is LOW → review) |
-| `ATTENDANCE_RECOGNITION_THRESHOLD` | `15.0` | Backend Spring threshold for auto-matching in Manhattan space |
+| `DETECTOR` | `mtcnn` | Face detector backend: `haar` (OpenCV Haar Cascade), `yunet` (YuNet ONNX), `mtcnn` (MTCNN CNN). MTCNN selected by benchmark: 100% detection at 60/80/120 px vs 99% (YuNet) vs 45% (Haar). |
+| `HAAR_SCALE_FACTOR` | `1.2` | Multi-scale face search zoom factor (applies to Haar detector only) |
+| `HAAR_MIN_NEIGHBORS` | `5` | Candidate neighbor retention count (Haar only) |
+| `HAAR_MIN_SIZE_PX` | `30` | Minimum bounding box size in pixels (Haar only) |
+| `MANHATTAN_THRESHOLD` | `9.4924` | T_review: max Manhattan (L1) distance for REVIEW tier (calibrated on LFW CALIBRATION split, FAR=1%) |
+| `MANHATTAN_AUTO_ACCEPT` | `7.75` | T_auto: distance threshold for AUTO tier (PRESENT without review) |
+| `MATCH_MARGIN` | `1.5` | Minimum gap between top-1 and top-2 distances to confirm auto-match |
+| `CONF_HIGH_THRESHOLD` | `7.75` | Distance threshold below which confidence label is HIGH (matches T_auto) |
+| `CONF_MED_THRESHOLD` | `9.4924` | Distance threshold below which confidence is MEDIUM (matches T_review) |
+| `ATTENDANCE_RECOGNITION_THRESHOLD` | `9.4924` | Backend threshold — must match `MANHATTAN_THRESHOLD` in face-service |
 | `QUALITY_BLUR_THRESHOLD` | `30.0` | Minimum Laplacian variance before flagging an image as blurry |
 | `QUALITY_MIN_BRIGHTNESS` | `35.0` | Minimum acceptable grayscale brightness mean |
 | `QUALITY_MAX_BRIGHTNESS` | `220.0` | Maximum acceptable grayscale brightness mean |

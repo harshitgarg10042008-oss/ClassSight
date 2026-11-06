@@ -1,7 +1,7 @@
 """
 ClassSight Face Service — Alniemi 2023 Paper-Aligned Pipeline
 =============================================================
-Pipeline:  Haar Cascade (scaleFactor=1.2) → FaceNet 128-d → Manhattan (L1) distance
+Pipeline: configurable face detector → FaceNet 128-d → Manhattan (L1) distance
 
 Reference:
   Alniemi, O., Mahmood, H.F. (2023). "Class Attendance System Based on Face Recognition."
@@ -58,7 +58,7 @@ except ImportError:
     FACENET_AVAILABLE = False
     _FACENET_MODEL = None
 
-# ── OpenCV (Haar Cascade) ─────────────────────────────────────────────────────
+# ── OpenCV detectors (Haar Cascade and YuNet) ─────────────────────────────────
 try:
     import cv2
     _HAAR_CASCADE: Optional[cv2.CascadeClassifier] = None
@@ -82,8 +82,10 @@ except ImportError:
 
 try:
     from scipy.spatial.distance import cdist
+    from scipy.optimize import linear_sum_assignment
 except ImportError:
     cdist = None
+    linear_sum_assignment = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -98,8 +100,9 @@ MIN_LIVENESS_TEXTURE = float(os.getenv("QUALITY_MIN_LIVENESS_TEXTURE", "2.5"))
 MIN_FACE_SIZE_RATIO = float(os.getenv("QUALITY_MIN_FACE_SIZE_RATIO", "0.0005"))
 RECOGNITION_MAX_DIMENSION = int(os.getenv("RECOGNITION_MAX_DIMENSION", "1600"))
 
-# Detector configuration: "haar", "yunet", or "mtcnn" (default: "haar")
-DETECTOR = os.getenv("DETECTOR", "haar").lower()
+# Detector configuration: "haar", "yunet", or "mtcnn"
+# Default: "mtcnn" — selected by benchmark (100% detection at 60/80/120px vs 99% YuNet, 45% Haar)
+DETECTOR = os.getenv("DETECTOR", "mtcnn").lower()
 
 # Haar Cascade parameters — scaleFactor=1.2 matches the paper's search-box zoom
 HAAR_SCALE_FACTOR = float(os.getenv("HAAR_SCALE_FACTOR", "1.2"))
@@ -109,8 +112,7 @@ HAAR_MIN_SIZE_PX = int(os.getenv("HAAR_MIN_SIZE_PX", "30"))
 # FaceNet input size (paper: 160×160×3)
 FACENET_INPUT_SIZE = 160
 
-# Manhattan distance threshold.  The paper reports results using L1.
-# Manhattan distance threshold (T_review, pair FAR=1% baseline ~9.74)
+# Manhattan distance threshold (T_review, pair FAR=1% on calibration split)
 MANHATTAN_THRESHOLD = float(os.getenv("MANHATTAN_THRESHOLD", "9.74"))
 
 # Manhattan auto-accept threshold (T_auto, calibrated safe threshold)
@@ -122,7 +124,7 @@ MATCH_MARGIN = float(os.getenv("MATCH_MARGIN", "0.5"))
 # Confidence labels derived from Manhattan distance
 CONF_HIGH_THRESHOLD = float(os.getenv("CONF_HIGH_THRESHOLD", "10.0"))   # D < 10 → HIGH
 CONF_MED_THRESHOLD = float(os.getenv("CONF_MED_THRESHOLD", "15.0"))     # D < 15 → MEDIUM
-# D >= 15 (or >= MANHATTAN_THRESHOLD) → LOW / UNKNOWN → routed to review queue
+# D > MANHATTAN_THRESHOLD → UNKNOWN and routed to review queue
 
 
 # ── Pydantic models (API-stable, backward compatible) ─────────────────────────
@@ -609,9 +611,9 @@ def _manhattan_matching(
     live embedding is the candidate match.  If the smallest distance exceeds the
     configured threshold the face is flagged as low-confidence and routed to review.
 
-    Unlike the previous Euclidean+Hungarian implementation this is a strict nearest-
-    neighbour search (one face → one student, greedy by distance) which matches the
-    paper's described approach.
+    Assignment is globally optimal across all faces and students, so a student can
+    never be assigned to two faces and locally attractive matches cannot block a
+    lower-cost overall assignment.
     """
     M = len(face_embeddings)
     K = len(valid_students)
@@ -654,22 +656,16 @@ def _manhattan_matching(
             cost_matrix[:, s_idx] = np.min(D_all[:, mask], axis=1)
 
     results = []
-    claimed_students: set[int] = set()
+    if linear_sum_assignment is None:
+        raise RuntimeError("scipy.optimize.linear_sum_assignment is required for one-to-one matching")
 
-    # Greedy nearest-neighbour assignment (matches paper approach)
-    # Process faces sorted by their best distance (most-confident first)
-    best_per_face = [(float(np.min(cost_matrix[fi, :])), fi) for fi in range(M)]
-    best_per_face.sort(key=lambda x: x[0])
-
-    assignment: dict[int, int] = {}
-    for _, fi in best_per_face:
-        row = cost_matrix[fi, :]
-        sorted_students = np.argsort(row)
-        for si in sorted_students:
-            if si not in claimed_students:
-                assignment[fi] = int(si)
-                claimed_students.add(si)
-                break
+    # Hungarian assignment minimizes the total L1 cost over the complete
+    # face/student matrix. Unmatched faces are represented by empty results.
+    assigned_faces, assigned_students = linear_sum_assignment(cost_matrix)
+    assignment = {
+        int(face_idx): int(student_idx)
+        for face_idx, student_idx in zip(assigned_faces, assigned_students)
+    }
 
     for face_idx in range(M):
         if face_idx not in assignment:
