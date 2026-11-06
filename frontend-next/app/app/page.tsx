@@ -87,7 +87,7 @@ type AnalyticsSummary = {
 };
 
 const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8080';
+const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 function friendlyError(raw: string): string {
   let value = raw.replace(/^\d{3}:\s*/, '').trim();

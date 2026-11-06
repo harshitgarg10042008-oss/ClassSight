@@ -88,7 +88,7 @@ export type CsrfResponse = {
   token: string;
 };
 
-const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8080';
+const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 function normalizedApiError(status:number, raw:string): string {
   let payload:any = null;
   try { payload=JSON.parse(raw); } catch { /* plain text response */ }
