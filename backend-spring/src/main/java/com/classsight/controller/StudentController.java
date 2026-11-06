@@ -187,33 +187,33 @@ public class StudentController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("code", "CLASS_CONTEXT_INVALID", "message", e.getMessage()));
         }
+    }
 
-        @PostMapping("/classes/{classSectionId}/replace")
-        @org.springframework.transaction.annotation.Transactional
-        public ResponseEntity<?> archiveClassRoster(@PathVariable Long classSectionId, Principal principal) {
-            User actor = currentUser(principal);
-            if (!canManageSection(actor, classSectionId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("code", "CLASS_NOT_ASSIGNED", "message", "You are not assigned to this class"));
-            }
-            List<StudentEnrollment> enrollments =
-                    studentEnrollmentRepository.findByClassSection_IdAndActiveTrue(classSectionId);
-            Set<Long> archivedStudents = new HashSet<>();
-            for (StudentEnrollment enrollment : enrollments) {
-                enrollment.setActive(false);
-                studentEnrollmentRepository.save(enrollment);
-                Student student = enrollment.getStudent();
-                boolean hasOtherActiveEnrollment = studentEnrollmentRepository
-                        .findByStudent_IdAndActiveTrue(student.getId()).stream()
-                        .anyMatch(other -> !other.getClassSection().getId().equals(classSectionId));
-                if (!hasOtherActiveEnrollment) {
-                    student.setActive(false);
-                    studentRepository.save(student);
-                }
-                archivedStudents.add(student.getId());
-            }
-            return ResponseEntity.ok(Map.of("status", "success", "archivedCount", archivedStudents.size()));
+    @PostMapping("/classes/{classSectionId}/replace")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<?> archiveClassRoster(@PathVariable Long classSectionId, Principal principal) {
+        User actor = currentUser(principal);
+        if (!canManageSection(actor, classSectionId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("code", "CLASS_NOT_ASSIGNED", "message", "You are not assigned to this class"));
         }
+        List<StudentEnrollment> enrollments =
+                studentEnrollmentRepository.findByClassSection_IdAndActiveTrue(classSectionId);
+        Set<Long> archivedStudents = new HashSet<>();
+        for (StudentEnrollment enrollment : enrollments) {
+            enrollment.setActive(false);
+            studentEnrollmentRepository.save(enrollment);
+            Student student = enrollment.getStudent();
+            boolean hasOtherActiveEnrollment = studentEnrollmentRepository
+                    .findByStudent_IdAndActiveTrue(student.getId()).stream()
+                    .anyMatch(other -> !other.getClassSection().getId().equals(classSectionId));
+            if (!hasOtherActiveEnrollment) {
+                student.setActive(false);
+                studentRepository.save(student);
+            }
+            archivedStudents.add(student.getId());
+        }
+        return ResponseEntity.ok(Map.of("status", "success", "archivedCount", archivedStudents.size()));
     }
 
     @PostMapping(value = "/quick-detect", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

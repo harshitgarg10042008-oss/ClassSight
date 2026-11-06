@@ -370,3 +370,25 @@ unmeasured 30-face benchmark is advertised.
 ---
 
 *ClassSight Architecture & Engineering Documentation · Last Updated: 2026-10-09*
+## Current quick start
+
+Prerequisites: Docker Desktop, Python 3.12+, Node.js/npm, and Playwright Chromium for browser tests.
+
+```powershell
+git clone https://github.com/harshitgarg10042008-oss/ClassSight.git
+Copy-Item .env.example .env
+python scripts/dev.py up
+```
+
+Open `http://localhost:3000`. Development login is `teacher / teacher123`; it is not a production credential.
+
+Run the verified suites:
+
+```powershell
+python -m pytest face-service-fastapi/tests -v
+python -m pytest tests/api -v
+python -m pytest tests/e2e -v
+docker run --rm -v "${PWD}\backend-spring:/workspace" -w /workspace maven:3.9-eclipse-temurin-17 mvn test --no-transfer-progress
+```
+
+Repository map: `frontend-next/` is the faculty Next.js app, `backend-spring/` is the Spring API, `face-service-fastapi/` is recognition, `tests/` contains automated smoke suites and LFW fixtures, `tools/eval/` contains evaluation utilities, and `docs/` contains architecture, operations, testing, validation, and limitations.
