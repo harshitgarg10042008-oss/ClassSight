@@ -15,3 +15,7 @@ frontend-next/.next/
 data/captures/camera-frames/
 exports/*.csv
 runtime-check/backups/
+.work/
+FINAL_RESULT.md
+tools/eval/out/
+tests/e2e/screenshots/
