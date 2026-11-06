@@ -11,7 +11,7 @@
 | `/admin/*` | AdminShell foundation | STATIC demo | Later role/API wiring |
 | `/owner/*` | OwnerShell foundation | STATIC demo | Later owner API wiring |
 
-The route source is `frontend-next/config/routes.ts`. Static admin and owner pages return 404 unless `NEXT_PUBLIC_DEMO_DATA=true`.
+The route source is `frontend-next/config/routes.ts`. Local Docker enables the static admin and owner demo pages by default; they return 404 when `NEXT_PUBLIC_DEMO_DATA=false`.
 
 The existing root route remains the wired faculty workspace so the current login and capture flow stays compatible with the repository's e2e smoke test. The public startup site is available at `/home`, with pricing at `/pricing`. `/admin` and `/owner` are static demo surfaces and return 404 unless `NEXT_PUBLIC_DEMO_DATA=true`.
 

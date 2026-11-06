@@ -381,7 +381,7 @@ python scripts/dev.py up
 ```
 
 Open `http://localhost:3000/app`. Development login is `teacher / teacher123`; it is not a production credential.
-The public product site is at `http://localhost:3000/`, pricing is at `/pricing`, and demo-only `/admin` and `/owner` panels require `NEXT_PUBLIC_DEMO_DATA=true`.
+The public product site is at `http://localhost:3000/`, pricing is at `/pricing`, and the wired faculty workspace is at `/app`. Local Docker starts with the complete demo panels at `/admin` and `/owner`; set `NEXT_PUBLIC_DEMO_DATA=false` to verify production gating.
 
 Run the verified suites:
 

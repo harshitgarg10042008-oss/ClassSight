@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 const routes = ['/', '/pricing', '/privacy', '/terms', '/app', '/app/enrollment', '/app/analytics', '/app/student', '/app/hod', '/app/teacher', '/admin', '/owner'];
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ permissions: ['camera', 'microphone'] });
-await context.route('http://127.0.0.1:8080/api/analytics', async (route) => {
+await context.route('http://localhost:8080/api/analytics', async (route) => {
   await route.fulfill({
     status: 200,
     contentType: 'application/json',
