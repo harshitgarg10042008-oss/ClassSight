@@ -4,7 +4,11 @@ Date: 2026-11-06
 Branch: `demo-fixes`  
 Accuracy disclaimer: every LFW result below is simulated on LFW and is **not classroom accuracy**.
 
-## 1. Final test results
+## 1. Final test results — primary pre-review result
+
+These are the raw recognition tiers before faculty review. They are the
+primary honest result for the demo: REVIEW remains an absent candidate and
+UNKNOWN is not accepted.
 
 The identity split is [split_manifest.json](./split_manifest.json), generated with seed 42. Identities, rather than images, were split 50/50. Genuine pairs are capped at 10 per identity. The final MTCNN test run used 200 random 30-student rosters and 100 distinct class and outsider probe identities.
 
@@ -26,6 +30,12 @@ Final parameters: `DETECTOR=mtcnn`, `T_auto=7.75`, `M=1.5`, and `T_review=9.4924
 ```text
 python runtime-check/calibrate.py --detector mtcnn --split test --t_auto 7.75 --m 1.5 --t_review 9.4924
 ```
+
+### After-review results
+
+Ground-truth faculty corrections would be an **oracle upper bound**, not an
+observed end-user result. No after-review oracle table was measured in this
+run, so no after-review accuracy is reported.
 
 ## 2. Calibration results and sweep
 

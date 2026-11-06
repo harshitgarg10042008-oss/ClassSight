@@ -15,7 +15,11 @@ Branch: `demo-fixes`; commit: `dd92f86`. Overall: **PARTIAL / DEMO-READY FOR VER
 | P4 Browser E2E | PASS for login/dashboard smoke; full workflow NOT VERIFIED | `logs/p4-browser-smoke.log`, `SCREENSHOTS.md` |
 | P5 Wrap-up | IN_PROGRESS at report generation | `PROMPT4_PROGRESS.md` |
 
-## 3. Verified numbers
+## 3. Verified numbers — primary pre-review result
+
+These are the unaided recognition outcomes before faculty review. They are the
+primary honest demo result: AUTO is accepted automatically, REVIEW remains an
+absent candidate, and UNKNOWN is not accepted.
 
 All public-photo numbers are **simulated on LFW, NOT classroom accuracy**.
 
@@ -30,6 +34,14 @@ All public-photo numbers are **simulated on LFW, NOT classroom accuracy**.
 * Auto-finalize: single-shot attendance remains `REVIEW_REQUIRED` until faculty review. Multi-shot explicit finalise can finalize clean accumulators.
 * 30-face composite results for three seeds: **NOT VERIFIED**; the existing script stopped on invalid room/camera/assignment.
 * 30-face MTCNN latency median/p95 and stage breakdown: **NOT VERIFIED**; the existing script failed before embedding.
+
+### After-review results
+
+Any result obtained by assigning REVIEW or UNKNOWN faces using known ground
+truth is an **oracle upper bound**, not an observed faculty workflow result.
+This run did not measure an oracle after-review table, so no after-review
+accuracy is reported. It must not be presented as production or end-user
+performance.
 
 ## 4. UI checks
 
@@ -74,6 +86,11 @@ The complete prior report is copied below.
 Date: 2026-11-06
 Branch: `demo-fixes`
 Accuracy disclaimer: every LFW result below is simulated on LFW and is **not classroom accuracy**.
+
+The results in this appendix are pre-review recognition results and are the
+primary honest result. Any future ground-truth faculty correction must be
+reported separately as an **oracle upper bound**; no such after-review result
+was measured in this run.
 
 ## 1. Final test results
 
