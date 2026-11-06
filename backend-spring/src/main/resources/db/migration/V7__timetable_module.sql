@@ -25,7 +25,7 @@ CREATE UNIQUE INDEX academic_terms_active_unique ON public.academic_terms (activ
 CREATE TABLE public.timetable_slots (
     id                BIGSERIAL PRIMARY KEY,
     term_id           BIGINT       NOT NULL REFERENCES public.academic_terms(id),
-    day_of_week       SMALLINT     NOT NULL CHECK (day_of_week BETWEEN 1 AND 7), -- 1=MON..7=SUN
+    day_of_week       INTEGER      NOT NULL CHECK (day_of_week BETWEEN 1 AND 7), -- 1=MON..7=SUN
     start_time        TIME         NOT NULL,
     end_time          TIME         NOT NULL,
     subject_id        BIGINT       NOT NULL REFERENCES public.subjects(id),
