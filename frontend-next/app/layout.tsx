@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ClassSight Faculty Flow',
-  description: 'Additive faculty attendance capture and review workspace',
+  title: 'ClassSight | Reviewable classroom attendance',
+  description: 'Capture, review, and finalize classroom attendance with ClassSight.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
