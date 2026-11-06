@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import { StaticPage } from '@/components/StaticPage';
-import { features } from '@/lib/features';
+import { OwnerEntitlements } from '@/components/OwnerEntitlements';
+import { ownerSections } from '@/lib/demo-data';
 
-export default function OwnerPage() {
+export default function OwnerPage({ params }: { params: { slug?: string[] } }) {
   if (process.env.NEXT_PUBLIC_DEMO_DATA !== 'true') notFound();
-  return <StaticPage title="Platform owner" eyebrow="Owner console"><div className="section-card"><h2>Entitlement matrix</h2><p className="muted">The config files are the source of truth. This demo view shows the current 20-feature registry.</p><div className="feature-table">{features.map((feature) => <div className="feature-row" key={feature.id}><span>{feature.id}</span><strong>{feature.name}</strong><span className="badge">{feature.defaultPlan}</span><span>{feature.buildStatus}</span></div>)}</div></div></StaticPage>;
+  const section = params.slug?.join('/') || 'overview';
+  return <StaticPage title={section.replaceAll('-', ' ')} eyebrow="Platform owner">{section === 'entitlements' ? <OwnerEntitlements /> : <section className="section-card"><h2>Owner controls</h2><p className="muted">Sample data only. The real source of truth remains the plan configuration files.</p><nav className="admin-links" aria-label="Owner sections">{ownerSections.map((item) => <a href={`/owner/${item}`} key={item}>{item.replaceAll('-', ' ')}</a>)}</nav></section>}</StaticPage>;
 }
