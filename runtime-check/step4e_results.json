@@ -1,0 +1,128 @@
+{
+  "disclaimer": "simulated on LFW, NOT classroom accuracy",
+  "method": "FastAPI POST /recognize endpoint latency measured over 5 repeats per face count (1, 5, 10, 20, 30 faces on 1920x1080 canvas) with 30 enrolled students",
+  "cpu_info": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+    "cpu_cores": 12,
+    "torch_device": "cpu",
+    "torch_cuda": false
+  },
+  "latency_by_face_count": {
+    "1": {
+      "face_count": 1,
+      "repeats": 5,
+      "times_ms": [
+        124.69,
+        145.88,
+        126.03,
+        154.5,
+        155.27
+      ],
+      "median_ms": 145.88,
+      "p95_ms": 155.11,
+      "min_ms": 124.69,
+      "max_ms": 155.27,
+      "service_timings": {
+        "decode_ms": 47.21,
+        "quality_ms": 36.27,
+        "detection_ms": 12.31,
+        "embedding_ms": 41.09,
+        "matching_ms": 7.16,
+        "total_ms": 145.66
+      }
+    },
+    "5": {
+      "face_count": 5,
+      "repeats": 5,
+      "times_ms": [
+        493.79,
+        516.81,
+        525.84,
+        523.32,
+        482.21
+      ],
+      "median_ms": 516.81,
+      "p95_ms": 525.33,
+      "min_ms": 482.21,
+      "max_ms": 525.84,
+      "service_timings": {
+        "decode_ms": 68.43,
+        "quality_ms": 45.51,
+        "detection_ms": 34.77,
+        "embedding_ms": 309.74,
+        "matching_ms": 10.08,
+        "total_ms": 471.08
+      }
+    },
+    "10": {
+      "face_count": 10,
+      "repeats": 5,
+      "times_ms": [
+        978.08,
+        1615.83,
+        3131.36,
+        1321.14,
+        830.29
+      ],
+      "median_ms": 1321.14,
+      "p95_ms": 2828.26,
+      "min_ms": 830.29,
+      "max_ms": 3131.36,
+      "service_timings": {
+        "decode_ms": 68.81,
+        "quality_ms": 46.23,
+        "detection_ms": 48.59,
+        "embedding_ms": 642.66,
+        "matching_ms": 9.35,
+        "total_ms": 818.23
+      }
+    },
+    "20": {
+      "face_count": 20,
+      "repeats": 5,
+      "times_ms": [
+        2562.74,
+        2051.88,
+        2215.2,
+        3789.23,
+        1406.67
+      ],
+      "median_ms": 2215.2,
+      "p95_ms": 3543.94,
+      "min_ms": 1406.67,
+      "max_ms": 3789.23,
+      "service_timings": {
+        "decode_ms": 65.18,
+        "quality_ms": 42.3,
+        "detection_ms": 65.66,
+        "embedding_ms": 1202.73,
+        "matching_ms": 9.6,
+        "total_ms": 1388.53
+      }
+    },
+    "30": {
+      "face_count": 30,
+      "repeats": 5,
+      "times_ms": [
+        2064.17,
+        3237.56,
+        2110.7,
+        2508.26,
+        2235.21
+      ],
+      "median_ms": 2235.21,
+      "p95_ms": 3091.7,
+      "min_ms": 2064.17,
+      "max_ms": 3237.56,
+      "service_timings": {
+        "decode_ms": 109.54,
+        "quality_ms": 64.7,
+        "detection_ms": 124.51,
+        "embedding_ms": 1884.58,
+        "matching_ms": 8.88,
+        "total_ms": 2197.73
+      }
+    }
+  }
+}

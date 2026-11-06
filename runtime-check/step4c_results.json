@@ -1,0 +1,15 @@
+{
+  "disclaimer": "simulated on LFW, NOT classroom accuracy",
+  "method": "Classroom grid simulation on 1920x1080 canvas with rotation +/-8 deg, brightness jitter +/-15%, evaluated through live POST /capture",
+  "runs": {
+    "70_110px": {
+      "error": "Capture failed"
+    },
+    "50px": {
+      "error": "Capture failed"
+    },
+    "140px": {
+      "error": "Capture failed"
+    }
+  }
+}

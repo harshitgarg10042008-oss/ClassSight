@@ -1,0 +1,66 @@
+{
+  "summary": {
+    "passed": 7,
+    "total": 7
+  },
+  "results": {
+    "T1_frontend_load": {
+      "pass": true,
+      "title": "ClassSight Faculty Flow",
+      "load_ms": 1206
+    },
+    "T2_login_form_present": {
+      "pass": true,
+      "has_login_form": true,
+      "has_password_input": true,
+      "text_input_count": 1,
+      "url": "http://localhost:3000/"
+    },
+    "T3_login": {
+      "pass": true,
+      "url_after": "http://localhost:3000/",
+      "title_after": "ClassSight Faculty Flow",
+      "login_card_gone": true
+    },
+    "T4_main_ui_elements": {
+      "pass": true,
+      "elements_found": {
+        "capture_button": true,
+        "selector_elements": true,
+        "selector_count": 2,
+        "camera_element": false,
+        "sidebar_or_nav": true,
+        "heading_present": true,
+        "heading_text": "Select Class & Room"
+      }
+    },
+    "T5_console_errors": {
+      "pass": true,
+      "error_count": 0,
+      "errors": []
+    },
+    "T6_actuator_health": {
+      "pass": true,
+      "results": {
+        "http://localhost:8080/actuator/health": {
+          "http_status": 200,
+          "up": true
+        }
+      }
+    },
+    "T7_face_service_health": {
+      "pass": true,
+      "http_status": 200,
+      "detector": "haar_cascade",
+      "embedder": "facenet_vggface2_128d",
+      "facenet_available": true
+    }
+  },
+  "console_errors": [],
+  "screenshots": [
+    "C:\\Users\\vishe\\OneDrive\\Desktop\\Goal\\ClassSight\\runtime-check\\test_images\\step5_01_initial_load.png",
+    "C:\\Users\\vishe\\OneDrive\\Desktop\\Goal\\ClassSight\\runtime-check\\test_images\\step5_02_login_filled.png",
+    "C:\\Users\\vishe\\OneDrive\\Desktop\\Goal\\ClassSight\\runtime-check\\test_images\\step5_03_after_login.png",
+    "C:\\Users\\vishe\\OneDrive\\Desktop\\Goal\\ClassSight\\runtime-check\\test_images\\step5_04_main_page.png"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "disclaimer": "simulated on LFW, NOT classroom accuracy",
+  "method": "FaceNet InceptionResnetV1 (vggface2, 128-d orthonormal projection, L2 normalized) with Manhattan (L1) distance",
+  "genuine_pairs": {
+    "count": 558,
+    "min": 1.9765,
+    "mean": 6.0331,
+    "max": 12.3124,
+    "std": 1.5927,
+    "p01": 3.3066,
+    "p05": 3.7294,
+    "p50": 5.8521,
+    "p95": 8.9932,
+    "p99": 10.241
+  },
+  "impostor_pairs": {
+    "count": 2500,
+    "min": 6.1263,
+    "mean": 12.6053,
+    "max": 15.6515,
+    "std": 1.1643,
+    "p01": 9.3736,
+    "p05": 10.565,
+    "p50": 12.6907,
+    "p95": 14.3285,
+    "p99": 14.9746
+  },
+  "eer": 1.44,
+  "eer_threshold": 9.5622,
+  "at_far_1pct": {
+    "threshold": 9.3734,
+    "actual_far_pct": 1.0,
+    "tar_pct": 98.03
+  },
+  "at_far_01pct": {
+    "threshold": 7.6582,
+    "actual_far_pct": 0.08,
+    "tar_pct": 82.97
+  },
+  "at_current_15_0": {
+    "threshold": 15.0,
+    "far_pct": 99.08,
+    "tar_pct": 100.0
+  }
+}

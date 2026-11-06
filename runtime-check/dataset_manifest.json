@@ -1,0 +1,429 @@
+{
+  "random_seed": 42,
+  "dataset": "Labeled Faces in the Wild (LFW)",
+  "lfw_root": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled",
+  "class_identities": [
+    {
+      "id": 1,
+      "name": "Tom_Coverdale",
+      "enroll_image": "Tom_Coverdale\\Tom_Coverdale_0001.jpg",
+      "test_image": "Tom_Coverdale\\Tom_Coverdale_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Tom_Coverdale\\Tom_Coverdale_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Tom_Coverdale\\Tom_Coverdale_0002.jpg"
+    },
+    {
+      "id": 2,
+      "name": "Abid_Hamid_Mahmud_Al-Tikriti",
+      "enroll_image": "Abid_Hamid_Mahmud_Al-Tikriti\\Abid_Hamid_Mahmud_Al-Tikriti_0001.jpg",
+      "test_image": "Abid_Hamid_Mahmud_Al-Tikriti\\Abid_Hamid_Mahmud_Al-Tikriti_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Abid_Hamid_Mahmud_Al-Tikriti\\Abid_Hamid_Mahmud_Al-Tikriti_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Abid_Hamid_Mahmud_Al-Tikriti\\Abid_Hamid_Mahmud_Al-Tikriti_0002.jpg"
+    },
+    {
+      "id": 3,
+      "name": "Reggie_Miller",
+      "enroll_image": "Reggie_Miller\\Reggie_Miller_0001.jpg",
+      "test_image": "Reggie_Miller\\Reggie_Miller_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Reggie_Miller\\Reggie_Miller_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Reggie_Miller\\Reggie_Miller_0002.jpg"
+    },
+    {
+      "id": 4,
+      "name": "Corinne_Coman",
+      "enroll_image": "Corinne_Coman\\Corinne_Coman_0001.jpg",
+      "test_image": "Corinne_Coman\\Corinne_Coman_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Corinne_Coman\\Corinne_Coman_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Corinne_Coman\\Corinne_Coman_0002.jpg"
+    },
+    {
+      "id": 5,
+      "name": "Robert_Blake",
+      "enroll_image": "Robert_Blake\\Robert_Blake_0001.jpg",
+      "test_image": "Robert_Blake\\Robert_Blake_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Robert_Blake\\Robert_Blake_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Robert_Blake\\Robert_Blake_0002.jpg"
+    },
+    {
+      "id": 6,
+      "name": "Brian_Heidik",
+      "enroll_image": "Brian_Heidik\\Brian_Heidik_0001.jpg",
+      "test_image": "Brian_Heidik\\Brian_Heidik_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Brian_Heidik\\Brian_Heidik_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Brian_Heidik\\Brian_Heidik_0002.jpg"
+    },
+    {
+      "id": 7,
+      "name": "Dennis_Kucinich",
+      "enroll_image": "Dennis_Kucinich\\Dennis_Kucinich_0001.jpg",
+      "test_image": "Dennis_Kucinich\\Dennis_Kucinich_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Dennis_Kucinich\\Dennis_Kucinich_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Dennis_Kucinich\\Dennis_Kucinich_0002.jpg"
+    },
+    {
+      "id": 8,
+      "name": "Leszek_Miller",
+      "enroll_image": "Leszek_Miller\\Leszek_Miller_0001.jpg",
+      "test_image": "Leszek_Miller\\Leszek_Miller_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Leszek_Miller\\Leszek_Miller_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Leszek_Miller\\Leszek_Miller_0002.jpg"
+    },
+    {
+      "id": 9,
+      "name": "Yukiko_Okudo",
+      "enroll_image": "Yukiko_Okudo\\Yukiko_Okudo_0001.jpg",
+      "test_image": "Yukiko_Okudo\\Yukiko_Okudo_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Yukiko_Okudo\\Yukiko_Okudo_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Yukiko_Okudo\\Yukiko_Okudo_0002.jpg"
+    },
+    {
+      "id": 10,
+      "name": "Billy_Sollie",
+      "enroll_image": "Billy_Sollie\\Billy_Sollie_0001.jpg",
+      "test_image": "Billy_Sollie\\Billy_Sollie_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Billy_Sollie\\Billy_Sollie_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Billy_Sollie\\Billy_Sollie_0002.jpg"
+    },
+    {
+      "id": 11,
+      "name": "Lynn_Abraham",
+      "enroll_image": "Lynn_Abraham\\Lynn_Abraham_0001.jpg",
+      "test_image": "Lynn_Abraham\\Lynn_Abraham_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Lynn_Abraham\\Lynn_Abraham_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Lynn_Abraham\\Lynn_Abraham_0002.jpg"
+    },
+    {
+      "id": 12,
+      "name": "Joseph_Deiss",
+      "enroll_image": "Joseph_Deiss\\Joseph_Deiss_0001.jpg",
+      "test_image": "Joseph_Deiss\\Joseph_Deiss_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Joseph_Deiss\\Joseph_Deiss_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Joseph_Deiss\\Joseph_Deiss_0002.jpg"
+    },
+    {
+      "id": 13,
+      "name": "Annette_Bening",
+      "enroll_image": "Annette_Bening\\Annette_Bening_0001.jpg",
+      "test_image": "Annette_Bening\\Annette_Bening_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Annette_Bening\\Annette_Bening_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Annette_Bening\\Annette_Bening_0002.jpg"
+    },
+    {
+      "id": 14,
+      "name": "Richard_Shelby",
+      "enroll_image": "Richard_Shelby\\Richard_Shelby_0001.jpg",
+      "test_image": "Richard_Shelby\\Richard_Shelby_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Richard_Shelby\\Richard_Shelby_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Richard_Shelby\\Richard_Shelby_0002.jpg"
+    },
+    {
+      "id": 15,
+      "name": "Julio_Iglesias_Jr",
+      "enroll_image": "Julio_Iglesias_Jr\\Julio_Iglesias_Jr_0001.jpg",
+      "test_image": "Julio_Iglesias_Jr\\Julio_Iglesias_Jr_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Julio_Iglesias_Jr\\Julio_Iglesias_Jr_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Julio_Iglesias_Jr\\Julio_Iglesias_Jr_0002.jpg"
+    },
+    {
+      "id": 16,
+      "name": "Muammar_Gaddafi",
+      "enroll_image": "Muammar_Gaddafi\\Muammar_Gaddafi_0001.jpg",
+      "test_image": "Muammar_Gaddafi\\Muammar_Gaddafi_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Muammar_Gaddafi\\Muammar_Gaddafi_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Muammar_Gaddafi\\Muammar_Gaddafi_0002.jpg"
+    },
+    {
+      "id": 17,
+      "name": "Diane_Green",
+      "enroll_image": "Diane_Green\\Diane_Green_0001.jpg",
+      "test_image": "Diane_Green\\Diane_Green_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Diane_Green\\Diane_Green_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Diane_Green\\Diane_Green_0002.jpg"
+    },
+    {
+      "id": 18,
+      "name": "Christian_Wulff",
+      "enroll_image": "Christian_Wulff\\Christian_Wulff_0001.jpg",
+      "test_image": "Christian_Wulff\\Christian_Wulff_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Christian_Wulff\\Christian_Wulff_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Christian_Wulff\\Christian_Wulff_0002.jpg"
+    },
+    {
+      "id": 19,
+      "name": "Mike_Price",
+      "enroll_image": "Mike_Price\\Mike_Price_0001.jpg",
+      "test_image": "Mike_Price\\Mike_Price_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Mike_Price\\Mike_Price_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Mike_Price\\Mike_Price_0002.jpg"
+    },
+    {
+      "id": 20,
+      "name": "Robert_Mugabe",
+      "enroll_image": "Robert_Mugabe\\Robert_Mugabe_0001.jpg",
+      "test_image": "Robert_Mugabe\\Robert_Mugabe_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Robert_Mugabe\\Robert_Mugabe_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Robert_Mugabe\\Robert_Mugabe_0002.jpg"
+    },
+    {
+      "id": 21,
+      "name": "Franko_Simatovic",
+      "enroll_image": "Franko_Simatovic\\Franko_Simatovic_0001.jpg",
+      "test_image": "Franko_Simatovic\\Franko_Simatovic_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Franko_Simatovic\\Franko_Simatovic_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Franko_Simatovic\\Franko_Simatovic_0002.jpg"
+    },
+    {
+      "id": 22,
+      "name": "Jack_Grubman",
+      "enroll_image": "Jack_Grubman\\Jack_Grubman_0001.jpg",
+      "test_image": "Jack_Grubman\\Jack_Grubman_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Jack_Grubman\\Jack_Grubman_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Jack_Grubman\\Jack_Grubman_0002.jpg"
+    },
+    {
+      "id": 23,
+      "name": "Christopher_Reeve",
+      "enroll_image": "Christopher_Reeve\\Christopher_Reeve_0001.jpg",
+      "test_image": "Christopher_Reeve\\Christopher_Reeve_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Christopher_Reeve\\Christopher_Reeve_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Christopher_Reeve\\Christopher_Reeve_0002.jpg"
+    },
+    {
+      "id": 24,
+      "name": "Geno_Auriemma",
+      "enroll_image": "Geno_Auriemma\\Geno_Auriemma_0001.jpg",
+      "test_image": "Geno_Auriemma\\Geno_Auriemma_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Geno_Auriemma\\Geno_Auriemma_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Geno_Auriemma\\Geno_Auriemma_0002.jpg"
+    },
+    {
+      "id": 25,
+      "name": "Judi_Dench",
+      "enroll_image": "Judi_Dench\\Judi_Dench_0001.jpg",
+      "test_image": "Judi_Dench\\Judi_Dench_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Judi_Dench\\Judi_Dench_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Judi_Dench\\Judi_Dench_0002.jpg"
+    },
+    {
+      "id": 26,
+      "name": "S_Jayakumar",
+      "enroll_image": "S_Jayakumar\\S_Jayakumar_0001.jpg",
+      "test_image": "S_Jayakumar\\S_Jayakumar_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\S_Jayakumar\\S_Jayakumar_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\S_Jayakumar\\S_Jayakumar_0002.jpg"
+    },
+    {
+      "id": 27,
+      "name": "Allison_Janney",
+      "enroll_image": "Allison_Janney\\Allison_Janney_0001.jpg",
+      "test_image": "Allison_Janney\\Allison_Janney_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Allison_Janney\\Allison_Janney_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Allison_Janney\\Allison_Janney_0002.jpg"
+    },
+    {
+      "id": 28,
+      "name": "Mohamed_ElBaradei",
+      "enroll_image": "Mohamed_ElBaradei\\Mohamed_ElBaradei_0001.jpg",
+      "test_image": "Mohamed_ElBaradei\\Mohamed_ElBaradei_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Mohamed_ElBaradei\\Mohamed_ElBaradei_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Mohamed_ElBaradei\\Mohamed_ElBaradei_0002.jpg"
+    },
+    {
+      "id": 29,
+      "name": "Wang_Yi",
+      "enroll_image": "Wang_Yi\\Wang_Yi_0001.jpg",
+      "test_image": "Wang_Yi\\Wang_Yi_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Wang_Yi\\Wang_Yi_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Wang_Yi\\Wang_Yi_0002.jpg"
+    },
+    {
+      "id": 30,
+      "name": "Tom_Crean",
+      "enroll_image": "Tom_Crean\\Tom_Crean_0001.jpg",
+      "test_image": "Tom_Crean\\Tom_Crean_0002.jpg",
+      "enroll_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Tom_Crean\\Tom_Crean_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Tom_Crean\\Tom_Crean_0002.jpg"
+    }
+  ],
+  "outsider_identities": [
+    {
+      "id": 1,
+      "name": "Bruce_Van_De_Velde",
+      "test_image": "Bruce_Van_De_Velde\\Bruce_Van_De_Velde_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Bruce_Van_De_Velde\\Bruce_Van_De_Velde_0001.jpg"
+    },
+    {
+      "id": 2,
+      "name": "Alan_Zemaitis",
+      "test_image": "Alan_Zemaitis\\Alan_Zemaitis_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Alan_Zemaitis\\Alan_Zemaitis_0001.jpg"
+    },
+    {
+      "id": 3,
+      "name": "Sigourney_Weaver",
+      "test_image": "Sigourney_Weaver\\Sigourney_Weaver_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Sigourney_Weaver\\Sigourney_Weaver_0001.jpg"
+    },
+    {
+      "id": 4,
+      "name": "Jean-Claude_Van_Damme",
+      "test_image": "Jean-Claude_Van_Damme\\Jean-Claude_Van_Damme_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Jean-Claude_Van_Damme\\Jean-Claude_Van_Damme_0001.jpg"
+    },
+    {
+      "id": 5,
+      "name": "Ahmed_Ibrahim_Bilal",
+      "test_image": "Ahmed_Ibrahim_Bilal\\Ahmed_Ibrahim_Bilal_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Ahmed_Ibrahim_Bilal\\Ahmed_Ibrahim_Bilal_0001.jpg"
+    },
+    {
+      "id": 6,
+      "name": "Jeff_George",
+      "test_image": "Jeff_George\\Jeff_George_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Jeff_George\\Jeff_George_0001.jpg"
+    },
+    {
+      "id": 7,
+      "name": "Brian_Olson",
+      "test_image": "Brian_Olson\\Brian_Olson_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Brian_Olson\\Brian_Olson_0001.jpg"
+    },
+    {
+      "id": 8,
+      "name": "Alberto_Ruiz_Gallardon",
+      "test_image": "Alberto_Ruiz_Gallardon\\Alberto_Ruiz_Gallardon_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Alberto_Ruiz_Gallardon\\Alberto_Ruiz_Gallardon_0001.jpg"
+    },
+    {
+      "id": 9,
+      "name": "Tommy_Haas",
+      "test_image": "Tommy_Haas\\Tommy_Haas_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Tommy_Haas\\Tommy_Haas_0001.jpg"
+    },
+    {
+      "id": 10,
+      "name": "Xanana_Gusmao",
+      "test_image": "Xanana_Gusmao\\Xanana_Gusmao_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Xanana_Gusmao\\Xanana_Gusmao_0001.jpg"
+    },
+    {
+      "id": 11,
+      "name": "Heinrich_Wolfgang",
+      "test_image": "Heinrich_Wolfgang\\Heinrich_Wolfgang_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Heinrich_Wolfgang\\Heinrich_Wolfgang_0001.jpg"
+    },
+    {
+      "id": 12,
+      "name": "Eric_Rosser",
+      "test_image": "Eric_Rosser\\Eric_Rosser_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Eric_Rosser\\Eric_Rosser_0001.jpg"
+    },
+    {
+      "id": 13,
+      "name": "Martin_McCauley",
+      "test_image": "Martin_McCauley\\Martin_McCauley_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Martin_McCauley\\Martin_McCauley_0001.jpg"
+    },
+    {
+      "id": 14,
+      "name": "Richard_Harris",
+      "test_image": "Richard_Harris\\Richard_Harris_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Richard_Harris\\Richard_Harris_0001.jpg"
+    },
+    {
+      "id": 15,
+      "name": "Martha_Bowen",
+      "test_image": "Martha_Bowen\\Martha_Bowen_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Martha_Bowen\\Martha_Bowen_0001.jpg"
+    },
+    {
+      "id": 16,
+      "name": "Alex_Wallau",
+      "test_image": "Alex_Wallau\\Alex_Wallau_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Alex_Wallau\\Alex_Wallau_0001.jpg"
+    },
+    {
+      "id": 17,
+      "name": "Antonio_Bernardo",
+      "test_image": "Antonio_Bernardo\\Antonio_Bernardo_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Antonio_Bernardo\\Antonio_Bernardo_0001.jpg"
+    },
+    {
+      "id": 18,
+      "name": "Tim_Curry",
+      "test_image": "Tim_Curry\\Tim_Curry_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Tim_Curry\\Tim_Curry_0001.jpg"
+    },
+    {
+      "id": 19,
+      "name": "Georgi_Parvanov",
+      "test_image": "Georgi_Parvanov\\Georgi_Parvanov_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Georgi_Parvanov\\Georgi_Parvanov_0001.jpg"
+    },
+    {
+      "id": 20,
+      "name": "Koji_Uehara",
+      "test_image": "Koji_Uehara\\Koji_Uehara_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Koji_Uehara\\Koji_Uehara_0001.jpg"
+    },
+    {
+      "id": 21,
+      "name": "Duncan_Fletcher",
+      "test_image": "Duncan_Fletcher\\Duncan_Fletcher_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Duncan_Fletcher\\Duncan_Fletcher_0001.jpg"
+    },
+    {
+      "id": 22,
+      "name": "Jafar_Umar_Thalib",
+      "test_image": "Jafar_Umar_Thalib\\Jafar_Umar_Thalib_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Jafar_Umar_Thalib\\Jafar_Umar_Thalib_0001.jpg"
+    },
+    {
+      "id": 23,
+      "name": "Brian_Williams",
+      "test_image": "Brian_Williams\\Brian_Williams_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Brian_Williams\\Brian_Williams_0001.jpg"
+    },
+    {
+      "id": 24,
+      "name": "Patrick_Clawsen",
+      "test_image": "Patrick_Clawsen\\Patrick_Clawsen_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Patrick_Clawsen\\Patrick_Clawsen_0001.jpg"
+    },
+    {
+      "id": 25,
+      "name": "Ronald_Perelman",
+      "test_image": "Ronald_Perelman\\Ronald_Perelman_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Ronald_Perelman\\Ronald_Perelman_0001.jpg"
+    },
+    {
+      "id": 26,
+      "name": "Ivana_Trump",
+      "test_image": "Ivana_Trump\\Ivana_Trump_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Ivana_Trump\\Ivana_Trump_0001.jpg"
+    },
+    {
+      "id": 27,
+      "name": "Al_Pacino",
+      "test_image": "Al_Pacino\\Al_Pacino_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Al_Pacino\\Al_Pacino_0001.jpg"
+    },
+    {
+      "id": 28,
+      "name": "Herta_Daeubler-Gmelin",
+      "test_image": "Herta_Daeubler-Gmelin\\Herta_Daeubler-Gmelin_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Herta_Daeubler-Gmelin\\Herta_Daeubler-Gmelin_0001.jpg"
+    },
+    {
+      "id": 29,
+      "name": "Jim_Calhoun",
+      "test_image": "Jim_Calhoun\\Jim_Calhoun_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Jim_Calhoun\\Jim_Calhoun_0001.jpg"
+    },
+    {
+      "id": 30,
+      "name": "Charles_Bronson",
+      "test_image": "Charles_Bronson\\Charles_Bronson_0001.jpg",
+      "test_path": "C:\\Users\\vishe\\scikit_learn_data\\lfw_home\\lfw_funneled\\Charles_Bronson\\Charles_Bronson_0001.jpg"
+    }
+  ]
+}

@@ -69,7 +69,11 @@ def test_health():
     r = requests.get(f"{FACE_SERVICE}/health", timeout=10)
     check("HTTP 200", r.status_code == 200)
     data = r.json()
-    check("detector = haar_cascade", data.get("detector") == "haar_cascade", f"got: {data.get('detector')}")
+    # Detector is pluggable; default is mtcnn after recognition upgrade
+    det = data.get("detector", "")
+    check("detector is set (mtcnn|yunet|haar_cascade)",
+          det in ("mtcnn", "yunet", "haar_cascade"),
+          f"got: {det}")
     check("embedder = facenet_vggface2_128d", data.get("embedder") == "facenet_vggface2_128d", f"got: {data.get('embedder')}")
     check("distance_metric = manhattan_L1", data.get("distance_metric") == "manhattan_L1", f"got: {data.get('distance_metric')}")
     check("haar_scale_factor = 1.2", data.get("haar_scale_factor") == 1.2, f"got: {data.get('haar_scale_factor')}")
@@ -79,10 +83,10 @@ def test_health():
     return r.status_code == 200
 
 
-# -- Test 2: Single-face and Multi-face Detection (Haar Cascade, 1.2) ------------
+# -- Test 2: Single-face and Multi-face Detection (MTCNN / pluggable detector) ----
 
 def test_detection():
-    print("\n[2] Face Detection (Haar Cascade, scaleFactor=1.2)")
+    print("\n[2] Face Detection (default: MTCNN; pluggable via DETECTOR env var)")
     
     # Try real multi-face image first
     img_bytes = get_image_bytes(SELFIE_FACE) or get_image_bytes(MULTI_FACE)

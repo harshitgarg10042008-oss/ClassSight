@@ -1,7 +1,7 @@
 """
 ClassSight Face Service — Alniemi 2023 Paper-Aligned Pipeline
 =============================================================
-Pipeline:  Haar Cascade (scaleFactor=1.2) → FaceNet 128-d → Manhattan (L1) distance
+Pipeline: configurable face detector → FaceNet 128-d → Manhattan (L1) distance
 
 Reference:
   Alniemi, O., Mahmood, H.F. (2023). "Class Attendance System Based on Face Recognition."
@@ -19,7 +19,7 @@ ACCURACY CAVEAT (paper §4.2):
   possible, and enroll students per the multi-angle protocol in the README.
 """
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Query
 from pydantic import BaseModel, Field, ValidationError
 import numpy as np
 from PIL import Image, ImageFilter
@@ -58,7 +58,7 @@ except ImportError:
     FACENET_AVAILABLE = False
     _FACENET_MODEL = None
 
-# ── OpenCV (Haar Cascade) ─────────────────────────────────────────────────────
+# ── OpenCV detectors (Haar Cascade and YuNet) ─────────────────────────────────
 try:
     import cv2
     _HAAR_CASCADE: Optional[cv2.CascadeClassifier] = None
@@ -82,8 +82,10 @@ except ImportError:
 
 try:
     from scipy.spatial.distance import cdist
+    from scipy.optimize import linear_sum_assignment
 except ImportError:
     cdist = None
+    linear_sum_assignment = None
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -98,6 +100,10 @@ MIN_LIVENESS_TEXTURE = float(os.getenv("QUALITY_MIN_LIVENESS_TEXTURE", "2.5"))
 MIN_FACE_SIZE_RATIO = float(os.getenv("QUALITY_MIN_FACE_SIZE_RATIO", "0.0005"))
 RECOGNITION_MAX_DIMENSION = int(os.getenv("RECOGNITION_MAX_DIMENSION", "1600"))
 
+# Detector configuration: "haar", "yunet", or "mtcnn"
+# Default: "mtcnn" — selected by benchmark (100% detection at 60/80/120px vs 99% YuNet, 45% Haar)
+DETECTOR = os.getenv("DETECTOR", "mtcnn").lower()
+
 # Haar Cascade parameters — scaleFactor=1.2 matches the paper's search-box zoom
 HAAR_SCALE_FACTOR = float(os.getenv("HAAR_SCALE_FACTOR", "1.2"))
 HAAR_MIN_NEIGHBORS = int(os.getenv("HAAR_MIN_NEIGHBORS", "5"))
@@ -106,15 +112,19 @@ HAAR_MIN_SIZE_PX = int(os.getenv("HAAR_MIN_SIZE_PX", "30"))
 # FaceNet input size (paper: 160×160×3)
 FACENET_INPUT_SIZE = 160
 
-# Manhattan distance threshold.  The paper reports results using L1.
-# Tuned range: ~10–25 for FaceNet(vggface2) 128-d embeddings on well-lit close-range faces.
-# Default 15.0 is a conservative middle value; expose via env so it can be tuned live.
-MANHATTAN_THRESHOLD = float(os.getenv("MANHATTAN_THRESHOLD", "15.0"))
+# Manhattan distance threshold (T_review, pair FAR=1% on calibration split)
+MANHATTAN_THRESHOLD = float(os.getenv("MANHATTAN_THRESHOLD", "9.74"))
+
+# Manhattan auto-accept threshold (T_auto, calibrated safe threshold)
+MANHATTAN_AUTO_ACCEPT = float(os.getenv("MANHATTAN_AUTO_ACCEPT", "8.0"))
+
+# Margin between best and second-best candidate (M)
+MATCH_MARGIN = float(os.getenv("MATCH_MARGIN", "0.5"))
 
 # Confidence labels derived from Manhattan distance
 CONF_HIGH_THRESHOLD = float(os.getenv("CONF_HIGH_THRESHOLD", "10.0"))   # D < 10 → HIGH
 CONF_MED_THRESHOLD = float(os.getenv("CONF_MED_THRESHOLD", "15.0"))     # D < 15 → MEDIUM
-# D >= 15 (or >= MANHATTAN_THRESHOLD) → LOW / UNKNOWN → routed to review queue
+# D > MANHATTAN_THRESHOLD → UNKNOWN and routed to review queue
 
 
 # ── Pydantic models (API-stable, backward compatible) ─────────────────────────
@@ -153,6 +163,7 @@ class FaceMatch(BaseModel):
     face_size_ratio: Optional[float] = None
     quality_warnings: list[str] = []
     recognition_state: str = "UNKNOWN"
+    tier: str = "UNKNOWN"                        # AUTO / REVIEW / UNKNOWN
     margin: Optional[float] = None
     box: list[int] = Field(default_factory=list)
     face_width_px: int = 0
@@ -201,8 +212,21 @@ class DetectionResponse(BaseModel):
 
 @app.on_event("startup")
 def preload_models():
-    """Warm up Haar Cascade and FaceNet at startup to eliminate first-request penalty."""
-    if CV2_AVAILABLE:
+    """Warm up active detector and FaceNet at startup to eliminate first-request penalty."""
+    det = DETECTOR.lower()
+    if det == "yunet":
+        try:
+            _get_yunet_detector(320, 320)
+            logger.info("YuNet FaceDetectorYN preloaded OK")
+        except Exception as exc:
+            logger.warning("YuNet preload error: %s", exc)
+    elif det == "mtcnn":
+        try:
+            _get_mtcnn_detector()
+            logger.info("MTCNN detector preloaded OK")
+        except Exception as exc:
+            logger.warning("MTCNN preload error: %s", exc)
+    elif CV2_AVAILABLE:
         try:
             cc = _get_haar_cascade()
             dummy = np.zeros((64, 64, 3), dtype=np.uint8)
@@ -224,14 +248,18 @@ def preload_models():
 
 @app.get("/health")
 def health():
+    det_name = "haar_cascade" if DETECTOR == "haar" else DETECTOR
     return {
         "status": "UP",
         "service": "face-service-fastapi",
-        "detector": "haar_cascade",
+        "detector": det_name,
+        "detector_type": DETECTOR,
         "embedder": "facenet_vggface2_128d",
         "distance_metric": "manhattan_L1",
         "haar_scale_factor": HAAR_SCALE_FACTOR,
         "manhattan_threshold": MANHATTAN_THRESHOLD,
+        "manhattan_auto_accept": MANHATTAN_AUTO_ACCEPT,
+        "match_margin": MATCH_MARGIN,
         "facenet_available": FACENET_AVAILABLE,
         "cv2_available": CV2_AVAILABLE,
     }
@@ -251,16 +279,12 @@ def _load_rgb_image(image_bytes: bytes) -> np.ndarray:
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}") from exc
 
 
-# ── Haar Cascade Detection (paper §2.1, scaleFactor=1.2) ─────────────────────
+# ── Face Detectors: Haar, YuNet, MTCNN ────────────────────────────────────────
 
 def _detect_faces_haar(image_array: np.ndarray) -> list[tuple[int, int, int, int]]:
     """
     Detect faces using OpenCV Haar Cascade, scaleFactor=1.2 (paper-specified).
     Returns list of (top, right, bottom, left) tuples — same convention as dlib.
-
-    The paper uses the frontal-face Haar Cascade with a scale factor of 1.2 for
-    the multi-scale search pyramid.  minNeighbors=5 suppresses false positives
-    while preserving true detections in classroom-density images.
     """
     if not CV2_AVAILABLE:
         raise HTTPException(status_code=500, detail="OpenCV not available — cannot run Haar Cascade detection")
@@ -268,13 +292,12 @@ def _detect_faces_haar(image_array: np.ndarray) -> list[tuple[int, int, int, int
     gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
     faces = cc.detectMultiScale(
         gray,
-        scaleFactor=HAAR_SCALE_FACTOR,   # 1.2 — matches paper
+        scaleFactor=HAAR_SCALE_FACTOR,
         minNeighbors=HAAR_MIN_NEIGHBORS,
         minSize=(HAAR_MIN_SIZE_PX, HAAR_MIN_SIZE_PX),
     )
     if len(faces) == 0:
         return []
-    # Convert OpenCV (x, y, w, h) → dlib-convention (top, right, bottom, left)
     locations: list[tuple[int, int, int, int]] = []
     h_img, w_img = image_array.shape[:2]
     for (x, y, w, h) in faces:
@@ -284,6 +307,100 @@ def _detect_faces_haar(image_array: np.ndarray) -> list[tuple[int, int, int, int
         right = min(w_img, x + w)
         locations.append((top, right, bottom, left))
     return locations
+
+
+_YUNET_DETECTOR = None
+_YUNET_INPUT_SIZE = None
+
+def _get_yunet_detector(width: int, height: int):
+    global _YUNET_DETECTOR, _YUNET_INPUT_SIZE
+    if _YUNET_DETECTOR is None:
+        model_path = os.getenv("YUNET_MODEL_PATH", "models/face_detection_yunet_2023mar.onnx")
+        if not os.path.isabs(model_path):
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            candidate = os.path.join(base_dir, model_path)
+            if os.path.exists(candidate):
+                model_path = candidate
+        if not os.path.exists(model_path):
+            raise RuntimeError(f"YuNet ONNX model not found at {model_path}")
+        _YUNET_DETECTOR = cv2.FaceDetectorYN.create(
+            model_path,
+            "",
+            (width, height),
+            score_threshold=0.6,
+            nms_threshold=0.3,
+            top_k=5000,
+        )
+        _YUNET_INPUT_SIZE = (width, height)
+    elif _YUNET_INPUT_SIZE != (width, height):
+        _YUNET_DETECTOR.setInputSize((width, height))
+        _YUNET_INPUT_SIZE = (width, height)
+    return _YUNET_DETECTOR
+
+
+def _detect_faces_yunet(image_array: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """
+    Detect faces using OpenCV FaceDetectorYN (YuNet).
+    Run at full image resolution (input size = image size).
+    Returns list of (top, right, bottom, left) tuples.
+    """
+    if not CV2_AVAILABLE:
+        raise HTTPException(status_code=500, detail="OpenCV not available — cannot run YuNet detection")
+    h_img, w_img = image_array.shape[:2]
+    detector = _get_yunet_detector(w_img, h_img)
+    bgr = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
+    _, faces = detector.detect(bgr)
+    if faces is None or len(faces) == 0:
+        return []
+    locations: list[tuple[int, int, int, int]] = []
+    for face in faces:
+        x, y, w, h = face[:4]
+        top = int(max(0, y))
+        left = int(max(0, x))
+        bottom = int(min(h_img, y + h))
+        right = int(min(w_img, x + w))
+        locations.append((top, right, bottom, left))
+    return locations
+
+
+_MTCNN_DETECTOR = None
+
+def _get_mtcnn_detector():
+    global _MTCNN_DETECTOR
+    if _MTCNN_DETECTOR is None:
+        from facenet_pytorch import MTCNN
+        _MTCNN_DETECTOR = MTCNN(min_face_size=20, keep_all=True, post_process=False, device="cpu")
+    return _MTCNN_DETECTOR
+
+
+def _detect_faces_mtcnn(image_array: np.ndarray) -> list[tuple[int, int, int, int]]:
+    """
+    Detect faces using facenet_pytorch MTCNN (min_face_size=20).
+    Returns list of (top, right, bottom, left) tuples.
+    """
+    detector = _get_mtcnn_detector()
+    h_img, w_img = image_array.shape[:2]
+    boxes, probs = detector.detect(image_array)
+    if boxes is None or len(boxes) == 0:
+        return []
+    locations: list[tuple[int, int, int, int]] = []
+    for box in boxes:
+        left = int(max(0, box[0]))
+        top = int(max(0, box[1]))
+        right = int(min(w_img, box[2]))
+        bottom = int(min(h_img, box[3]))
+        locations.append((top, right, bottom, left))
+    return locations
+
+
+def _detect_faces(image_array: np.ndarray, detector_name: Optional[str] = None) -> list[tuple[int, int, int, int]]:
+    det = (detector_name or DETECTOR).lower()
+    if det == "yunet":
+        return _detect_faces_yunet(image_array)
+    elif det == "mtcnn":
+        return _detect_faces_mtcnn(image_array)
+    else:
+        return _detect_faces_haar(image_array)
 
 
 # ── FaceNet Embedding (paper §2.2, 160×160, pretrained vggface2) ──────────────
@@ -494,9 +611,9 @@ def _manhattan_matching(
     live embedding is the candidate match.  If the smallest distance exceeds the
     configured threshold the face is flagged as low-confidence and routed to review.
 
-    Unlike the previous Euclidean+Hungarian implementation this is a strict nearest-
-    neighbour search (one face → one student, greedy by distance) which matches the
-    paper's described approach.
+    Assignment is globally optimal across all faces and students, so a student can
+    never be assigned to two faces and locally attractive matches cannot block a
+    lower-cost overall assignment.
     """
     M = len(face_embeddings)
     K = len(valid_students)
@@ -504,6 +621,7 @@ def _manhattan_matching(
         "student_id": None, "roll_number": None, "distance": None,
         "manhattan_distance": None, "confidence_score": 0.0,
         "matched": False, "confidence_label": "UNKNOWN",
+        "tier": "UNKNOWN", "recognition_state": "UNKNOWN",
         "margin": None, "second_best_distance": None,
     }
     if M == 0 or K == 0:
@@ -538,22 +656,16 @@ def _manhattan_matching(
             cost_matrix[:, s_idx] = np.min(D_all[:, mask], axis=1)
 
     results = []
-    claimed_students: set[int] = set()
+    if linear_sum_assignment is None:
+        raise RuntimeError("scipy.optimize.linear_sum_assignment is required for one-to-one matching")
 
-    # Greedy nearest-neighbour assignment (matches paper approach)
-    # Process faces sorted by their best distance (most-confident first)
-    best_per_face = [(float(np.min(cost_matrix[fi, :])), fi) for fi in range(M)]
-    best_per_face.sort(key=lambda x: x[0])
-
-    assignment: dict[int, int] = {}
-    for _, fi in best_per_face:
-        row = cost_matrix[fi, :]
-        sorted_students = np.argsort(row)
-        for si in sorted_students:
-            if si not in claimed_students:
-                assignment[fi] = int(si)
-                claimed_students.add(si)
-                break
+    # Hungarian assignment minimizes the total L1 cost over the complete
+    # face/student matrix. Unmatched faces are represented by empty results.
+    assigned_faces, assigned_students = linear_sum_assignment(cost_matrix)
+    assignment = {
+        int(face_idx): int(student_idx)
+        for face_idx, student_idx in zip(assigned_faces, assigned_students)
+    }
 
     for face_idx in range(M):
         if face_idx not in assignment:
@@ -564,18 +676,36 @@ def _manhattan_matching(
         student = valid_students[si]
         d1 = float(cost_matrix[face_idx, si])
 
-        # Top-2 margin
+        # Top-2 margin: if fewer than 2 enrolled students, d2 does not exist (null in JSON, Infinity backend)
         other_cols = [c for c in range(K) if c != si]
         if other_cols:
             d2 = float(np.min(cost_matrix[face_idx, other_cols]))
             margin = float(abs(d2 - d1))
         else:
             d2 = None
-            margin = 1e9
+            margin = None
 
-        matched = d1 < distance_threshold
+        # Tiered Decision:
+        # UNKNOWN if d1 > T_review (distance_threshold)
+        # REVIEW if (d1 > MANHATTAN_AUTO_ACCEPT) or (d2 is not None and (d2 - d1) < MATCH_MARGIN)
+        # AUTO if (d1 <= MANHATTAN_AUTO_ACCEPT) and (d2 is None or (d2 - d1) >= MATCH_MARGIN)
+        if d1 > distance_threshold:
+            tier = "UNKNOWN"
+            matched = False
+            conf_label = "LOW"
+            rec_state = "UNKNOWN"
+        elif (d1 > MANHATTAN_AUTO_ACCEPT) or (d2 is not None and (d2 - d1) < MATCH_MARGIN):
+            tier = "REVIEW"
+            matched = False
+            conf_label = "MEDIUM"
+            rec_state = "REVIEW_REQUIRED"
+        else:
+            tier = "AUTO"
+            matched = True
+            conf_label = "HIGH"
+            rec_state = "RECOGNIZED"
+
         conf_score = _confidence_score_from_manhattan(d1, distance_threshold)
-        conf_label = _confidence_label(d1) if matched else "LOW"
 
         results.append({
             "student_id": student.student_id,
@@ -585,7 +715,9 @@ def _manhattan_matching(
             "confidence_score": conf_score,
             "matched": matched,
             "confidence_label": conf_label,
-            "margin": round(margin, 6) if d2 is not None else None,
+            "tier": tier,
+            "recognition_state": rec_state,
+            "margin": round(margin, 6) if margin is not None else None,
             "second_best_distance": round(d2, 6) if d2 is not None else None,
         })
 
@@ -595,15 +727,20 @@ def _manhattan_matching(
 # ── Detection endpoint ────────────────────────────────────────────────────────
 
 @app.post("/detect-faces", response_model=DetectionResponse)
-async def detect_faces(image: UploadFile = File(...)):
+async def detect_faces(
+    image: UploadFile = File(...),
+    detector: Optional[str] = Query(None),
+    detector_form: Optional[str] = Form(None),
+):
     started = time.perf_counter()
+    active_detector = detector or detector_form or DETECTOR
     image_bytes = await image.read()
     try:
         decode_started = time.perf_counter()
         image_array = _load_rgb_image(image_bytes)
         decode_ms = (time.perf_counter() - decode_started) * 1000
         detection_started = time.perf_counter()
-        locations = _detect_faces_haar(image_array)
+        locations = _detect_faces(image_array, active_detector)
         detection_ms = (time.perf_counter() - detection_started) * 1000
         quality = _quality_metrics(image_array, locations)
         faces = [
@@ -634,7 +771,11 @@ async def detect_faces(image: UploadFile = File(...)):
 # ── Enrollment endpoint ───────────────────────────────────────────────────────
 
 @app.post("/enroll", response_model=EmbeddingResponse)
-async def enroll(image: UploadFile = File(...)):
+async def enroll(
+    image: UploadFile = File(...),
+    detector: Optional[str] = Query(None),
+    detector_form: Optional[str] = Form(None),
+):
     """
     Enroll a single face image → returns 128-d FaceNet embedding.
 
@@ -644,11 +785,12 @@ async def enroll(image: UploadFile = File(...)):
     extracted video frame and accumulate multiple embeddings per student via the
     /enroll-frame endpoint on the Spring backend.
     """
+    active_detector = detector or detector_form or DETECTOR
     if not FACENET_AVAILABLE:
         raise HTTPException(status_code=500, detail="FaceNet (facenet-pytorch) not available")
     try:
         image_array = _load_rgb_image(await image.read())
-        face_locations = _detect_faces_haar(image_array)
+        face_locations = _detect_faces(image_array, active_detector)
         face_count = len(face_locations)
         if face_count == 0:
             raise HTTPException(status_code=400, detail="No face detected in the image")
@@ -683,7 +825,7 @@ async def enroll(image: UploadFile = File(...)):
         return EmbeddingResponse(
             embedding=embedding.tolist(),
             face_count=face_count,
-            message="FaceNet 128-d embedding generated successfully (paper-aligned pipeline)",
+            message=f"FaceNet 128-d embedding generated successfully ({active_detector} detector)",
         )
     except HTTPException:
         raise
@@ -700,14 +842,17 @@ async def recognize(
     enrolled_students: str = Form(...),
     distance_threshold: float = Form(MANHATTAN_THRESHOLD, ge=0.0, le=200.0),
     edge_crop: bool = Form(False),   # kept for API compat; crops always used now
+    detector: Optional[str] = Query(None),
+    detector_form: Optional[str] = Form(None),
 ):
     """
-    Haar Cascade detection → FaceNet embedding → Manhattan distance matching.
+    Detector (Haar / YuNet / MTCNN) → FaceNet embedding → Manhattan distance matching.
 
     Results include `manhattan_distance` and `confidence_label` (HIGH/MEDIUM/LOW).
     Faces with distance >= threshold are flagged as LOW_CONFIDENCE and routed to the
     faculty review queue — never silently accepted or silently rejected.
     """
+    active_detector = detector or detector_form or DETECTOR
     t_start = time.perf_counter()
     try:
         try:
@@ -721,9 +866,9 @@ async def recognize(
         image_array = _load_rgb_image(raw_bytes)
         t_decode_end = time.perf_counter()
 
-        # Haar Cascade detection (paper §2.1, scaleFactor=1.2)
+        # Face detection
         t_detect_start = time.perf_counter()
-        face_locations = _detect_faces_haar(image_array)
+        face_locations = _detect_faces(image_array, active_detector)
         t_detect_end = time.perf_counter()
 
         # Quality assessment
@@ -745,6 +890,9 @@ async def recognize(
         assignment_results = _manhattan_matching(face_embeddings, valid_students, distance_threshold)
         t_match_end = time.perf_counter()
 
+        det_label = "haar_cascade" if active_detector == "haar" else active_detector
+        det_scale = f"scaleFactor={HAAR_SCALE_FACTOR}" if active_detector == "haar" else active_detector
+
         matches: list[FaceMatch] = []
         for face_idx, result in enumerate(assignment_results):
             face_warnings = _face_quality_warnings(image_array, face_locations[face_idx], image_array.shape, quality)
@@ -753,7 +901,10 @@ async def recognize(
 
             has_candidate = result["student_id"] is not None
             matched = result["matched"]
-            rec_state = _recognition_state(matched, face_warnings, has_candidate)
+            rec_state = result.get("recognition_state") or _recognition_state(matched, face_warnings, has_candidate)
+            if face_warnings:
+                rec_state = "RECAPTURE_REQUIRED"
+                matched = False
 
             matches.append(FaceMatch(
                 face_index=face_idx,
@@ -764,6 +915,7 @@ async def recognize(
                 manhattan_distance=result["manhattan_distance"],
                 confidence_label=result.get("confidence_label", "UNKNOWN"),
                 matched=matched,
+                tier=result.get("tier", "UNKNOWN"),
                 face_size_ratio=face_size_ratio,
                 quality_warnings=face_warnings,
                 recognition_state=rec_state,
@@ -771,8 +923,8 @@ async def recognize(
                 box=[top, right, bottom, left],
                 face_width_px=max(0, right - left),
                 face_height_px=max(0, bottom - top),
-                detector="haar_cascade",
-                detector_scale=f"scaleFactor={HAAR_SCALE_FACTOR}",
+                detector=det_label,
+                detector_scale=det_scale,
                 second_best_distance=result.get("second_best_distance"),
                 rejection_reason=_rejection_reason(rec_state, face_warnings, has_candidate),
                 image_width_px=int(image_array.shape[1]),
@@ -791,10 +943,10 @@ async def recognize(
 
         logger.info(
             "Recognized %d face(s) vs %d student(s) in %.1f ms "
-            "(detect: %.1f ms, embed: %.1f ms, match: %.1f ms) — threshold=%.1f (Manhattan)",
+            "(detect: %.1f ms, embed: %.1f ms, match: %.1f ms, detector=%s) — threshold=%.1f (Manhattan)",
             len(matches), len(valid_students), timings.total_ms,
             timings.detection_ms, timings.embedding_ms, timings.matching_ms,
-            distance_threshold,
+            active_detector, distance_threshold,
         )
 
         return RecognitionResponse(
@@ -802,8 +954,8 @@ async def recognize(
             matches=matches,
             quality=quality,
             message=(
-                f"Recognized via Haar+FaceNet+Manhattan pipeline "
-                f"(Alniemi 2023, scaleFactor={HAAR_SCALE_FACTOR}, threshold={distance_threshold})"
+                f"Recognized via {det_label}+FaceNet+Manhattan pipeline "
+                f"(threshold={distance_threshold})"
             ),
             timings=timings,
         )
@@ -832,7 +984,7 @@ def _recognize_message(
 ) -> dict:
     t_start = time.perf_counter()
     image_array = _load_rgb_image(image_bytes)
-    face_locations = _detect_faces_haar(image_array)
+    face_locations = _detect_faces(image_array, DETECTOR)
     quality = _quality_metrics(image_array, face_locations)
     face_embeddings = _encode_detected_faces(image_array, face_locations)
 
@@ -850,7 +1002,10 @@ def _recognize_message(
         face_size_ratio = round(max(0, bottom - top) * max(0, right - left) / float(image_array.shape[0] * image_array.shape[1]), 6)
         has_candidate = result["student_id"] is not None
         matched = result["matched"]
-        rec_state = _recognition_state(matched, face_warnings, has_candidate)
+        rec_state = result.get("recognition_state") or _recognition_state(matched, face_warnings, has_candidate)
+        if face_warnings:
+            rec_state = "RECAPTURE_REQUIRED"
+            matched = False
         matches.append(FaceMatch(
             face_index=face_idx,
             student_id=result["student_id"],
@@ -860,6 +1015,7 @@ def _recognize_message(
             manhattan_distance=result["manhattan_distance"],
             confidence_label=result.get("confidence_label", "UNKNOWN"),
             matched=matched,
+            tier=result.get("tier", "UNKNOWN"),
             face_size_ratio=face_size_ratio,
             quality_warnings=face_warnings,
             recognition_state=rec_state,

@@ -506,6 +506,16 @@ function FaceCropPreview({ src, box, imageWidth, imageHeight }: { src:string; bo
   return <span style={{display:'inline-flex',alignItems:'center',gap:8}}>{preview?<img src={preview} alt="Cropped face thumbnail" style={{width:64,height:64,objectFit:'cover',borderRadius:8}}/>:<span className="hint">Preparing face crop…</span>}</span>;
 }
 
+function boxesOverlap(first: number[], second: number[]): boolean {
+  const [topA, rightA, bottomA, leftA] = first;
+  const [topB, rightB, bottomB, leftB] = second;
+  const intersection = Math.max(0, Math.min(rightA, rightB) - Math.max(leftA, leftB))
+    * Math.max(0, Math.min(bottomA, bottomB) - Math.max(topA, topB));
+  const areaA = Math.max(1, rightA - leftA) * Math.max(1, bottomA - topA);
+  const areaB = Math.max(1, rightB - leftB) * Math.max(1, bottomB - topB);
+  return intersection / Math.min(areaA, areaB) >= 0.35;
+}
+
 
 function StudentFaceThumbnail({ student, authFetch }: { student:StudentRosterItem; authFetch:(path:string,options?:RequestInit)=>Promise<Response> }) {
   const root = useRef<HTMLSpanElement>(null); const [imageUrl,setImageUrl]=useState('');
@@ -525,7 +535,8 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   authFetch: (p: string, o?: RequestInit) => Promise<Response>;
   getCsrf: () => Promise<{ token: string }>;
 }) {
-  type Shot = { id: number; file: File; url: string; image_width: number; image_height: number; faces: QuickDetection['faces'] };
+  type QuickFace = QuickDetection['faces'][number] & { skipped?: boolean };
+  type Shot = { id: number; file: File; url: string; image_width: number; image_height: number; faces: QuickFace[] };
   type FaceDraft = { name: string; roll: string; mergeWith?: string };
   const [tab, setTab] = useState<'quick'|'bulk'|'single'|'roster'|'test'>('quick');
   const [roster, setRoster] = useState<StudentRosterItem[]>([]);
@@ -542,6 +553,10 @@ function EnrollmentPage({ authFetch, getCsrf }: {
   const [quickShots, setQuickShots] = useState<Shot[]>([]);
   const [faceDrafts, setFaceDrafts] = useState<Record<string, FaceDraft>>({});
   const [quickConsent, setQuickConsent] = useState(false);
+  const [enrollmentMode, setEnrollmentMode] = useState<'append'|'replace'>('append');
+  const [expectedFaceCount, setExpectedFaceCount] = useState('');
+  const [rollPrefix, setRollPrefix] = useState('STU-');
+  const [nextRollNumber, setNextRollNumber] = useState('1');
   const [quickCameraOpen, setQuickCameraOpen] = useState(false);
   const [testPhoto, setTestPhoto] = useState<File|null>(null);
   const [testPhotoUrl, setTestPhotoUrl] = useState('');
@@ -622,7 +637,14 @@ function EnrollmentPage({ authFetch, getCsrf }: {
       const csrf = await getCsrf(); const form = new FormData(); form.append('photo', file);
       const result: QuickDetection = await authFetch('/students/quick-detect', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form }).then(r => r.json());
       if (!result || !Array.isArray(result.faces)) throw new Error('Face detector returned an invalid response.');
-      const shot: Shot = { id: Date.now(), file, url, image_width: result.image_width, image_height: result.image_height, faces: result.faces };
+      const shot: Shot = {
+        id: Date.now(),
+        file,
+        url,
+        image_width: result.image_width,
+        image_height: result.image_height,
+        faces: result.faces.map(face => ({ ...face, skipped: face.quality_warnings.length > 0 })),
+      };
       setQuickShots(current => [...current, shot]);
       setQuickCameraOpen(false);
       notify(`${result.face_count} face(s) detected in this photo. Review the boxes and enter each student's name and roll number.`, 'success');
@@ -660,17 +682,31 @@ function EnrollmentPage({ authFetch, getCsrf }: {
 
   async function enrollQuickFaces() {
     if (!selectedAssignment || !quickConsent || quickShots.length === 0) { notify('Choose the class, capture at least one photo, and confirm consent before saving.', 'error'); return; }
-    const allFaces = quickShots.flatMap(shot => shot.faces.map(face => ({ key:`${shot.id}:${face.face_index}`, shot, face })));
+    const allFaces = quickShots.flatMap(shot => shot.faces.filter(face => !face.skipped).map(face => ({ key:`${shot.id}:${face.face_index}`, shot, face })));
     if (!allFaces.length) { notify('No face boxes are selected. Keep or draw at least one face.', 'error'); return; }
     const rootFor = (key:string) => { let current=key; const seen=new Set<string>(); while(faceDrafts[current]?.mergeWith&&!seen.has(current)){seen.add(current);current=faceDrafts[current].mergeWith!;} return current; };
     const grouped = new Map<string, typeof allFaces>();
     for (const item of allFaces) { const root=rootFor(item.key); if(!grouped.has(root))grouped.set(root,[]); grouped.get(root)!.push(item); }
     const groups = [...grouped.entries()].map(([root,items])=>({root,items,draft:faceDrafts[root]||{name:'',roll:''}}));
-    if (groups.some(group=>!group.draft.name.trim()||!group.draft.roll.trim())) { notify('Enter a name and roll number for every student group.', 'error'); return; }
-    const names=groups.map(group=>group.draft.name.trim().toLocaleLowerCase()); const rolls=groups.map(group=>group.draft.roll.trim().toLocaleLowerCase());
+    const firstNumber = Number.parseInt(nextRollNumber, 10);
+    if (!Number.isInteger(firstNumber) || firstNumber < 1 || !rollPrefix.trim()) { notify('Enter a valid roll prefix and starting number.', 'error'); return; }
+    const resolvedGroups = groups.map((group, index) => ({
+      ...group,
+      draft: { ...group.draft, roll: group.draft.roll.trim() || `${rollPrefix.trim()}${String(firstNumber + index).padStart(3, '0')}` },
+    }));
+    if (resolvedGroups.some(group=>!group.draft.name.trim())) { notify('Enter a name for every detected student.', 'error'); return; }
+    const names=resolvedGroups.map(group=>group.draft.name.trim().toLocaleLowerCase()); const rolls=resolvedGroups.map(group=>group.draft.roll.trim().toLocaleLowerCase());
     if(new Set(names).size!==names.length||new Set(rolls).size!==rolls.length){notify('Duplicate names or roll numbers are not allowed. Use “Same student as…” to merge duplicate detections across photos.', 'error');return;}
+    const enrolledRolls = new Set(roster.filter(student => student.active).map(student => student.rollNumber.trim().toLocaleLowerCase()));
+    if (rolls.some(roll => enrolledRolls.has(roll))) { notify('One or more generated roll numbers already exist. Change the prefix or starting number before saving.', 'error'); return; }
     setBusy(true); setMsg(''); let enrolled=0; let extraReferences=0;
     try {
+      if (enrollmentMode === 'replace') {
+        const csrf = await getCsrf();
+        await authFetch(`/students/classes/${selectedAssignment.classSection.id}/replace`, {
+          method:'POST', headers:{'X-XSRF-TOKEN':csrf.token},
+        });
+      }
       const cropFile = async (item:typeof allFaces[number], roll:string) => {
         const image=new Image(); image.src=item.shot.url;
         await new Promise<void>((resolve,reject)=>{image.onload=()=>resolve();image.onerror=()=>reject(new Error('Could not read the class photo.'));});
@@ -681,7 +717,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
         context.drawImage(source,left,top,width,height,0,0,width,height);const blob=await new Promise<Blob|null>(resolve=>crop.toBlob(resolve,'image/jpeg',0.95));if(!blob)throw new Error('Could not encode a face crop.');
         return new File([blob],`face-${roll}-${item.shot.id}.jpg`,{type:'image/jpeg'});
       };
-      for(const group of groups){
+      for(const group of resolvedGroups){
         const first=group.items[0];const name=group.draft.name.trim();const roll=group.draft.roll.trim();
         const firstPhoto=await cropFile(first,roll);const csrf=await getCsrf();const form=new FormData();
         form.append('name',name);form.append('rollNumber',roll);form.append('classSectionId',String(selectedAssignment.classSection.id));form.append('subjectId',String(selectedAssignment.subject.id));form.append('consentGiven','true');form.append('photo',firstPhoto);
@@ -694,6 +730,7 @@ function EnrollmentPage({ authFetch, getCsrf }: {
         }
       }
       await loadRoster();
+      setNextRollNumber(String(firstNumber + enrolled));
       notify(`${enrolled} student(s) enrolled in ${selectedAssignment.classSection.name} / ${selectedAssignment.subject.name}; ${extraReferences} extra angle(s) merged as additional face references.`, 'success');
       setQuickShots([]);setFaceDrafts({});setQuickConsent(false);setQuickCameraOpen(false);
     } catch(error){if(enrolled)await loadRoster();notify(`${enrolled?`${enrolled} enrolled before an error: `:''}${error instanceof Error?error.message:'Enrollment failed.'}`,'error');}
@@ -839,6 +876,25 @@ function EnrollmentPage({ authFetch, getCsrf }: {
       <div style={{marginTop:10}}><button className="btn-secondary btn-sm" type="button" onClick={()=>setCreateClass(value=>!value)}>+ Create class section</button></div>
       {createClass && <form onSubmit={createClassSection} className="form-grid" style={{marginTop:12}}><div className="form-grid-2"><label>Subject<select value={createSubjectId} onChange={event=>setCreateSubjectId(event.target.value)} required><option value="">Select subject</option>{subjects.map(subject=><option key={subject.id} value={subject.id}>{subject.code} — {subject.name}</option>)}</select></label><label>Class / Section name<input value={newClassName} onChange={e=>setNewClassName(e.target.value)} required placeholder="e.g. CSE-A" /></label><label>Academic year<input type="number" value={newAcademicYear} onChange={e=>setNewAcademicYear(e.target.value)} required /></label></div><button type="submit" disabled={busy || !subjects.length || !roomId}>Create class section</button></form>}
       {selectedAssignment && <p className="hint" style={{marginTop:10}}>Selected: {rooms.find(r=>String(r.id)===roomId)?.name || 'No room selected'} / {selectedAssignment.subject.name} / {selectedAssignment.classSection.name}</p>}
+      {selectedAssignment && <div className="form-grid-2" style={{marginTop:14}}>
+        <label>Auto roll prefix
+          <input value={rollPrefix} onChange={event=>setRollPrefix(event.target.value)} placeholder="STU-" />
+        </label>
+        <label>Next roll number
+          <input type="number" min="1" value={nextRollNumber} onChange={event=>setNextRollNumber(event.target.value)} />
+        </label>
+        <label>Expected faces (optional)
+          <input type="number" min="1" value={expectedFaceCount} onChange={event=>setExpectedFaceCount(event.target.value)} placeholder="Warn if count differs" />
+        </label>
+      </div>}
+      {selectedAssignment && <div style={{marginTop:12}}>
+        <label>Existing roster behavior
+          <select value={enrollmentMode} onChange={event=>setEnrollmentMode(event.target.value as 'append'|'replace')}>
+            <option value="append">Append to class</option>
+            <option value="replace">Replace and archive current roster</option>
+          </select>
+        </label>
+      </div>}
       {!selectedAssignment && <div className="alert alert-warn">Select a class and subject before enrolling. If no class is listed, use Create class section.</div>}
       {selectedAssignment && <>
         {quickCameraOpen && <CameraCapture disabled={busy || quickShots.length>=3} captureLabel="Capture class photo" onCapture={file=>void addQuickPhoto(file)} />}
@@ -850,9 +906,10 @@ function EnrollmentPage({ authFetch, getCsrf }: {
           {shot.faces.map(face=>{const [top,right,bottom,left]=face.box;return <button type="button" title="Click to discard this detection" key={face.face_index} onClick={()=>removeFace(shot.id,face.face_index)} style={{position:'absolute',top:`${top/shot.image_height*100}%`,left:`${left/shot.image_width*100}%`,width:`${(right-left)/shot.image_width*100}%`,height:`${(bottom-top)/shot.image_height*100}%`,border:'2px solid #22c55e',background:'rgba(34,197,94,.14)',color:'#fff',textShadow:'0 1px 3px #000',fontWeight:800,cursor:'pointer'}}>{face.face_index+1} ×</button>;})}
           {drawShotId===shot.id && <div style={{position:'absolute',inset:0,cursor:'crosshair',touchAction:'none',border:'2px dashed #2563eb'}} />}
         </div>
-        <p className="hint">{shot.faces.length} face(s) kept. Click any green box to discard it. {drawShotId===shot.id?'Drag around a missed face to add a box.':''}</p>
+        <p className="hint">{shot.faces.filter(face=>!face.skipped).length} face(s) eligible; {shot.faces.filter(face=>face.skipped).length} skipped by the quality gate. Click any green box to discard it. {drawShotId===shot.id?'Drag around a missed face to add a box.':''}</p>
+        {expectedFaceCount && Number(expectedFaceCount) !== shot.faces.filter(face=>!face.skipped).length && <div className="alert alert-warn">Detected count warning: expected {expectedFaceCount}, but {shot.faces.filter(face=>!face.skipped).length} face(s) passed the quality gate.</div>}
         <button type="button" className="btn-secondary btn-sm" onClick={()=>{setDrawShotId(drawShotId===shot.id?null:shot.id);setDrawStart(null);}}>＋ Draw missed face</button>
-        {shot.faces.map(face=>{const key=`${shot.id}:${face.face_index}`;const draft=faceDrafts[key]||{name:'',roll:''};return <div key={key} className="form-grid-2" style={{marginTop:10,borderTop:'1px solid var(--line)',paddingTop:10}}><div><span className="hint">Face {face.face_index+1} crop</span><FaceCropPreview src={shot.url} box={face.box} imageWidth={shot.image_width} imageHeight={shot.image_height}/></div><label>Same student as<select value={draft.mergeWith||''} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,mergeWith:event.target.value||undefined}}))}><option value="">New student</option>{quickShots.flatMap(otherShot=>otherShot.faces.map(otherFace=>({key:`${otherShot.id}:${otherFace.face_index}`,label:`Photo ${quickShots.findIndex(item=>item.id===otherShot.id)+1} · Face ${otherFace.face_index+1}`,draft:faceDrafts[`${otherShot.id}:${otherFace.face_index}`]}))).filter(other=>other.key!==key&&!other.draft?.mergeWith).map(other=><option key={other.key} value={other.key}>{other.label}</option>)}</select></label>{draft.mergeWith?<div className="hint" style={{alignSelf:'center'}}>Merged into {faceDrafts[draft.mergeWith]?.name||'student'}; this crop becomes an extra biometric reference.</div>:<><label>Name<input value={draft.name} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,name:event.target.value}}))} placeholder="Student name" /></label><label>Roll number<input value={draft.roll} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,roll:event.target.value}}))} placeholder="Roll number" /></label></>}{face.quality_warnings.length>0&&<span className="hint">Review warning: {face.quality_warnings.join(', ')}</span>}</div>;})}
+        {shot.faces.map(face=>{const key=`${shot.id}:${face.face_index}`;const draft=faceDrafts[key]||{name:'',roll:''};const duplicateCandidate=shot.faces.some(other=>other.face_index!==face.face_index&&boxesOverlap(face.box,other.box));return <div key={key} className="form-grid-2" style={{marginTop:10,borderTop:'1px solid var(--line)',paddingTop:10}}><div><span className="hint">Face {face.face_index+1} crop</span><FaceCropPreview src={shot.url} box={face.box} imageWidth={shot.image_width} imageHeight={shot.image_height}/></div><label>Same student as<select value={draft.mergeWith||''} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,mergeWith:event.target.value||undefined}}))}><option value="">New student</option>{quickShots.flatMap(otherShot=>otherShot.faces.map(otherFace=>({key:`${otherShot.id}:${otherFace.face_index}`,label:`Photo ${quickShots.findIndex(item=>item.id===otherShot.id)+1} · Face ${otherFace.face_index+1}`,draft:faceDrafts[`${otherShot.id}:${otherFace.face_index}`]}))).filter(other=>other.key!==key&&!other.draft?.mergeWith).map(other=><option key={other.key} value={other.key}>{other.label}</option>)}</select></label>{draft.mergeWith?<div className="hint" style={{alignSelf:'center'}}>Merged into {faceDrafts[draft.mergeWith]?.name||'student'}; this crop becomes an extra biometric reference.</div>:<><label>Name<input value={draft.name} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,name:event.target.value}}))} placeholder="Student name" /></label><label>Roll number<input value={draft.roll} onChange={event=>setFaceDrafts(current=>({...current,[key]:{...draft,roll:event.target.value}}))} placeholder="Roll number" /></label></>}{duplicateCandidate&&<div className="alert alert-warn">Near-duplicate detection flagged. Remove one box or merge it with the same student.</div>}{face.quality_warnings.length>0&&<span className="hint">Review warning: {face.quality_warnings.join(', ')}</span>}</div>;})}
       </div>)}
       <label style={{display:'flex',alignItems:'center',gap:8,marginTop:18}}><input type="checkbox" checked={quickConsent} onChange={event=>setQuickConsent(event.target.checked)} required /> <span>Everyone in this photo has agreed to biometric enrollment.</span></label>
       <button type="button" className="btn-lg" disabled={busy || !selectedAssignment || !quickConsent || !quickShots.some(shot=>shot.faces.length)} onClick={()=>void enrollQuickFaces()} style={{marginTop:14}}>{busy?'Saving…':'Confirm and enroll students'}</button>

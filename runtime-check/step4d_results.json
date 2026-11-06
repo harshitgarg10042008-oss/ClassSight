@@ -1,0 +1,46 @@
+{
+  "disclaimer": "simulated on LFW, NOT classroom accuracy",
+  "method": "100 distinct LFW faces resized to widths [40, 60, 80, 120, 160] px centered on 1920x1080 neutral background (RGB 220,222,225), tested via POST /detect-faces (Haar Cascade scaleFactor=1.2, minNeighbors=5, minSize=30)",
+  "results": {
+    "40": {
+      "target_width_px": 40,
+      "sample_size": 100,
+      "detected_count": 0,
+      "detection_rate_pct": 0.0,
+      "avg_detected_box_width_px": 0,
+      "avg_latency_ms": 138.9
+    },
+    "60": {
+      "target_width_px": 60,
+      "sample_size": 100,
+      "detected_count": 0,
+      "detection_rate_pct": 0.0,
+      "avg_detected_box_width_px": 0,
+      "avg_latency_ms": 152.9
+    },
+    "80": {
+      "target_width_px": 80,
+      "sample_size": 100,
+      "detected_count": 36,
+      "detection_rate_pct": 36.0,
+      "avg_detected_box_width_px": 38.4,
+      "avg_latency_ms": 151.8
+    },
+    "120": {
+      "target_width_px": 120,
+      "sample_size": 100,
+      "detected_count": 93,
+      "detection_rate_pct": 93.0,
+      "avg_detected_box_width_px": 52.1,
+      "avg_latency_ms": 128.8
+    },
+    "160": {
+      "target_width_px": 160,
+      "sample_size": 100,
+      "detected_count": 99,
+      "detection_rate_pct": 99.0,
+      "avg_detected_box_width_px": 64.5,
+      "avg_latency_ms": 128.7
+    }
+  }
+}

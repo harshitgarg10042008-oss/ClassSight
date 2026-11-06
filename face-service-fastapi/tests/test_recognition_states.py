@@ -22,7 +22,7 @@ def test_rejection_reason_explains_weak_and_unknown_faces():
     from main import _rejection_reason
 
     assert _rejection_reason('LOW_CONFIDENCE', [], True) == (
-        'distance or top-1/top-2 margin did not meet the threshold'
+        'Manhattan distance exceeded threshold \u2014 routed to faculty review'
     )
     assert _rejection_reason('UNKNOWN', [], False) == 'no enrolled candidate'
     assert _rejection_reason('RECAPTURE_REQUIRED', ['face too small'], True) == 'face too small'

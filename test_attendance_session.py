@@ -119,7 +119,7 @@ def verify_session_status(token, session_id, expected_status="REVIEW_REQUIRED"):
         print(f"ERROR: Status mismatch. Expected {expected_status}, got {actual_status}")
         sys.exit(1)
     
-    print("✓ Status verification passed!")
+    print("Status verification passed!")
     return result
 
 def main():
@@ -135,10 +135,12 @@ def main():
         session_id, session_status = capture_image(token)
         
         # Step 3: Verify session status
-        session_details = verify_session_status(token, session_id)
+        # Attendance recognition is intentionally faculty-gated. Even a capture
+        # with no usable face is retained for review rather than auto-finalized.
+        session_details = verify_session_status(token, session_id, expected_status="REVIEW_REQUIRED")
         
         print("\n" + "=" * 60)
-        print("✓ ALL TESTS PASSED")
+        print("ALL TESTS PASSED")
         print("=" * 60)
         print(f"\nSession Details:")
         print(f"  Session ID: {session_details.get('sessionId')}")
