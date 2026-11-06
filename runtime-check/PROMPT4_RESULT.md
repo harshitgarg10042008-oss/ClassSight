@@ -2,7 +2,7 @@
 
 ## 1. Overall status
 
-Branch: `demo-fixes`. Overall: **PARTIAL / DEMO-READY FOR VERIFIED PATHS**. Docker, health checks, backend tests, face-service tests, root harnesses, RTC API scenarios, reset idempotency, and a Playwright login smoke test passed. Full 30-face enrollment/capture, 30-face latency, three-seed absent composites, and the complete browser workflow remain NOT VERIFIED.
+Branch: `demo-fixes`; commit: `dd92f86`. Overall: **PARTIAL / DEMO-READY FOR VERIFIED PATHS**. Docker, health checks, backend tests, face-service tests, root harnesses, RTC API scenarios, reset idempotency, and a Playwright login smoke test passed. Full 30-face enrollment/capture, 30-face latency, three-seed absent composites, and the complete browser workflow remain NOT VERIFIED.
 
 ## 2. Phase table
 
