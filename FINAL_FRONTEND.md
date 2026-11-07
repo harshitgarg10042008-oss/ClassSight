@@ -80,4 +80,4 @@ Development defaults are in `frontend-next/.env.development`; secrets are not in
 
 ## Git state
 
-This report is written before the release commit. The final commit and push are performed after verification in the current run. No history rewrite, force-push, tag movement, or backend change is performed.
+Release commit: `62c64fe` (`ui2(U11): finish frontend delivery`), pushed to `origin/main`. No history rewrite, force-push, tag movement, or backend change was performed.
