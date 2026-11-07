@@ -18,6 +18,10 @@ export default function LoginPage() {
       if (remember) { try { localStorage.setItem('classsight_username', username); } catch { /* optional browser storage */ } }
       const auth = await new ApiClient().login(username, password);
       new ApiClient().setToken(auth.token);
+      try {
+        localStorage.setItem('classsight_full_name', auth.fullName || auth.username);
+        localStorage.setItem('classsight_role', auth.role);
+      } catch { /* optional browser storage */ }
       window.location.assign('/app');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Login failed. Check your details and try again.');

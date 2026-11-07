@@ -112,9 +112,9 @@ function friendlyError(raw: string): string {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function ClassSightApp() {
-  const [token, setToken]           = useState('');
-  const [userFullName, setFullName] = useState('');
-  const [userRole, setRole]         = useState('');
+  const [token, setToken]           = useState(() => typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_token') || '');
+  const [userFullName, setFullName] = useState(() => typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_full_name') || '');
+  const [userRole, setRole]         = useState(() => typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_role') || '');
   const [page, setPage]             = useState('teacher');
   const [loginErr, setLoginErr]     = useState('');
   const [loginBusy, setLoginBusy]   = useState(false);
@@ -176,7 +176,7 @@ export default function ClassSightApp() {
               {loginBusy ? <><span className="spinner" />Signing in…</> : 'Sign In →'}
             </button>
           </form>
-          <div className="login-hint">Demo: <code>teacher/teacher123</code> · <code>admin/admin123</code></div>
+          {process.env.NODE_ENV === 'development' && <div className="login-hint">Local development hint: <code>teacher/teacher123</code></div>}
           <div className="legal-links" style={{ justifyContent: 'center', marginTop: 20, fontSize: 12 }}>
             <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
           </div>
@@ -221,7 +221,7 @@ export default function ClassSightApp() {
           ))}
         </div>
         <div className="sidebar-footer">
-          <button onClick={() => { setToken(''); setFullName(''); setRole(''); window.localStorage.removeItem('classsight_token'); }}>🚪 Sign Out</button>
+          <button onClick={() => { setToken(''); setFullName(''); setRole(''); window.localStorage.removeItem('classsight_token'); window.localStorage.removeItem('classsight_full_name'); window.localStorage.removeItem('classsight_role'); }}>🚪 Sign Out</button>
         </div>
       </nav>
 
