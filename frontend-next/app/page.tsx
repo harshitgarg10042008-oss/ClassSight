@@ -5,7 +5,7 @@ export const metadata = { title: 'ClassSight | Reviewable classroom attendance',
 
 export default function HomePage() {
   return <MarketingLayout>
-    <main className="marketing-main">
+    <main id="main-content" className="marketing-main">
       <section className="hero">
         <div><span className="eyebrow">Classroom attendance, made reviewable</span><h1>Attendance from one photo of the class.</h1><p className="hero-copy">ClassSight helps faculty capture, review, and finalize attendance without losing the human decision in the loop.</p><div className="hero-actions"><Link className="button button-primary" href="/app">Try the workspace</Link><Link className="button button-outline" href="/how-it-works">See how it works</Link></div></div>
         <div className="hero-panel"><div className="hero-panel-top"><span><span className="status-dot" /> Capture ready</span><span>Reviewable</span></div><div className="class-photo-placeholder"><span>Synthetic classroom preview</span><strong>Faculty review queue</strong></div><div className="hero-panel-foot"><span>AUTO</span><span>REVIEW</span><span>UNKNOWN</span></div></div>
