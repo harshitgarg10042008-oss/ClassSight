@@ -1,9 +1,12 @@
-FROM node:22-alpine AS deps
+# Node 24 matches the toolchain that produces a correct prerender locally.
+# (Builds from node:22-alpine emitted .next/server/app/*.html without the
+# <!DOCTYPE>/<html>/<body> shell, which broke hydration in the browser.)
+FROM node:24-alpine AS deps
 WORKDIR /app
-COPY package.json .
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -13,7 +16,7 @@ ENV NEXT_PUBLIC_DEMO_DATA=$NEXT_PUBLIC_DEMO_DATA
 ENV NEXT_PUBLIC_DEMO_PLAN=$NEXT_PUBLIC_DEMO_PLAN
 RUN npm run build
 
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 # Force Next.js standalone server to bind on all interfaces (0.0.0.0)
