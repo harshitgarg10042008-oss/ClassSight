@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { notificationStoreKey, seedNotices } from '@/lib/notifications';
+import { broadcastNoticesChanged, notificationStoreKey, onNoticesChanged, seedNotices } from '@/lib/notifications';
 
 function readList(): string[] {
   try {
@@ -19,6 +19,7 @@ export function NotificationCentre() {
 
   useEffect(() => {
     setRead(readList());
+    return onNoticesChanged(() => setRead(readList()));
   }, []);
 
   function persist(next: string[]) {
@@ -28,6 +29,7 @@ export function NotificationCentre() {
     } catch {
       /* browser storage is optional */
     }
+    broadcastNoticesChanged();
   }
 
   const visible = useMemo(() => {

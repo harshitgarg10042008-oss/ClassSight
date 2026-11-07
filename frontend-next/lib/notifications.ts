@@ -53,3 +53,21 @@ export const seedNotices: Notice[] = [
 ];
 
 export const notificationStoreKey = 'classsight_notices_read';
+export const noticesChangedEvent = 'classsight-notices-changed';
+
+/** Tell every mounted notice list that the read state changed. */
+export function broadcastNoticesChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(noticesChangedEvent));
+}
+
+/** Re-read the store when another component (or tab) marks something read. */
+export function onNoticesChanged(listener: () => void) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener(noticesChangedEvent, listener);
+  window.addEventListener('storage', listener);
+  return () => {
+    window.removeEventListener(noticesChangedEvent, listener);
+    window.removeEventListener('storage', listener);
+  };
+}

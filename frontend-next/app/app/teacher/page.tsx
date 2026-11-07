@@ -128,7 +128,16 @@ export default function TeacherPage() {
 
   return (
     <PageLayout pageId="teacher">
-      <h1 className="sr-only">Teacher workspace</h1>
+      <header className="workspace-header">
+        <div>
+          <p className="eyebrow">Faculty workspace</p>
+          <h1>Take attendance</h1>
+          <p className="page-subtitle">Capture a group photo, review every result, then finalize. Nothing is committed until a faculty member confirms the review.</p>
+        </div>
+        <div className="workspace-header-meta">
+          <span className="badge badge-green">Wired to the local backend</span>
+        </div>
+      </header>
       <div>
         <div className="progress-steps">
           {(['select', 'capture', 'review'] as const).map((s, i) => (

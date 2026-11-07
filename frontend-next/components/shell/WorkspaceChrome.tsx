@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/config/routes';
-import { notificationStoreKey, seedNotices } from '@/lib/notifications';
+import { broadcastNoticesChanged, notificationStoreKey, onNoticesChanged, seedNotices } from '@/lib/notifications';
 
 type Panel = 'bell' | 'palette' | 'help' | 'checklist' | 'switch' | null;
 
@@ -61,6 +61,7 @@ export function WorkspaceChrome() {
     } catch {
       /* browser storage is optional */
     }
+    return onNoticesChanged(() => setRead(readList(notificationStoreKey)));
   }, []);
 
   const unread = seedNotices.filter((notice) => !read.includes(notice.id));
@@ -101,12 +102,14 @@ export function WorkspaceChrome() {
     const next = read.includes(id) ? read : [...read, id];
     setRead(next);
     writeList(notificationStoreKey, next);
+    broadcastNoticesChanged();
   }
 
   function markAll() {
     const next = seedNotices.map((notice) => notice.id);
     setRead(next);
     writeList(notificationStoreKey, next);
+    broadcastNoticesChanged();
   }
 
   function toggleChecklist(id: string) {
