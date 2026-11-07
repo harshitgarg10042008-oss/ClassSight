@@ -76,6 +76,20 @@ export type AnalyticsSummary = {
   students: AnalyticsStudent[];
   averageAttendance: number; shortfallCount: number;
 };
+// Shape actually returned by GET /api/analytics/all
+// (AttendanceAnalyticsController -> AttendanceAnalyticsService).
+export type AnalyticsAssignmentStudent = {
+  studentId: number; studentName: string; rollNumber: string;
+  sessionCount: number; presentCount: number; attendancePercentage: number;
+};
+export type AnalyticsAssignment = {
+  subjectId: number; classSectionId: number;
+  conductedSessionCount: number; finalizedSessionCount: number; totalScheduledSessions: number;
+  defaulterThreshold: number;
+  from: string; to: string;
+  students: AnalyticsAssignmentStudent[];
+  defaulters: AnalyticsAssignmentStudent[];
+};
 
 export type AuthResponse = {
   token: string;
@@ -239,8 +253,13 @@ export class ApiClient {
 
   // ─── Analytics ─────────────────────────────────────────────────────────
   async getAnalytics(subjectId?: number): Promise<AnalyticsSummary> {
-    const url = subjectId ? `/api/analytics?subjectId=${subjectId}` : '/api/analytics';
+    const url = subjectId ? `/api/analytics/attendance?subjectId=${subjectId}` : '/api/analytics/attendance';
     return this.fetch(url).then(r => r.json());
+  }
+
+  /** One row per assignment, the only analytics endpoint that needs no query parameter. */
+  async getAnalyticsAssignments(): Promise<AnalyticsAssignment[]> {
+    return this.fetch('/api/analytics/all').then(r => r.json());
   }
 
   // ─── HOD ───────────────────────────────────────────────────────────────

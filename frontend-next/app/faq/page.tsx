@@ -1,2 +1,4 @@
 import { PublicInfoPage } from '@/components/PublicInfoPage';
 export default function FaqPage() { return <PublicInfoPage eyebrow="FAQ" title="Questions before you try it." intro="Short answers about the current product boundary."><div className="section-card">{[['Does recognition finalize attendance?', 'No. Faculty review and explicit finalization are part of the workflow.'], ['Is this a live production integration?', 'The capture and review experience is wired to the existing local backend. Other pages are clearly marked preview.'], ['Do you claim classroom accuracy?', 'No. Any benchmark must be labelled simulated on LFW, not classroom accuracy.']].map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></PublicInfoPage>; }
+
+export const metadata = { title: 'Frequently asked questions | ClassSight' };

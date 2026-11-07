@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { WorkspaceChrome } from './shell/WorkspaceChrome';
 
 const links = [
   { href: '/app', label: 'Teacher', pageId: 'teacher' },
@@ -16,7 +17,7 @@ export function PageLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="app-shell">
+    <main id="main-content" className="app-shell">
       <header className="topbar">
         <Link href="/app" className="brand">ClassSight</Link>
         <nav aria-label="Primary navigation">
@@ -29,12 +30,16 @@ export function PageLayout({
               {link.label}
             </Link>
           ))}
+          <Link href="/notifications">Notifications</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/">Product site</Link>
         </nav>
       </header>
-      <div className="page-content">{children}</div>
+      <div className="page-content">
+        <WorkspaceChrome />
+        {children}
+      </div>
     </main>
   );
 }

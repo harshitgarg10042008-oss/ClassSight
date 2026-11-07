@@ -1,3 +1,3 @@
 import { PublicInfoPage } from '@/components/PublicInfoPage';
-export const metadata = { title: 'Security and trust | ClassSight' };
+export const metadata = { title: 'Security | ClassSight' };
 export default function SecurityPage() { return <PublicInfoPage eyebrow="Trust centre" title="Transparent about what is ready." intro="Security is a product practice, not a badge. We document the boundaries of this preview honestly."><section className="section-card"><h2>Current safeguards</h2><ul><li>Faculty review is required before a single-capture attendance record can be committed.</li><li>Consent and deletion are represented in the wired workflow.</li><li>Face embeddings are not yet encrypted at rest.</li><li>Legal text needs lawyer review; this is not a compliance claim.</li></ul></section></PublicInfoPage>; }

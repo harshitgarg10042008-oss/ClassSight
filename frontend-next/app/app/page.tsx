@@ -112,22 +112,44 @@ function friendlyError(raw: string): string {
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function ClassSightApp() {
-  const [token, setToken]           = useState(() => typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_token') || '');
-  const [userFullName, setFullName] = useState(() => typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_full_name') || '');
-  const [userRole, setRole]         = useState(() => typeof window === 'undefined' ? '' : window.localStorage.getItem('classsight_role') || '');
+  const [token, setToken]           = useState('');
+  const [userFullName, setFullName] = useState('');
+  const [userRole, setRole]         = useState('');
+  const [restoring, setRestoring]   = useState(true);
   const [page, setPage]             = useState('teacher');
   const [loginErr, setLoginErr]     = useState('');
   const [loginBusy, setLoginBusy]   = useState(false);
   const [username, setUsername]     = useState('teacher');
   const [password, setPassword]     = useState('teacher123');
 
+  function homePageFor(role: string) {
+    if (role === 'ADMIN') return 'admin';
+    if (role === 'HOD') return 'hod';
+    if (role === 'STUDENT') return 'student';
+    return 'teacher';
+  }
+
+  // Restore the session after mount so the server and client markup stay identical.
+  useEffect(() => {
+    try {
+      const storedToken = window.localStorage.getItem('classsight_token') || '';
+      if (storedToken) {
+        const storedRole = window.localStorage.getItem('classsight_role') || '';
+        setToken(storedToken);
+        setFullName(window.localStorage.getItem('classsight_full_name') || '');
+        setRole(storedRole);
+        setPage(homePageFor(storedRole));
+      }
+    } catch { /* optional browser storage */ }
+    setRestoring(false);
+  }, []);
+
   function onLoginSuccess(tok: string, name: string, role: string) {
     setToken(tok); setFullName(name); setRole(role);
     window.localStorage.setItem('classsight_token', tok);
-    if (role === 'ADMIN') setPage('admin');
-    else if (role === 'HOD') setPage('hod');
-    else if (role === 'STUDENT') setPage('student');
-    else setPage('teacher');
+    window.localStorage.setItem('classsight_full_name', name);
+    window.localStorage.setItem('classsight_role', role);
+    setPage(homePageFor(role));
   }
 
   async function handleLogin(e: FormEvent) {
@@ -155,6 +177,10 @@ export default function ClassSightApp() {
   const getCsrf = useCallback(() => authFetch('/csrf').then(r => r.json()), [authFetch]);
 
   // ── Login screen
+  if (restoring) {
+    return <main className="login-shell"><div className="login-card"><p className="hint">Restoring your session…</p></div></main>;
+  }
+
   if (!token) {
     return (
       <main className="login-shell">
@@ -291,7 +317,7 @@ function TeacherPage({ authFetch, getCsrf }: {
   }, [authFetch]);
 
   async function capture() {
-    if (!photo || !roomId || !assignmentId || !cameras.some(c => c.room?.id === roomId)) { setMsg('Select a configured room, subject, and take a photo.'); return; }
+    if (!photo || !roomId || !assignmentId) { setMsg('Select a room and subject, then add at least one photo.'); return; }
     setBusy(true); setMsg('Running recognition pipeline…');
     try {
       const csrf = await getCsrf();
@@ -299,12 +325,14 @@ function TeacherPage({ authFetch, getCsrf }: {
       form.append('image', photo);
       shots.slice(1).forEach(shot=>form.append('additionalImages',shot.file));
       form.append('roomId', String(roomId));
-      form.append('cameraId', String(cameras.find(c => c.room?.id === roomId)?.id ?? ''));
+      const cameraId = cameras.find(c => c.room?.id === roomId)?.id;
+      if (cameraId) form.append('cameraId', String(cameraId));
       form.append('assignmentId', String(assignmentId));
       if (period?.session?.id) form.append('classSessionId', String(period.session.id));
       const response=await authFetch('/capture', { method: 'POST', headers: { 'X-XSRF-TOKEN': csrf.token }, body: form });
       if(!response.ok)throw new Error(await friendlyError(await response.text()));
       const d = await response.json();
+      if (!d.sessionId) { setMsg('The capture was uploaded but no attendance session was created. Register a camera for this room, then try again.'); return; }
       setSessionId(d.sessionId); setStep('review'); setMsg(`Session #${d.sessionId} created with ${d.captureCount||shots.length} capture(s).`);
       poll(d.sessionId);
     } catch (err) { setMsg(err instanceof Error ? err.message : 'Capture failed'); }
