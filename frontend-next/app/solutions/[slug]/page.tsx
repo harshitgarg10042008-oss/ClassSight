@@ -1,0 +1,2 @@
+import { PublicInfoPage } from '@/components/PublicInfoPage';
+export default function SolutionsPage({ params }: { params: { slug: string } }) { return <PublicInfoPage eyebrow="Solutions" title={`A clearer workflow for ${params.slug}.`} intro="Start from the same reviewable attendance foundation and adapt the surrounding workflow to your institution."><section className="section-card"><h2>Preview solution</h2><p>Audience-specific guidance is UI-PREVIEW until connected to an institution configuration.</p></section></PublicInfoPage>; }

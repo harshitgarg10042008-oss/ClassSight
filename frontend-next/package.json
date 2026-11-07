@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test:plans": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-plans.mjs",
     "test:owner-config": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-owner-config.mjs"
+    ,"ui-route-sweep": "node scripts/ui-route-sweep.mjs"
   },
   "dependencies": {
     "next": "14.2.12",

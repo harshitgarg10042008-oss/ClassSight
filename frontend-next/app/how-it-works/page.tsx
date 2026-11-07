@@ -1,0 +1,3 @@
+import { PublicInfoPage } from '@/components/PublicInfoPage';
+export const metadata = { title: 'How it works | ClassSight' };
+export default function HowItWorksPage() { return <PublicInfoPage eyebrow="Workflow" title="From capture to accountable record." intro="The recognition pipeline proposes results; faculty review remains the final decision."><div className="step-grid">{['Set up a class and consent workflow.', 'Capture a group photo or session.', 'Review AUTO, REVIEW, and UNKNOWN results.', 'Finalize only after faculty confirmation.'].map((step, index) => <article className="step-card" key={step}><span className="step-number">0{index + 1}</span><h2>{step}</h2><p>Each step keeps status and next action visible.</p></article>)}</div></PublicInfoPage>; }

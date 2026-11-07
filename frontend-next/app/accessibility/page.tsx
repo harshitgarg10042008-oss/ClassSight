@@ -1,0 +1,2 @@
+import { PublicInfoPage } from '@/components/PublicInfoPage';
+export default function AccessibilityPage() { return <PublicInfoPage eyebrow="Accessibility" title="Designed for keyboard and clarity." intro="ClassSight uses semantic landmarks, visible focus states, reduced-motion support, and labelled controls."><section className="section-card"><h2>Known boundary</h2><p>This product preview is being expanded route by route. Please contact us with an accessibility issue.</p></section></PublicInfoPage>; }

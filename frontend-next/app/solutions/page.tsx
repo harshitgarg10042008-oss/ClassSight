@@ -1,0 +1,2 @@
+import { PublicInfoPage } from '@/components/PublicInfoPage';
+export default function SolutionsIndexPage() { return <PublicInfoPage eyebrow="Solutions" title="A clearer workflow for institutions." intro="Reviewable attendance foundations for colleges, schools, and coaching teams."><section className="section-card"><h2>Choose a context</h2><p>College, school, and coaching solution pages are UI-PREVIEW.</p></section></PublicInfoPage>; }

@@ -1,0 +1,5 @@
+'use client';
+import { FormEvent, useState } from 'react';
+import { PublicInfoPage } from '@/components/PublicInfoPage';
+import { submitForm } from '@/lib/forms';
+export default function ContactPage() { const [message, setMessage] = useState(''); async function send(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { setMessage((await submitForm(Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>)).message); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not submit the form.'); } } return <PublicInfoPage eyebrow="Contact" title="Let’s talk about your classroom workflow." intro="Tell us what you are trying to improve."><form className="section-card" onSubmit={send}><label className="field">Name<input name="name" required /></label><label className="field">Email<input name="email" type="email" required /></label><label className="field">Message<textarea name="message" rows={5} required /></label><button className="button button-primary">Send message</button>{message && <p role="status">{message}</p>}</form></PublicInfoPage>; }

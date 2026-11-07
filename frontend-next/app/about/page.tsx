@@ -1,0 +1,2 @@
+import { PublicInfoPage } from '@/components/PublicInfoPage';
+export default function AboutPage() { return <PublicInfoPage eyebrow="About" title="A thoughtful attendance workflow." intro="ClassSight is an early product experience focused on transparent, reviewable classroom attendance."><section className="section-card"><h2>Product principle</h2><p>Automation should make the next faculty decision clearer, not remove accountability.</p></section></PublicInfoPage>; }

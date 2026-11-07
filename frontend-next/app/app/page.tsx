@@ -157,7 +157,7 @@ export default function ClassSightApp() {
   // ── Login screen
   if (!token) {
     return (
-      <div className="login-shell">
+      <main className="login-shell">
         <div className="login-card">
           <div className="login-logo">
             <div className="login-logo-icon">C</div>
@@ -181,7 +181,7 @@ export default function ClassSightApp() {
             <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -199,7 +199,7 @@ export default function ClassSightApp() {
   const initials = userFullName.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 
   return (
-    <div className="app-layout">
+    <main className="app-layout">
       <h1 className="sr-only">Faculty attendance workspace</h1>
       <nav className="sidebar">
         <div className="sidebar-logo">
@@ -241,7 +241,7 @@ export default function ClassSightApp() {
           {page === 'student'    && <StudentPage    authFetch={authFetch} getCsrf={getCsrf} />}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 
