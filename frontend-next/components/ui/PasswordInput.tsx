@@ -96,7 +96,7 @@ export function PasswordInput({
         <button
           type="button"
           tabIndex={0}
-          className="cs-password-toggle"
+          className="cs-password-toggle password-toggle"
           aria-pressed={visible}
           aria-label={visible ? 'Hide password' : 'Show password'}
           onClick={() => setVisible((prev) => !prev)}

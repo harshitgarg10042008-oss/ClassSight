@@ -181,9 +181,12 @@
 }
 .cs-checkbox {
   position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
+  width: 18px;
+  height: 18px;
+  opacity: 0.001;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
 }
 .cs-checkbox-custom {
   width: 18px;

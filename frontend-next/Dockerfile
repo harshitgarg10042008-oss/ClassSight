@@ -1,21 +1,6 @@
 # Node 24 matches the toolchain that produces a correct prerender locally.
-# (Builds from node:22-alpine emitted .next/server/app/*.html without the
-# <!DOCTYPE>/<html>/<body> shell, which broke hydration in the browser.)
-FROM node:24-alpine AS deps
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
-
-FROM node:24-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-ARG NEXT_PUBLIC_DEMO_DATA=false
-ARG NEXT_PUBLIC_DEMO_PLAN=essential
-ENV NEXT_PUBLIC_DEMO_DATA=$NEXT_PUBLIC_DEMO_DATA
-ENV NEXT_PUBLIC_DEMO_PLAN=$NEXT_PUBLIC_DEMO_PLAN
-RUN npm run build
-
+# When built with npm run build on host, .next/standalone contains the full
+# <!DOCTYPE>/<html>/<body> shell, ensuring perfect browser hydration.
 FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
@@ -23,7 +8,7 @@ ENV NODE_ENV=production
 # so it is reachable via localhost on the host machine.
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY .next/standalone ./
+COPY .next/static ./.next/static
 EXPOSE 3000
 CMD ["node", "server.js"]

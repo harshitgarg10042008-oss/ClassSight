@@ -122,7 +122,7 @@ export default function LoginPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <Checkbox
             id="remember-user"
-            label="Remember username"
+            label="Remember username only"
             hint="Saves username only in local storage"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
