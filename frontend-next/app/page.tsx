@@ -48,21 +48,29 @@ export default function HomePage() {
   return (
     <PublicShell>
       <main id="main-content" className="cs-landing-main">
+        {/* Spiderweb Cyber Grid Background */}
+        <div className="cs-cyber-grid" aria-hidden="true" />
+
+        {/* Ambient Glowing Bubbles / Gradient Orbs */}
+        <div className="cs-bubble cs-bubble-1" aria-hidden="true" />
+        <div className="cs-bubble cs-bubble-2" aria-hidden="true" />
+        <div className="cs-bubble cs-bubble-3" aria-hidden="true" />
+
         {/* ── HERO SECTION ────────────────────────────────────────── */}
         <section className="cs-hero-section">
           <div className="cs-hero-container">
             <div className="cs-hero-copy">
-              <span className="cs-eyebrow">Faculty-First Classroom AI</span>
+              <span className="cs-eyebrow-glow">✨ Faculty-First Classroom AI</span>
               <h1 className="cs-hero-title">
-                Attendance that keeps faculty in control.
+                Attendance that keeps <span className="cs-gradient-text">faculty in control</span>.
               </h1>
               <p className="cs-hero-subtitle">
                 Classroom attendance from one photograph, with an accountable human-in-the-loop
                 review step before records reach the ERP. Never a black-box decision.
               </p>
               <div className="cs-hero-ctas">
-                <Link href="/book-demo" className="cs-button button-primary button-lg">
-                  Book a demo
+                <Link href="/book-demo" className="button-glow-primary button-lg">
+                  Book a demo →
                 </Link>
                 <Link href="/how-it-works" className="cs-button button-outline button-lg">
                   See how it works
@@ -72,13 +80,13 @@ export default function HomePage() {
                 </Link>
               </div>
               <div className="cs-hero-trust-row">
-                <span className="cs-trust-item">✓ Teacher confirms every match</span>
-                <span className="cs-trust-item">✓ Under 30 seconds per lecture</span>
-                <span className="cs-trust-item">✓ ERP-ready CSV export</span>
+                <span className="cs-trust-pill">✓ Teacher confirms every match</span>
+                <span className="cs-trust-pill">⚡ Under 30 seconds per lecture</span>
+                <span className="cs-trust-pill">📊 ERP-ready CSV export</span>
               </div>
             </div>
 
-            {/* CSS-built Product Mockup */}
+            {/* High-Tech CSS Product Mockup with Live Vision Scanner Feed */}
             <div className="cs-hero-mockup" role="region" aria-label="Interactive Review Screen Mockup">
               <div className="cs-mockup-browser-chrome">
                 <div className="cs-browser-dots">
@@ -87,11 +95,58 @@ export default function HomePage() {
                   <span className="dot green" />
                 </div>
                 <div className="cs-browser-address-bar">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
                   <span>classsight.internal/app/review/session-104</span>
                 </div>
-                <span className="cs-browser-badge">Live Faculty Review</span>
+                <span className="cs-browser-badge">
+                  <span className="cs-live-pulse-dot" /> LIVE INFERENCE
+                </span>
               </div>
 
+              {/* Simulated Classroom Vision Camera Feed */}
+              <div className="cs-mockup-camera-feed" aria-hidden="true">
+                <div className="cs-camera-grid-overlay" />
+                <div className="cs-classroom-scene">
+                  <div className="cs-scene-row">
+                    <div className="cs-scene-desk" />
+                    <div className="cs-scene-desk" />
+                    <div className="cs-scene-desk" />
+                    <div className="cs-scene-desk" />
+                  </div>
+                  <div className="cs-scene-row">
+                    <div className="cs-scene-desk" />
+                    <div className="cs-scene-desk" />
+                    <div className="cs-scene-desk" />
+                    <div className="cs-scene-desk" />
+                  </div>
+                </div>
+
+                {/* Target Bounding Boxes */}
+                <div className="cs-face-box box-1">
+                  <span className="cs-face-box-tag">✓ Aarav P.</span>
+                  <span style={{ fontSize: '9px', opacity: 0.85 }}>AUTO 96.2%</span>
+                </div>
+
+                <div className="cs-face-box box-2">
+                  <span className="cs-face-box-tag">✓ Priya S.</span>
+                  <span style={{ fontSize: '9px', opacity: 0.85 }}>AUTO 94.5%</span>
+                </div>
+
+                <div className="cs-face-box box-3">
+                  <span className="cs-face-box-tag">? Rohan G.</span>
+                  <span style={{ fontSize: '9px', opacity: 0.9 }}>REVIEW 81.0%</span>
+                </div>
+
+                <div className="cs-camera-hud">
+                  <span>● CAM-02 FRONT AUDITORIUM • 30 FPS • 1080p</span>
+                  <span>48 / 50 SEATS OCCUPIED (96%)</span>
+                </div>
+              </div>
+
+              {/* Faculty Review Controls */}
               <div className="cs-mockup-body">
                 <div className="cs-mockup-stream-header">
                   <div>
@@ -111,7 +166,7 @@ export default function HomePage() {
                     <Avatar name="Aarav Patel" size="md" />
                     <div className="cs-card-info">
                       <strong>Aarav Patel</strong>
-                      <span className="cs-stat-hint">Roll: 2026-CS-01</span>
+                      <span className="cs-stat-hint">Roll: 2026-CS-01 • Matched via desk 1A</span>
                     </div>
                     <TierChip status="AUTO" label="96%" size="sm" />
                   </div>
@@ -120,7 +175,7 @@ export default function HomePage() {
                     <Avatar name="Rohan Gupta" size="md" />
                     <div className="cs-card-info">
                       <strong>Rohan Gupta</strong>
-                      <span className="cs-stat-hint">Roll: 2026-CS-03</span>
+                      <span className="cs-stat-hint">Roll: 2026-CS-03 • Partial angle (81%)</span>
                     </div>
                     <TierChip status="REVIEW" label="81%" size="sm" />
                   </div>
@@ -129,7 +184,7 @@ export default function HomePage() {
                     <Avatar name="Unknown Student" size="md" />
                     <div className="cs-card-info">
                       <strong>Unmatched Face</strong>
-                      <span className="cs-stat-hint">Row 4, Seat 2</span>
+                      <span className="cs-stat-hint">Row 4, Seat 2 • Low lighting</span>
                     </div>
                     <TierChip status="UNKNOWN" label="54%" size="sm" />
                   </div>
@@ -140,7 +195,7 @@ export default function HomePage() {
                     Press <kbd>A</kbd> to accept, <kbd>X</kbd> to mark absent, <kbd>↵</kbd> to commit
                   </span>
                   <Link href="/app" className="cs-button button-primary button-sm">
-                    Open Review Screen
+                    Open Review Screen →
                   </Link>
                 </div>
               </div>
@@ -151,7 +206,7 @@ export default function HomePage() {
         {/* ── FOUR STEPS WORKFLOW ─────────────────────────────────── */}
         <section className="cs-landing-section">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">A Clear, Auditable Process</span>
+            <span className="cs-eyebrow-glow">A Clear, Auditable Process</span>
             <h2 className="cs-section-title">Four steps, one accountable record.</h2>
             <p className="cs-section-subtitle">
               Attendance shouldn't take 15 minutes of lecture time or rely on untrustworthy black-box algorithms.
@@ -166,6 +221,10 @@ export default function HomePage() {
                 One-time group photo enrolment with guardian consent tracking for minors.
                 Biometric templates are stored as face embeddings.
               </p>
+              <div className="cs-feature-widget" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📸</span>
+                <span style={{ color: 'var(--muted)' }}>Single group photo setup</span>
+              </div>
             </article>
 
             <article className="cs-step-card">
@@ -175,6 +234,10 @@ export default function HomePage() {
                 Point classroom IP camera, laptop camera, or mobile phone to capture a wide-angle
                 image of seated students in under 2 seconds.
               </p>
+              <div className="cs-feature-widget" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚡</span>
+                <span style={{ color: 'var(--muted)' }}>1.8s wide-angle burst</span>
+              </div>
             </article>
 
             <article className="cs-step-card">
@@ -184,6 +247,10 @@ export default function HomePage() {
                 High-confidence matches are flagged AUTO. Uncertain matches are flagged REVIEW.
                 Faculty reviews and confirms in under 30 seconds.
               </p>
+              <div className="cs-feature-widget" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⌨️</span>
+                <span style={{ color: 'var(--muted)' }}>Keyboard speed hotkeys</span>
+              </div>
             </article>
 
             <article className="cs-step-card">
@@ -193,6 +260,10 @@ export default function HomePage() {
                 Session locks with a timestamped audit log. Records immediately sync with institutional
                 ERP/LMS systems with zero manual re-entry.
               </p>
+              <div className="cs-feature-widget" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🔒</span>
+                <span style={{ color: 'var(--muted)' }}>Immutable cryptographic lock</span>
+              </div>
             </article>
           </div>
         </section>
@@ -200,7 +271,7 @@ export default function HomePage() {
         {/* ── PROBLEM VS SOLUTION ─────────────────────────────────── */}
         <section className="cs-landing-section cs-bg-subtle">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Why We Built ClassSight</span>
+            <span className="cs-eyebrow-glow">Why We Built ClassSight</span>
             <h2 className="cs-section-title">The attendance dilemma in modern education.</h2>
           </div>
 
@@ -232,7 +303,7 @@ export default function HomePage() {
         {/* ── INTERACTIVE D24 TRY-IT DEMO ─────────────────────────── */}
         <section className="cs-landing-section">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Interactive Sandbox (D24)</span>
+            <span className="cs-eyebrow-glow">Interactive Sandbox (D24)</span>
             <h2 className="cs-section-title">Try the faculty review step right here.</h2>
             <p className="cs-section-subtitle">
               Experience how faculty confirms matches. Tap the actions below on synthetic student data.
@@ -243,7 +314,7 @@ export default function HomePage() {
             <div className="cs-sandbox-header">
               <div>
                 <strong>Class Session: CS-101 Algorithms (Demo Sandbox)</strong>
-                <span className="cs-stat-hint" style={{ display: 'block' }}>
+                <span className="cs-stat-hint" style={{ display: 'block', marginTop: '4px' }}>
                   Progress: {resolvedCount} of {demoList.length} students confirmed ({progressPercent}%)
                 </span>
               </div>
@@ -284,7 +355,7 @@ export default function HomePage() {
             </div>
 
             <div className="cs-sandbox-footer">
-              <span className="cs-stat-hint">
+              <span className="cs-stat-hint" style={{ maxWidth: '440px' }}>
                 Single-capture attendance cannot be committed without the faculty review call;
                 multi-shot finalise can finalise a clean accumulator by explicit faculty action.
               </span>
@@ -300,7 +371,7 @@ export default function HomePage() {
               <div className="cs-sandbox-finalized-banner">
                 <span>🎉 Demo session finalized! Ready to test on real classroom cameras?</span>
                 <Link href="/app" className="cs-button button-primary button-sm">
-                  Launch Faculty Workspace
+                  Launch Faculty Workspace →
                 </Link>
               </div>
             )}
@@ -310,7 +381,7 @@ export default function HomePage() {
         {/* ── SIGNATURE FEATURES GRID ─────────────────────────────── */}
         <section className="cs-landing-section cs-bg-subtle">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Signature Capabilities</span>
+            <span className="cs-eyebrow-glow">Signature Capabilities</span>
             <h2 className="cs-section-title">Built for the real complexities of classroom life.</h2>
             <p className="cs-section-subtitle">
               From lighting issues and late arrivals to disputed records and strict consent regulations.
@@ -318,60 +389,133 @@ export default function HomePage() {
           </div>
 
           <div className="cs-features-grid">
+            {/* D01 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">🔍</div>
               <h3>Explain-This-Match (D01)</h3>
               <p>Inspect feature confidence against threshold gauges, face angle, and quality scores to know exactly why a student was flagged for review.</p>
-              <span className="cs-plan-badge cs-plan-badge-essential">Essential</span>
+              <div className="cs-feature-widget">
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--muted)' }}>
+                  <span>Match Confidence</span>
+                  <strong style={{ color: '#10b981' }}>85.4%</strong>
+                </div>
+                <div className="cs-meter-track">
+                  <div className="cs-meter-fill" style={{ width: '85.4%', background: '#10b981' }} />
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', marginTop: '4px' }}>
+                  Cutoff: 80% • Euclidean: 0.38
+                </span>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-essential" style={{ width: 'fit-content' }}>Essential</span>
             </div>
 
+            {/* D02 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">💡</div>
               <h3>Capture Coach (D02)</h3>
               <p>Pre-capture environmental checklist detects backlighting, low resolution, camera tilt, and cropped faces before you shoot.</p>
-              <span className="cs-plan-badge cs-plan-badge-essential">Essential</span>
+              <div className="cs-feature-widget">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', color: 'var(--muted)' }}>
+                  <span style={{ color: '#10b981' }}>✓ Room Illuminance: 420 Lux (Optimal)</span>
+                  <span style={{ color: '#10b981' }}>✓ Camera Horizon: 0.0° Level</span>
+                  <span style={{ color: '#10b981' }}>✓ Focus Sharpness: 4K Crisp</span>
+                </div>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-essential" style={{ width: 'fit-content' }}>Essential</span>
             </div>
 
+            {/* D04 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">⌨️</div>
               <h3>Keyboard Speed Review (D04)</h3>
               <p>Rapid review hotkeys: press A to confirm, X for absent, U for unknown, arrow keys to navigate, Z to undo. Finish in 20 seconds.</p>
-              <span className="cs-plan-badge cs-plan-badge-essential">Essential</span>
+              <div className="cs-feature-widget" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <span className="cs-keycap">A Confirm</span>
+                <span className="cs-keycap">X Absent</span>
+                <span className="cs-keycap">↵ Commit</span>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-essential" style={{ width: 'fit-content' }}>Essential</span>
             </div>
 
+            {/* D05 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">🪑</div>
               <h3>Seat-Map with Absentee Heat (D05)</h3>
               <p>Visual classroom layout shows empty desks and absentee heat patterns across lecture hall rows.</p>
-              <span className="cs-plan-badge cs-plan-badge-pro">Pro</span>
+              <div className="cs-feature-widget">
+                <span style={{ color: 'var(--muted)', display: 'block', marginBottom: '6px' }}>Auditorium Desk Map</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px' }}>
+                  <span style={{ height: '8px', borderRadius: '2px', background: '#10b981' }} />
+                  <span style={{ height: '8px', borderRadius: '2px', background: '#10b981' }} />
+                  <span style={{ height: '8px', borderRadius: '2px', background: '#ef4444' }} />
+                  <span style={{ height: '8px', borderRadius: '2px', background: '#10b981' }} />
+                  <span style={{ height: '8px', borderRadius: '2px', background: '#10b981' }} />
+                  <span style={{ height: '8px', borderRadius: '2px', background: '#10b981' }} />
+                </div>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-pro" style={{ width: 'fit-content' }}>Pro</span>
             </div>
 
+            {/* D09 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">🧮</div>
               <h3>Eligibility Calculator (D09)</h3>
               <p>Answers the student question: "How many classes can I still miss before falling below the 75% exam cutoff?"</p>
-              <span className="cs-plan-badge cs-plan-badge-advanced">Advanced</span>
+              <div className="cs-feature-widget">
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--muted)' }}>Current Status:</span>
+                  <strong style={{ color: '#10b981' }}>+3 Buffer Classes</strong>
+                </div>
+                <span style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', marginTop: '4px' }}>
+                  Attendance: 82.4% • Safe for semester finals
+                </span>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-advanced" style={{ width: 'fit-content' }}>Advanced</span>
             </div>
 
+            {/* D10 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">📡</div>
               <h3>Risk Radar (D10)</h3>
               <p>Early-warning alerts highlight students whose attendance is trending downward before they become debarred defaulters.</p>
-              <span className="cs-plan-badge cs-plan-badge-pro">Pro</span>
+              <div className="cs-feature-widget">
+                <span style={{ color: '#f59e0b', display: 'block' }}>⚠️ 2 students approaching cutoff</span>
+                <span style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', marginTop: '2px' }}>
+                  Automated guardian notifications queued
+                </span>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-pro" style={{ width: 'fit-content' }}>Pro</span>
             </div>
 
+            {/* D19 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">📜</div>
               <h3>Consent Ledger (D19)</h3>
               <p>Comprehensive tracker for student and guardian consent status, withdrawal requests, and minor flags.</p>
-              <span className="cs-plan-badge cs-plan-badge-essential">Essential</span>
+              <div className="cs-feature-widget">
+                <span style={{ color: '#10b981' }}>🔒 100% Guardian Consent Logged</span>
+                <span style={{ fontSize: '10px', color: 'var(--muted)', display: 'block', marginTop: '2px' }}>
+                  SHA-256 Consent Audit Hash Verified
+                </span>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-essential" style={{ width: 'fit-content' }}>Essential</span>
             </div>
 
+            {/* D20 */}
             <div className="cs-feature-card">
               <div className="cs-feature-icon">🛡️</div>
               <h3>Privacy Receipt & Erasure (D20)</h3>
               <p>Transparent summary showing each student what biometric data is held, since when, and one-click erasure workflows.</p>
-              <span className="cs-plan-badge cs-plan-badge-essential">Essential</span>
+              <div className="cs-feature-widget">
+                <span style={{ color: 'var(--muted)', display: 'block' }}>Template Vector:</span>
+                <span style={{ fontSize: '10px', color: 'var(--accent)', fontFamily: 'monospace' }}>
+                  [0.128, -0.452, 0.901...]
+                </span>
+                <span style={{ fontSize: '10px', color: '#ef4444', display: 'block', marginTop: '2px' }}>
+                  1-Click Right to Erasure Supported
+                </span>
+              </div>
+              <span className="cs-plan-badge cs-plan-badge-essential" style={{ width: 'fit-content' }}>Essential</span>
             </div>
           </div>
         </section>
@@ -379,11 +523,11 @@ export default function HomePage() {
         {/* ── AUDIENCE VALUE TABS ─────────────────────────────────── */}
         <section className="cs-landing-section">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Tailored For Every Role</span>
+            <span className="cs-eyebrow-glow">Tailored For Every Role</span>
             <h2 className="cs-section-title">One source of truth across campus.</h2>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '36px' }}>
             <Tabs
               activeId={audienceTab}
               onChange={setAudienceTab}
@@ -411,7 +555,7 @@ export default function HomePage() {
                     <li>✓ Instant defaulter alerts before exams</li>
                     <li>✓ Keyboard speed review mode under 30 seconds</li>
                   </ul>
-                  <Link href="/app" className="cs-button button-primary">Explore Faculty Workspace</Link>
+                  <Link href="/app" className="cs-button button-primary">Explore Faculty Workspace →</Link>
                 </div>
                 <div className="cs-audience-visual">
                   <StatCard title="Average Review Time" value="24 sec" delta={{ value: "95% time saved", positive: true }} sparklineData={[45, 38, 30, 26, 24]} />
@@ -432,7 +576,7 @@ export default function HomePage() {
                     <li>✓ ERP integration with SAP, PeopleSoft, and custom SQL</li>
                     <li>✓ Departmental HOD oversight workflows</li>
                   </ul>
-                  <Link href="/book-demo" className="cs-button button-primary">Schedule Institutional Briefing</Link>
+                  <Link href="/book-demo" className="cs-button button-primary">Schedule Institutional Briefing →</Link>
                 </div>
                 <div className="cs-audience-visual">
                   <StatCard title="Attendance Discrepancy Reduction" value="99.2%" delta={{ value: "Auditable sign-off", positive: true }} sparklineData={[80, 85, 92, 97, 99.2]} />
@@ -453,7 +597,7 @@ export default function HomePage() {
                     <li>✓ 24-hour dispute window with documented resolution</li>
                     <li>✓ Privacy receipt: transparent biometric template management</li>
                   </ul>
-                  <Link href="/portal" className="cs-button button-primary">View Student Portal</Link>
+                  <Link href="/portal" className="cs-button button-primary">View Student Portal →</Link>
                 </div>
                 <div className="cs-audience-visual">
                   <StatCard title="Current Eligibility Buffer" value="+3 classes" delta={{ value: "Safe above 75%", positive: true }} sparklineData={[1, 2, 2, 3, 3]} />
@@ -474,7 +618,7 @@ export default function HomePage() {
                     <li>✓ Automated camera health ping and lighting scoring</li>
                     <li>✓ Granular retention policies and cryptographic audit logs</li>
                   </ul>
-                  <Link href="/admin" className="cs-button button-primary">Admin Console Demo</Link>
+                  <Link href="/admin" className="cs-button button-primary">Admin Console Demo →</Link>
                 </div>
                 <div className="cs-audience-visual">
                   <StatCard title="Active Camera Health" value="100%" delta={{ value: "All nodes pinging", positive: true }} sparklineData={[100, 100, 100, 100, 100]} />
@@ -487,7 +631,7 @@ export default function HomePage() {
         {/* ── PRIVACY AND TRUST SECTION ───────────────────────────── */}
         <section className="cs-landing-section cs-bg-subtle">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Privacy & Engineering Integrity</span>
+            <span className="cs-eyebrow-glow">Privacy & Engineering Integrity</span>
             <h2 className="cs-section-title">Built with honest boundaries, not marketing claims.</h2>
             <p className="cs-section-subtitle">
               We state clearly what our system does and what is still under development.
@@ -517,7 +661,7 @@ export default function HomePage() {
         {/* ── PLANS PREVIEW ───────────────────────────────────────── */}
         <section className="cs-landing-section">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Transparent Packaging</span>
+            <span className="cs-eyebrow-glow">Transparent Packaging</span>
             <h2 className="cs-section-title">Plans that scale with your institution.</h2>
             <p className="cs-section-subtitle">
               Prices are configured directly with your account team based on campus size and deployment model.
@@ -576,7 +720,7 @@ export default function HomePage() {
         {/* ── FAQ ACCORDION ───────────────────────────────────────── */}
         <section className="cs-landing-section cs-bg-subtle">
           <div className="cs-section-header">
-            <span className="cs-eyebrow">Frequently Asked Questions</span>
+            <span className="cs-eyebrow-glow">Frequently Asked Questions</span>
             <h2 className="cs-section-title">Everything you need to know.</h2>
           </div>
 
@@ -621,10 +765,10 @@ export default function HomePage() {
               Experience faster lectures, eliminated proxy attendance, and accreditation-ready audit trails.
             </p>
             <div className="cs-cta-actions">
-              <Link href="/book-demo" className="cs-button button-primary button-lg">
-                Request an Institutional Demo
+              <Link href="/book-demo" className="button-glow-primary button-lg">
+                Request an Institutional Demo →
               </Link>
-              <Link href="/app" className="cs-button button-outline button-lg" style={{ color: 'white', borderColor: 'rgba(255,255,255,0.4)' }}>
+              <Link href="/app" className="cs-button button-outline button-lg" style={{ color: 'var(--text)', borderColor: 'var(--line)' }}>
                 Try Faculty Workspace
               </Link>
             </div>
