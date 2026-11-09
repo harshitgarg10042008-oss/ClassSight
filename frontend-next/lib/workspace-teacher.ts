@@ -2,7 +2,7 @@ import type { SectionSpec } from './workspace-admin';
 
 const HONESTY = [
   'Face embeddings are not yet encrypted at rest.',
-  'Nothing is auto-committed: a faculty member must review each attendance record before it is committed.',
+  'Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action.',
   'Demo mode, nothing was sent.',
 ];
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { WorkspaceChrome } from '@/components/shell/WorkspaceChrome';
 import { NotificationCentre } from '@/components/shell/NotificationCentre';
+import { NotificationPreferencesAndTemplates } from '@/components/shell/NotificationPreferencesAndTemplates';
 
 export const metadata: Metadata = {
   title: 'Notification centre | ClassSight',
@@ -33,11 +34,13 @@ export default function NotificationsPage() {
 
       <NotificationCentre />
 
-      <section className="section-card" aria-labelledby="notification-boundaries">
+      <NotificationPreferencesAndTemplates />
+
+      <section className="section-card" aria-labelledby="notification-boundaries" style={{ marginTop: '32px' }}>
         <div className="section-head"><h2 id="notification-boundaries">What this page does not do</h2></div>
         <ul className="honesty-list">
           <li>Face embeddings are not yet encrypted at rest.</li>
-          <li>Nothing is auto-committed: a faculty member must review each attendance record before it is committed.</li>
+          <li>Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action.</li>
           <li>Demo mode, nothing was sent.</li>
           <li>Read state lives in this browser; clearing site data resets it.</li>
         </ul>

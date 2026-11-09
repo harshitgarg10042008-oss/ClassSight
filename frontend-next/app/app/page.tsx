@@ -4,6 +4,7 @@ import {
   ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState,
 } from 'react';
 import CameraCapture from '../../components/CameraCapture';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Room = { id: number; name: string; building?: string; capacity?: number; active: boolean };
@@ -178,12 +179,19 @@ export default function ClassSightApp() {
 
   // ── Login screen
   if (restoring) {
-    return <main className="login-shell"><div className="login-card"><p className="hint">Restoring your session…</p></div></main>;
+    return (
+      <main id="main-content" className="login-shell">
+        <div className="login-card">
+          <h1>ClassSight Faculty Workspace</h1>
+          <p className="hint">Restoring your session…</p>
+        </div>
+      </main>
+    );
   }
 
   if (!token) {
     return (
-      <main className="login-shell">
+      <main id="main-content" className="login-shell">
         <div className="login-card">
           <div className="login-logo">
             <div className="login-logo-icon">C</div>
@@ -197,7 +205,7 @@ export default function ClassSightApp() {
           <form className="login-form" onSubmit={handleLogin}>
             {loginErr && <div className="login-error">{loginErr}</div>}
             <label>Username or Email<input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" /></label>
-            <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" /></label>
+            <PasswordInput id="app-login-password" value={password} onChange={setPassword} />
             <button className="login-btn" disabled={loginBusy}>
               {loginBusy ? <><span className="spinner" />Signing in…</> : 'Sign In →'}
             </button>
@@ -225,7 +233,7 @@ export default function ClassSightApp() {
   const initials = userFullName.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 
   return (
-    <main className="app-layout">
+    <main id="main-content" className="app-layout">
       <h1 className="sr-only">Faculty attendance workspace</h1>
       <nav className="sidebar">
         <div className="sidebar-logo">

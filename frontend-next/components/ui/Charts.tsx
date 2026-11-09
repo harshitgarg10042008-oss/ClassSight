@@ -329,3 +329,4 @@ export function SeatMap({
     </div>
   );
 }
+
