@@ -1,3 +1,6 @@
+@import '../styles/tokens.css';
+@import '../styles/components.css';
+
 /* ── Design Tokens ─────────────────────────────────────────── */
 :root {
   --ink: #0f1c1a;

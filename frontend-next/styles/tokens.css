@@ -1,0 +1,163 @@
+/* ── ClassSight Design System Tokens ─────────────────────────
+   Brand: "Lagoon + Coral on Ink"
+   System font stack, tabular nums for stats, 12-16px radii, layered shadows.
+   WCAG 2.1 AA compliant text contrast in both themes.
+───────────────────────────────────────────────────────────── */
+
+:root {
+  /* Ink */
+  --ink-950: #0a1020;
+  --ink-900: #0f1830;
+  --ink-800: #16233d;
+  --ink-700: #1f3052;
+  --ink-600: #2a3d66;
+
+  /* Lagoon */
+  --lagoon-400: #2dd4bf;
+  --lagoon-500: #0e9f9a;
+  --lagoon-600: #0b7f7b;
+  --lagoon-700: #08615e;
+
+  /* Coral */
+  --coral-500: #ff6b4a;
+  --coral-600: #e05335;
+
+  /* Paper & Surfaces */
+  --paper: #fbfaf7;
+  --surface: #ffffff;
+  --surface-raised: #f4f7f4;
+  --surface-subtle: #f9fbf9;
+  --surface-hover: #eef2f0;
+
+  /* Text & Lines */
+  --text: #0f1830;
+  --text-muted: #526174;
+  --text-slate: #64748b;
+  --line: #dce4ec;
+  --line-subtle: #edf2f7;
+  --line-strong: #cbd5e1;
+
+  /* Interactions */
+  --link: #0b7f7b;
+  --link-hover: #08615e;
+  --focus: #0e9f9a;
+  --focus-ring: #ff6b4a;
+
+  /* Tier Status System (Fills, Borders, Dark text variants >= 4.5:1) */
+  --tier-auto: #12b76a;
+  --tier-auto-bg: #dcfce7;
+  --tier-auto-border: #86efac;
+  --tier-auto-text: #14532d;
+
+  --tier-review: #f5a524;
+  --tier-review-bg: #fef3c7;
+  --tier-review-border: #fcd34d;
+  --tier-review-text: #78350f;
+
+  --tier-unknown: #8b93a7;
+  --tier-unknown-bg: #f1f3f7;
+  --tier-unknown-border: #cbd2e0;
+  --tier-unknown-text: #1e293b;
+
+  --tier-absent: #e5484d;
+  --tier-absent-bg: #fee2e2;
+  --tier-absent-border: #fca5a5;
+  --tier-absent-text: #7f1d1d;
+
+  /* UI Accents */
+  --accent-blue: #2563eb;
+  --accent-blue-bg: #dbeafe;
+  --accent-blue-text: #1d4ed8;
+
+  --accent-purple: #7c3aed;
+  --accent-purple-bg: #ede9fe;
+  --accent-purple-text: #6d28d9;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(15, 24, 48, 0.06), 0 1px 2px rgba(15, 24, 48, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 24, 48, 0.08), 0 2px 4px rgba(15, 24, 48, 0.04);
+  --shadow-lg: 0 12px 32px rgba(15, 24, 48, 0.12), 0 4px 8px rgba(15, 24, 48, 0.06);
+  --shadow-layered: 0 1px 2px rgba(15, 24, 48, 0.04), 0 8px 24px rgba(15, 24, 48, 0.08);
+
+  /* Animation */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-slow: 250ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Legacy mappings */
+  --ink: var(--text);
+  --card: var(--surface);
+  --card-2: var(--surface-raised);
+}
+
+:root.dark {
+  --paper: #0a1020;
+  --surface: #101b32;
+  --surface-raised: #16233d;
+  --surface-subtle: #131f38;
+  --surface-hover: #1c2b4d;
+
+  --text: #f5f8fc;
+  --text-muted: #b4c0d0;
+  --text-slate: #94a3b8;
+  --line: #2a3851;
+  --line-subtle: #1e2c45;
+  --line-strong: #3b4d6e;
+
+  --link: #7fd3ce;
+  --link-hover: #a5e7e3;
+  --focus: #2dd4bf;
+  --focus-ring: #ff6b4a;
+
+  /* Dark Tier Status System (Fills, Borders, Light text variants >= 4.5:1) */
+  --tier-auto: #12b76a;
+  --tier-auto-bg: #064e3b;
+  --tier-auto-border: #047857;
+  --tier-auto-text: #d1fae5;
+
+  --tier-review: #f5a524;
+  --tier-review-bg: #78350f;
+  --tier-review-border: #b45309;
+  --tier-review-text: #fef3c7;
+
+  --tier-unknown: #8b93a7;
+  --tier-unknown-bg: #1e293b;
+  --tier-unknown-border: #334155;
+  --tier-unknown-text: #f1f5f9;
+
+  --tier-absent: #e5484d;
+  --tier-absent-bg: #7f1d1d;
+  --tier-absent-border: #991b1b;
+  --tier-absent-text: #fee2e2;
+
+  --accent-blue-bg: #1e3a8a;
+  --accent-blue-text: #bfdbfe;
+
+  --accent-purple-bg: #4c1d95;
+  --accent-purple-text: #ddd6fe;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-layered: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  --ink: var(--text);
+  --card: var(--surface);
+  --card-2: var(--surface-raised);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
