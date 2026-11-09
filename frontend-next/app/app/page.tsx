@@ -119,6 +119,7 @@ export default function ClassSightApp() {
   const [restoring, setRestoring]   = useState(true);
   const [page, setPage]             = useState('teacher');
   const [loginErr, setLoginErr]     = useState('');
+  const clearSessionRef             = useRef<(reason?: string) => void>(() => { /* noop until mounted */ });
   const [loginBusy, setLoginBusy]   = useState(false);
   const [username, setUsername]     = useState('teacher');
   const [password, setPassword]     = useState('teacher123');
@@ -144,6 +145,19 @@ export default function ClassSightApp() {
     } catch { /* optional browser storage */ }
     setRestoring(false);
   }, []);
+
+  function clearSession(reason?: string) {
+    setToken(''); setFullName(''); setRole('');
+    if (reason) setLoginErr(reason);
+    try {
+      window.localStorage.removeItem('classsight_token');
+      window.localStorage.removeItem('classsight_full_name');
+      window.localStorage.removeItem('classsight_role');
+    } catch { /* storage unavailable */ }
+  }
+
+  // Keep a stable ref so authFetch can call clearSession without being recreated every render.
+  clearSessionRef.current = clearSession;
 
   function onLoginSuccess(tok: string, name: string, role: string) {
     setToken(tok); setFullName(name); setRole(role);
@@ -171,7 +185,16 @@ export default function ClassSightApp() {
     const headers = new Headers(opts.headers);
     if (token) headers.set('Authorization', `Bearer ${token}`);
     const res = await fetch(`${API}${path}`, { ...opts, headers });
-    if (!res.ok) { const t = await res.text(); throw new Error(friendlyError(`${res.status}: ${t}`)); }
+    if (!res.ok) {
+      // 401 = token missing/invalid, 403 = token expired or insufficient role.
+      // Clear the stale session so the login screen is shown immediately.
+      if (res.status === 401 || res.status === 403) {
+        clearSessionRef.current('⚠️ Your session has expired. Please log in again.');
+        throw new Error('Your session has expired. Please log in again.');
+      }
+      const t = await res.text();
+      throw new Error(friendlyError(`${res.status}: ${t}`));
+    }
     return res;
   }, [token]);
 
@@ -203,7 +226,7 @@ export default function ClassSightApp() {
           <h1>Welcome back</h1>
           <p>Sign in to your institutional portal</p>
           <form className="login-form" onSubmit={handleLogin}>
-            {loginErr && <div className="login-error">{loginErr}</div>}
+            {loginErr && <div className="login-error" role="alert">{loginErr}</div>}
             <label>Username or Email<input value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" /></label>
             <PasswordInput id="app-login-password" value={password} onChange={setPassword} />
             <button className="login-btn" disabled={loginBusy}>
@@ -255,7 +278,7 @@ export default function ClassSightApp() {
           ))}
         </div>
         <div className="sidebar-footer">
-          <button onClick={() => { setToken(''); setFullName(''); setRole(''); window.localStorage.removeItem('classsight_token'); window.localStorage.removeItem('classsight_full_name'); window.localStorage.removeItem('classsight_role'); }}>🚪 Sign Out</button>
+          <button onClick={() => clearSession()}>🚪 Sign Out</button>
         </div>
       </nav>
 
