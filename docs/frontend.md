@@ -49,11 +49,17 @@ Tokens live in **`frontend-next/styles/tokens.css`** (light mode under `:root`, 
 
 ---
 
-## Routes
+## Routes and Verification
 
 All routes are declared in **`frontend-next/config/routes.ts`**.  
-The dev-time route sweep (`npm run ui-route-sweep`) uses this file.  
-The sitemap page (`/sitemap`) and `sitemap.xml` are generated from this manifest.
+The full manifest contains **115 routes** (56 base/static/wired routes + 20 institution admin sections + 11 platform owner console sections + 5 tenant detail sub-routes + 9 portal sections + 14 teacher workspace sections).
+
+Verification status from Prompt 10:
+- **Manifest Sweep**: 115/115 routes clean (HTTP 200, zero console errors, zero page errors, single h1, unique titles, no horizontal overflow at 360px & 768px). Evidence: `.work/logs/v4-sweep.log`.
+- **Link Crawler**: 115 pages crawled, 118 internal targets checked, 0 dead links, 0 `href="#"` fragments. Evidence: `.work/logs/v4-crawler.log`.
+- **Contrast**: 36/36 token pairs pass WCAG 2.1 AA/AAA contrast. Evidence: `.work/logs/v4-contrast.log`.
+- **Workspace Depth Audit**: 70/70 workspace routes pass depth audit with rich cards, data tables, state previews, and honesty disclosures. Evidence: `.work/logs/v5-audit.log`.
+- **Interactive UX**: 14/14 automated checks pass (keyboard login with Enter submit, eye toggle on login and signup, notification bell count & persistence, Hindi language switch, Ctrl+K palette navigation, `?` shortcut panel, onboarding checklist persistence, demo switcher, LockedFeature modal). Evidence: `.work/logs/v4-ux.log`.
 
 Add a new page:
 1. Create `app/new-page/page.tsx`
