@@ -1150,3 +1150,180 @@ h3 { font-size: 17px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 4px;
   .workspace-search input { width: 100%; min-width: 0; }
   .chrome-panel { right: auto; left: 0; }
 }
+
+/* ── Dark Mode Overrides ───────────────────────────────────────────────────── */
+/* These fix the "text disappears on theme switch" bug caused by hardcoded hex  */
+/* values that only work in one mode. All changes use CSS vars or dark-scoped   */
+/* overrides so they respond to :root.dark class and [data-theme="dark"].       */
+
+:root.dark .top-bar,
+[data-theme="dark"] .top-bar {
+  background: rgba(10, 16, 32, 0.90);
+  border-bottom-color: var(--line);
+}
+
+/* Workspace content area: stat cards, section cards */
+:root.dark .stat-card,
+[data-theme="dark"] .stat-card {
+  background: var(--card);
+  border-color: var(--line);
+}
+
+:root.dark .section-card,
+[data-theme="dark"] .section-card {
+  background: var(--card);
+  border-color: var(--line);
+}
+
+/* Tables in dark mode */
+:root.dark table thead,
+[data-theme="dark"] table thead {
+  background: var(--card-2);
+}
+
+:root.dark table tbody tr:hover,
+[data-theme="dark"] table tbody tr:hover {
+  background: var(--card-2);
+}
+
+:root.dark td, :root.dark th,
+[data-theme="dark"] td, [data-theme="dark"] th {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+/* Form inputs in dark mode */
+:root.dark input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+:root.dark select,
+:root.dark textarea,
+[data-theme="dark"] input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root.dark input::placeholder,
+[data-theme="dark"] input::placeholder {
+  color: var(--muted);
+}
+
+/* Alert boxes */
+:root.dark .alert-info,
+[data-theme="dark"] .alert-info {
+  background: rgba(37, 99, 235, 0.15);
+  color: var(--ink);
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+:root.dark .alert-error,
+[data-theme="dark"] .alert-error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+:root.dark .alert-success,
+[data-theme="dark"] .alert-success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Inner tabs */
+:root.dark .inner-tab,
+[data-theme="dark"] .inner-tab {
+  color: var(--muted);
+}
+
+:root.dark .inner-tab.active,
+[data-theme="dark"] .inner-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Nav items in the sidebar */
+:root.dark .nav-tabs .nav-item,
+[data-theme="dark"] .nav-tabs .nav-item {
+  color: var(--muted);
+}
+
+/* Stat value and label text */
+:root.dark .stat-value,
+[data-theme="dark"] .stat-value {
+  color: var(--ink);
+}
+
+:root.dark .stat-label,
+[data-theme="dark"] .stat-label {
+  color: var(--muted);
+}
+
+/* Page title and subtitle in dark mode */
+:root.dark .page-title,
+[data-theme="dark"] .page-title {
+  color: var(--ink);
+}
+
+:root.dark .page-subtitle,
+[data-theme="dark"] .page-subtitle {
+  color: var(--muted);
+}
+
+/* Tabs bar in dark mode */
+:root.dark .tabs-bar,
+[data-theme="dark"] .tabs-bar {
+  background: var(--card);
+  border-bottom-color: var(--line);
+}
+
+/* Badge backgrounds */
+:root.dark .badge-green,
+[data-theme="dark"] .badge-green {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+:root.dark .badge-red,
+[data-theme="dark"] .badge-red {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+:root.dark .badge-amber,
+[data-theme="dark"] .badge-amber {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+/* Empty state */
+:root.dark .empty-state,
+[data-theme="dark"] .empty-state {
+  color: var(--muted);
+}
+
+/* Form grid labels */
+:root.dark .form-grid label,
+[data-theme="dark"] .form-grid label {
+  color: var(--ink);
+}
+
+/* hint text */
+:root.dark .hint,
+[data-theme="dark"] .hint {
+  color: var(--muted);
+}
+
+/* Tabs bar underline */
+:root.dark .tab-btn,
+[data-theme="dark"] .tab-btn {
+  color: var(--muted);
+}
+
+:root.dark .tab-btn.active,
+[data-theme="dark"] .tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+

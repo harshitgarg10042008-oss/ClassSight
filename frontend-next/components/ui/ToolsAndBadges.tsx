@@ -75,45 +75,40 @@ export function LockedFeature({
   );
 }
 
-// ─── LanguageSwitch (English / Hindi Scaffolding) ──────────────────────────────
+// ─── LanguageSwitch (English / Hindi Localization) ────────────────────────────
+import { useI18n } from '@/lib/i18n';
+
 export function LanguageSwitch() {
-  const [lang, setLang] = useState<'en' | 'hi'>('en');
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('classsight-lang') as 'en' | 'hi';
-      if (stored === 'en' || stored === 'hi') setLang(stored);
-    } catch {}
-  }, []);
-
-  const switchLang = (next: 'en' | 'hi') => {
-    setLang(next);
-    try {
-      localStorage.setItem('classsight-lang', next);
-    } catch {}
-  };
+  const { lang, switchLang, t } = useI18n();
 
   return (
-    <div className="cs-lang-switch">
-      <button
-        type="button"
-        className={`cs-lang-btn ${lang === 'en' ? 'is-active' : ''}`}
-        onClick={() => switchLang('en')}
-        aria-label="Switch to English"
-      >
-        EN
-      </button>
-      <span className="cs-lang-divider" aria-hidden="true">|</span>
-      <button
-        type="button"
-        className={`cs-lang-btn ${lang === 'hi' ? 'is-active' : ''}`}
-        onClick={() => switchLang('hi')}
-        aria-label="Switch to Hindi (हिन्दी)"
-        title="हिन्दी (Partial localization scaffolding)"
-      >
-        हिन्दी
-        <span className="cs-lang-partial" title="Scaffolded (partial)">*</span>
-      </button>
+    <div className="cs-lang-switch-wrapper">
+      <div className="cs-lang-switch">
+        <button
+          type="button"
+          className={`cs-lang-btn ${lang === 'en' ? 'is-active' : ''}`}
+          onClick={() => switchLang('en')}
+          aria-label="Switch to English"
+        >
+          EN
+        </button>
+        <span className="cs-lang-divider" aria-hidden="true">|</span>
+        <button
+          type="button"
+          className={`cs-lang-btn ${lang === 'hi' ? 'is-active' : ''}`}
+          onClick={() => switchLang('hi')}
+          aria-label="Switch to Hindi (हिन्दी)"
+          title="हिन्दी (Hindi translation is partial)"
+        >
+          हिन्दी
+          <span className="cs-lang-partial" title="Hindi translation is partial">*</span>
+        </button>
+      </div>
+      {lang === 'hi' && (
+        <span className="sr-only" aria-live="polite">
+          Hindi translation is partial
+        </span>
+      )}
     </div>
   );
 }
