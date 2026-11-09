@@ -1,4 +1,10 @@
 # Local environment and secrets
+.env
+!.env.example
+!.env.development
+!frontend-next/.env.development
+!frontend-next/.env.example
+
 # Python caches and test output
 __pycache__/
 *.py[cod]
@@ -16,8 +22,6 @@ data/captures/camera-frames/
 exports/*.csv
 runtime-check/backups/
 .work/
-FINAL_RESULT.md
-FINAL_WINDUP.md
-FINAL_UI.md
+FINAL_*.md
 tools/eval/out/
 tests/e2e/screenshots/
