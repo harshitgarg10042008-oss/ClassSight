@@ -11,7 +11,7 @@ export default function TermsPage() {
         <h1>Terms of use</h1>
         <p>ClassSight is an institutional attendance tool. Use it only for authorized classes, approved accounts, and lawful attendance administration.</p>
         <h2>Responsible use</h2>
-        <p>Teachers and administrators must verify the class roster, review low-confidence matches, and correct recognition errors before finalizing attendance. A face match is an aid, not the sole basis for disciplinary action.</p>
+        <p>Teachers and administrators must verify the class roster, review low-confidence matches, and correct recognition errors before finalizing attendance. Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action. A face match is an aid, not the sole basis for disciplinary action.</p>
         <h2>Uploaded content</h2>
         <p>Only upload classroom images when the institution has the required permission and consent. Do not upload unrelated people, sensitive images, or content that you are not authorized to process.</p>
         <h2>Availability</h2>

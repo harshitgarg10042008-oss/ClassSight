@@ -13,7 +13,9 @@ export default function PrivacyPage() {
         <h2>Consent first</h2>
         <p>A teacher must confirm that everyone in a class photo has agreed before biometric enrollment. Do not upload a photo without the required institutional consent.</p>
         <h2>What is stored</h2>
-        <p>The system stores student identifiers, attendance results, and encrypted application data according to the institution&apos;s retention policy. Face embeddings are used for matching and are not a replacement for a student&apos;s name or identity record.</p>
+        <p>The system stores student identifiers, attendance results, and application records according to the institution&apos;s retention policy. Face embeddings are not yet encrypted at rest; they are stored as numeric vectors used solely for matching and are not a replacement for a student&apos;s official academic record.</p>
+        <h2>Consent first</h2>
+        <p>Designed to support consent workflows; legal text needs lawyer review. Guardian consent is required for minor students before biometric enrollment can take place.</p>
         <h2>Access and deletion</h2>
         <p>Access is restricted by account role. Ask your institution&apos;s administrator to correct, export, or delete biometric enrollment and attendance data.</p>
         <h2>Draft placeholders</h2>
