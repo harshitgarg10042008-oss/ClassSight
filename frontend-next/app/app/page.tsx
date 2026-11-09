@@ -303,6 +303,13 @@ function TeacherPage({ authFetch, getCsrf }: {
   const [msg, setMsg]                 = useState('');
   const [busy, setBusy]               = useState(false);
   const [period, setPeriod]           = useState<TimetablePeriod | null>(null);
+  // D04 Keyboard speed review
+  const [reviewIdx, setReviewIdx]     = useState(0);
+  const [showKbHelp, setShowKbHelp]   = useState(false);
+  // D01 Explain-this-match
+  const [expandedRecord, setExpandedRecord] = useState<number | null>(null);
+  // D02 Capture coach
+  const [showCoach, setShowCoach]     = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -392,6 +399,24 @@ function TeacherPage({ authFetch, getCsrf }: {
   const unknownItems = review?.diagnostics?.filter(item => item.student_id == null && item.matched === false) ?? [];
   const needsUnknownAck = unknownItems.length > 0 && !review?.unknownFacesReviewed;
 
+  // D04 Keyboard speed review: A=present X=absent U=unknown ←→=navigate Z=undo ?=help
+  useEffect(() => {
+    if (step !== 'review' || all.length === 0) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      const rec = all[reviewIdx];
+      if (!rec) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); setReviewIdx(i => Math.min(i + 1, all.length - 1)); }
+      else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); setReviewIdx(i => Math.max(i - 1, 0)); }
+      else if (e.key === 'a' || e.key === 'A') { e.preventDefault(); setDecisions(d => ({ ...d, [rec.studentId]: 'PRESENT' })); setReviewIdx(i => Math.min(i + 1, all.length - 1)); }
+      else if (e.key === 'x' || e.key === 'X') { e.preventDefault(); setDecisions(d => ({ ...d, [rec.studentId]: 'ABSENT' })); setReviewIdx(i => Math.min(i + 1, all.length - 1)); }
+      else if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); setDecisions(d => { const next = { ...d }; delete next[rec.studentId]; return next; }); }
+      else if (e.key === '?') { e.preventDefault(); setShowKbHelp(h => !h); }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [step, all, reviewIdx]);
+
   return (
     <div>
       <div className="progress-steps">
@@ -455,6 +480,38 @@ function TeacherPage({ authFetch, getCsrf }: {
             </div>
           </div>
           <p className="hint">Capture up to three photos. The same student across shots is counted once using the highest-confidence match.</p>
+          {/* D02 Capture Coach — UI-PREVIEW */}
+          {!showCoach ? (
+            <button type="button" className="btn-secondary btn-sm" style={{marginBottom:12}} onClick={() => setShowCoach(true)}>
+              📋 Show Capture Coach checklist
+            </button>
+          ) : (
+            <div className="section-card" style={{marginBottom:16,padding:'16px 20px',borderLeft:'4px solid var(--lagoon-500)'}}>
+              <div className="section-head" style={{marginBottom:8}}>
+                <strong>Capture Coach</strong>
+                <span className="badge badge-blue" style={{fontSize:11}}>UI-PREVIEW</span>
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setShowCoach(false)}>✕</button>
+              </div>
+              <ul style={{listStyle:'none',padding:0,margin:0,display:'flex',flexDirection:'column',gap:6}}>
+                {[
+                  ['Room lighting is adequate', true],
+                  ['All student faces are visible and forward-facing', true],
+                  ['No motion blur in the camera view', true],
+                  ['Cut-off faces at frame edges checked', true],
+                  ['Expected student count matches the roster', null],
+                ].map(([text, ok]) => (
+                  <li key={String(text)} style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontSize:16}}>{ok === true ? '✅' : ok === false ? '⚠️' : '➖'}</span>
+                    <span>{String(text)}</span>
+                    {ok === null && <span className="badge badge-gray" style={{fontSize:10}}>Verify manually</span>}
+                  </li>
+                ))}
+              </ul>
+              <p className="hint" style={{marginTop:10,fontSize:12}}>
+                Checklist items are UI-PREVIEW only. Face embeddings are not yet encrypted at rest.
+              </p>
+            </div>
+          )}
           {mode === 'webcam' && <CameraCapture disabled={busy||shots.length>=3} captureLabel="Capture attendance photo" onCapture={file => { if(shots.length>=3)return;setShots(current=>[...current,{file,url:URL.createObjectURL(file)}]);setMsg(`Photo ${shots.length+1} ready.`); }} />}
           {mode === 'file' && (
             <label>Choose classroom photo(s)
@@ -477,8 +534,21 @@ function TeacherPage({ authFetch, getCsrf }: {
               <span className="badge badge-green">{present} Present</span>
               <span className="badge badge-red">{absent} Absent</span>
               {inReview > 0 && <span className="badge badge-amber">{inReview} Review</span>}
+              <button type="button" className="btn-secondary btn-sm" title="Keyboard shortcuts (?)" onClick={() => setShowKbHelp(h => !h)}>⌨</button>
             </div>
           </div>
+          {/* D04 Keyboard Speed Review hint bar */}
+          {showKbHelp && (
+            <div className="alert alert-info" style={{marginBottom:12,fontSize:13,display:'flex',flexWrap:'wrap',gap:12,alignItems:'center'}}>
+              <strong>Keyboard shortcuts (D04):</strong>
+              <span><kbd style={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:4,padding:'2px 6px'}}>A</kbd> Confirm present</span>
+              <span><kbd style={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:4,padding:'2px 6px'}}>X</kbd> Mark absent</span>
+              <span><kbd style={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:4,padding:'2px 6px'}}>Z</kbd> Undo</span>
+              <span><kbd style={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:4,padding:'2px 6px'}}>← →</kbd> Navigate</span>
+              <span><kbd style={{background:'var(--surface)',border:'1px solid var(--line)',borderRadius:4,padding:'2px 6px'}}>?</kbd> Toggle this panel</span>
+              <span className="badge badge-blue" style={{fontSize:10}}>Keyboard focus: row {reviewIdx + 1} of {all.length}</span>
+            </div>
+          )}
           {review?.quality?.warning && <div className="alert alert-warn">{review.quality.warning}</div>}
           {review?.status === 'FAILED' && <div className="alert alert-danger">{review.quality?.warning || 'Recognition could not run. Verify that students are enrolled in the selected class and try again.'}</div>}
           {reviewPhotoUrls.length > 0 && review?.diagnostics?.length ? <div className="section-card" style={{marginBottom:16}}>
@@ -499,11 +569,42 @@ function TeacherPage({ authFetch, getCsrf }: {
           </div>}
           {all.length > 0 ? (<>
             <div className="records-list">
-              {all.map(rec => {
+              {all.map((rec, recIdx) => {
                 const ip = decisions[rec.studentId] === 'PRESENT' || (rec.status === 'PRESENT' && !decisions[rec.studentId]);
                 const ia = decisions[rec.studentId] === 'ABSENT' || (rec.status === 'ABSENT' && !decisions[rec.studentId]);
-                return <div className="record-item" key={rec.recordId}>
-                  <div className="record-info"><strong>{rec.studentName}<span className={`badge ${ip ? 'badge-green' : ia ? 'badge-red' : 'badge-amber'}`} style={{ marginLeft:8 }}>{decisions[rec.studentId] || rec.status}</span>{rec.recognitionState&&<span className="badge badge-gray" style={{marginLeft:4,fontSize:10}}>{rec.recognitionState}</span>}</strong><small>Roll: <code>{rec.rollNumber}</code>{rec.confidenceScore!=null&&<> · {(rec.confidenceScore*100).toFixed(1)}%</>}{rec.qualityWarning&&<> · {rec.qualityWarning}</>}</small></div>
+                const isKbFocused = recIdx === reviewIdx;
+                const isExpanded = expandedRecord === rec.recordId;
+                return <div className="record-item" key={rec.recordId} data-kb-active={isKbFocused ? 'true' : undefined}
+                  style={isKbFocused ? {outline:'2px solid var(--lagoon-500)',borderRadius:8} : undefined}>
+                  <div className="record-info"><strong>{rec.studentName}<span className={`badge ${ip ? 'badge-green' : ia ? 'badge-red' : 'badge-amber'}`} style={{ marginLeft:8 }}>{decisions[rec.studentId] || rec.status}</span>{rec.recognitionState&&<span className="badge badge-gray" style={{marginLeft:4,fontSize:10}}>{rec.recognitionState}</span>}</strong><small>Roll: <code>{rec.rollNumber}</code>{rec.confidenceScore!=null&&<> · {(rec.confidenceScore*100).toFixed(1)}%</>}{rec.qualityWarning&&<> · {rec.qualityWarning}</>}</small>
+                    {/* D01 Explain-this-match toggle */}
+                    <button type="button" className="btn-secondary btn-sm" style={{marginTop:6,fontSize:11}} onClick={() => setExpandedRecord(isExpanded ? null : rec.recordId)}>
+                      {isExpanded ? '▲ Hide details' : '▼ Explain this result (D01)'}
+                    </button>
+                    {isExpanded && (
+                      <div style={{marginTop:8,padding:'10px 14px',background:'var(--surface)',border:'1px solid var(--line)',borderRadius:8,fontSize:13}}>
+                        <strong style={{display:'block',marginBottom:6}}>Recognition diagnostics <span className="badge badge-blue" style={{fontSize:10}}>WIRED data shown where available</span></strong>
+                        {rec.confidenceScore != null ? (
+                          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
+                            <svg width="64" height="64" viewBox="0 0 64 64" aria-label={`Confidence ${(rec.confidenceScore*100).toFixed(1)}%`}>
+                              <circle cx="32" cy="32" r="26" fill="none" stroke="var(--line)" strokeWidth="8" />
+                              <circle cx="32" cy="32" r="26" fill="none" stroke={rec.confidenceScore > 0.7 ? '#12B76A' : rec.confidenceScore > 0.4 ? '#F5A524' : '#8B93A7'} strokeWidth="8"
+                                strokeDasharray={`${rec.confidenceScore * 163.4} 163.4`} strokeLinecap="round" transform="rotate(-90 32 32)" />
+                              <text x="32" y="37" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor">{(rec.confidenceScore*100).toFixed(0)}%</text>
+                            </svg>
+                            <div>
+                              <div><strong>State:</strong> {rec.recognitionState || 'AUTO'}</div>
+                              {rec.qualityWarning && <div style={{color:'var(--amber-600)'}}><strong>Quality warning:</strong> {rec.qualityWarning}</div>}
+                              {!rec.qualityWarning && <div style={{color:'var(--muted)'}}>No quality warnings detected.</div>}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="hint">Confidence score not available for this record.</p>
+                        )}
+                        {rec.recognitionState === 'REVIEW' && <p style={{color:'var(--amber-600)',margin:0,fontSize:12}}>This record was flagged for faculty review because the confidence score was below the automatic acceptance threshold. Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action.</p>}
+                      </div>
+                    )}
+                  </div>
                   <div className="record-actions"><button className={`btn-sm ${ip?'':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'PRESENT'})}>✓ Present</button><button className={`btn-sm ${ia?'btn-danger':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'ABSENT'})}>✗ Absent</button></div>
                 </div>;
               })}

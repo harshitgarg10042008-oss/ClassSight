@@ -393,3 +393,44 @@ docker run --rm -v "${PWD}\backend-spring:/workspace" -w /workspace maven:3.9-ec
 ```
 
 Repository map: `frontend-next/` is the faculty Next.js app, `backend-spring/` is the Spring API, `face-service-fastapi/` is recognition, `tests/` contains automated smoke suites and LFW fixtures, `tools/eval/` contains evaluation utilities, and `docs/` contains architecture, operations, testing, validation, and limitations.
+
+
+---
+
+## Run the UI
+
+```bash
+# 1. Install dependencies
+cd frontend-next
+npm install
+
+# 2. Start development server (port 3010)
+npm run dev
+# → http://localhost:3010
+
+# 3. Production build (with admin/owner preview enabled)
+NEXT_PUBLIC_DEMO_DATA=true npm run build
+npm start
+
+# 4. TypeScript check only
+npm run typecheck
+```
+
+### Key dev-mode pages
+| URL | Description |
+|---|---|
+| `http://localhost:3010/` | Landing page |
+| `http://localhost:3010/app` | Faculty attendance workflow (requires backend) |
+| `http://localhost:3010/admin` | Institution admin preview (requires `NEXT_PUBLIC_DEMO_DATA=true`) |
+| `http://localhost:3010/owner` | Platform owner preview (requires `NEXT_PUBLIC_DEMO_DATA=true`) |
+| `http://localhost:3010/portal` | Student portal preview |
+| `http://localhost:3010/dev/ui` | Component kitchen sink (dev only) |
+| `http://localhost:3010/pricing` | Plans and feature comparison |
+
+### Environment variables (frontend)
+See `frontend-next/.env.example` for all variables. The `.env.development` file already has `NEXT_PUBLIC_DEMO_DATA=true` for local preview.
+
+> **Face embeddings:** Face embeddings are not yet encrypted at rest.  
+> **Auto-commit:** Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action.
+
+See `docs/frontend.md` for full design-system, shell, and route documentation.

@@ -1,42 +1,152 @@
-# ClassSight frontend
+# ClassSight Frontend
 
-## Route map
+> Updated: November 2026 — reflects the U2 design-system rebuild (tokens.css, component library, shell components).
 
-| Route | Layout | Mode | Backend needed |
-|---|---|---|---|
-| `/` | MarketingLayout | STATIC | No |
-| `/pricing` | MarketingLayout | STATIC | No |
-| `/privacy`, `/terms` | Legal draft | STATIC | No |
-| `/app` and `/app/*` | AppShell/PageLayout | WIRED | Yes |
-| `/admin/*` | AdminShell foundation | STATIC demo | Later role/API wiring |
-| `/owner/*` | OwnerShell foundation | STATIC demo | Later owner API wiring |
-| `/features`, `/how-it-works`, `/security`, `/trust` | Public product pages | STATIC | No |
-| `/contact`, `/book-demo`, `/faq`, `/docs`, `/status`, `/accessibility` | Public support pages | UI-PREVIEW | Optional forms adapter |
-| `/login` | AuthShell | WIRED | Yes |
-| `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/accept-invite`, `/two-factor` | AuthShell | UI-PREVIEW | No |
+## Quick start
 
-The route source is `frontend-next/config/routes.ts`. Local Docker enables the static admin and owner demo pages by default; they return 404 when `NEXT_PUBLIC_DEMO_DATA=false`.
-
-The existing root route remains the wired faculty workspace so the current login and capture flow stays compatible with the repository's e2e smoke test. The public startup site is available at `/home`, with pricing at `/pricing`. `/admin` and `/owner` are static demo surfaces and return 404 unless `NEXT_PUBLIC_DEMO_DATA=true`.
-
-The plan registry lives in `frontend-next/lib/plans.ts`, `features.ts`, and `entitlements.ts`. Prices are intentionally `null` until an owner sets them. Plans are cumulative: Pro includes Essential and Advanced includes Pro.
-
-The public visual system is defined in `app/globals.css` and uses the Lagoon + Coral on Ink palette. The root layout applies a persisted light/dark theme before first paint. Reusable controls live under `components/ui`; `PasswordInput` provides the keyboard-operable show/hide control used by auth surfaces.
-
-Forms use `lib/forms.ts`. Without `NEXT_PUBLIC_FORMS_ENDPOINT`, submissions end in the explicit message “Demo mode, nothing was sent.” No external fonts, analytics, or runtime CDNs are used.
-
-For local demo panels:
-
-```powershell
-$env:NEXT_PUBLIC_DEMO_DATA="true"
-Set-Location frontend-next
-npm run dev
+```bash
+cd frontend-next
+npm install
+npm run dev        # http://localhost:3010
+npm run build      # production build
+npm run typecheck  # TypeScript check only
 ```
 
-Docker build arguments are also supported. Changing either demo variable requires `docker compose build frontend-next`.
+Set `NEXT_PUBLIC_DEMO_DATA=true` (default in `.env.development`) to enable `/admin` and `/owner`.
 
-The capture, enrollment, review, analytics, privacy, and terms pages use the existing wired or documented surfaces. Marketing copy does not claim classroom accuracy or legal compliance; the legal pages remain draft templates.
+---
 
-Run the frontend route sweep against a local server with `npm run ui-route-sweep`. It checks HTTP 200, one `h1`, one `title`, and a main landmark for the representative route manifest.
+## Design tokens — how to change colours
 
-Plan configuration is in `lib/plans.ts`, `lib/features.ts`, and `lib/entitlements.ts`; prices remain null until an owner sets them. Demo records are in `lib/demo-data.ts`. Replace demo sections with authenticated API calls while retaining the same page templates and explicit loading/error states.
+Tokens live in **`frontend-next/styles/tokens.css`** (light mode under `:root`, dark mode under `[data-theme="dark"]`).
+
+| Variable | Light value | Purpose |
+|---|---|---|
+| `--lagoon-400` | `#2DD4BF` | Accent, hover glow |
+| `--lagoon-500` | `#0E9F9A` | Links, focus rings |
+| `--lagoon-600` | `#0B7F7B` | Primary button background |
+| `--coral-500` | `#FF6B4A` | CTA, highlights |
+| `--ink-900` | `#0F1830` | Body text |
+| `--bg` | `#FBFAF7` | Page background (warm paper) |
+| `--surface` | `#FFFFFF` | Card surface |
+| `--tier-auto` | `#12B76A` | AUTO chip fill |
+| `--tier-review` | `#F5A524` | REVIEW chip fill |
+| `--tier-unknown` | `#8B93A7` | UNKNOWN chip fill |
+| `--tier-absent` | `#E5484D` | ABSENT chip fill |
+
+**To change a colour:** edit the CSS variable under `:root` for light and `[data-theme="dark"]` for dark.  
+**Never** put white text on `--coral-500`, `--lagoon-400`, or `--lagoon-500` — they fail AA contrast with white. Primary buttons use `--lagoon-600` (dark enough for white text).
+
+---
+
+## Shells
+
+| Shell | File | Used for |
+|---|---|---|
+| `PublicShell` | `components/shell/PublicShell.tsx` | All `/` marketing, legal, docs, blog pages |
+| `AuthShell` | `components/shell/AuthShell.tsx` | `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/accept-invite`, `/two-factor`, `/logout`, `/onboarding` |
+| `AppShell` | `components/shell/AppShell.tsx` | Teacher `/app/teacher/*`, admin `/admin/*`, owner `/owner/*`, portal `/portal/*`. Accepts `role` prop: `teacher \| portal \| admin \| owner`. |
+
+---
+
+## Routes
+
+All routes are declared in **`frontend-next/config/routes.ts`**.  
+The dev-time route sweep (`npm run ui-route-sweep`) uses this file.  
+The sitemap page (`/sitemap`) and `sitemap.xml` are generated from this manifest.
+
+Add a new page:
+1. Create `app/new-page/page.tsx`
+2. Add an entry to `config/routes.ts`
+3. Add it to `PublicShell` nav if public
+
+---
+
+## Component library
+
+All shared UI components live in **`frontend-next/components/ui/`**.  
+Import from the barrel: `import { Button, Input, DataTable } from '@/components/ui'`
+
+Key components:
+- **Button** — `variant`: `primary | secondary | danger | ghost | link`; `size`: `sm | md | lg`; `loading` prop
+- **PasswordInput** — eye toggle (accessible), caps-lock warning, strength meter
+- **DataTable** — search, sort, filter, pagination, bulk-select, empty/loading/error states
+- **TierChip** — `tier`: `AUTO | REVIEW | UNKNOWN | ABSENT`
+- **Charts** — `DonutChart`, `BarChart`, `LineChart`, `Heatmap`, `SeatMap` (all inline SVG, no library)
+- **CommandPalette** — triggered by `Ctrl+K`
+
+Kitchen sink: **`/dev/ui`** (dev server only)
+
+---
+
+## Environment flags
+
+| Variable | Default | Effect |
+|---|---|---|
+| `NEXT_PUBLIC_DEMO_DATA` | `true` (dev) | Enables `/admin` and `/owner`; without it those routes return 404 |
+| `NEXT_PUBLIC_DEMO_PLAN` | `advanced` (dev) | Shows all plan-gated features unlocked |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | `hello@classsight.example` | Contact email in footer |
+| `NEXT_PUBLIC_FORMS_ENDPOINT` | (unset) | If set, form submissions POST here; otherwise show "Demo mode, nothing was sent" |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080` | Spring Boot backend URL |
+| `NEXT_PUBLIC_FACE_API_URL` | `http://localhost:8000` | FastAPI face service URL |
+
+---
+
+## Setting prices and limits
+
+Edit **only `frontend-next/lib/plans.ts`**.  
+Prices are `null` placeholders — the UI shows "Contact us" wherever a price is null.  
+Feature limits (CSV row limits, storage quotas, etc.) are also set here.  
+Do not scatter prices across other files.
+
+---
+
+## Feature registry
+
+All features (FT01–FT20, D01–D24) are declared in **`frontend-next/config/features.ts`**.  
+Each entry has: `id`, `name`, `plan` (`essential | pro | advanced`), `status` (`WIRED | UI-PREVIEW | COMING-SOON`), `module`, `route`.
+
+The registry is used by:
+- `/pricing` feature comparison table
+- `/features` and `/features/[slug]` pages
+- The `LockedFeature` component (shows upgrade prompt if plan too low)
+
+---
+
+## Theme
+
+The root layout (`app/layout.tsx`) includes an inline script that reads `localStorage.getItem('classsight-theme')` before first paint to prevent flash-of-wrong-theme. The `ThemeToggle` component (in `ToolsAndBadges.tsx`) persists the choice.
+
+Dark mode uses the `[data-theme="dark"]` attribute on `<html>`. CSS custom properties are overridden in `tokens.css`.
+
+---
+
+## Honesty and honesty phrases
+
+The following phrases are contractually required to appear verbatim wherever the subject is discussed:
+
+1. **Face embeddings:** "Face embeddings are not yet encrypted at rest."
+2. **Auto-commit:** "Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action."
+3. **Consent/legal:** "Designed to support consent workflows; legal text needs lawyer review."
+4. **Accuracy numbers:** any figure must be labelled "Simulated on LFW, NOT classroom accuracy."
+5. **Minor students:** "Guardian consent is required for minors."
+6. **UI-PREVIEW forms:** submit result must say "Demo mode, nothing was sent."
+
+---
+
+## Run the UI (README excerpt)
+
+```bash
+# Prerequisites: Node 20+, npm 10+
+cd frontend-next
+cp .env.example .env.local   # copy and fill real values for staging/prod
+npm install
+npm run dev      # dev server on http://localhost:3010
+```
+
+For production:
+```bash
+NEXT_PUBLIC_DEMO_DATA=true npm run build
+# then:
+npm start
+```
