@@ -269,7 +269,7 @@ export default function ClassSightApp() {
           </form>
           {process.env.NODE_ENV === 'development' && <div className="login-hint">Local development hint: <code>teacher/teacher123</code></div>}
           <div className="legal-links" style={{ justifyContent: 'center', marginTop: 20, fontSize: 12 }}>
-            <a href="/privacy">Privacy</a><a href="/terms">Terms</a>
+            <a href="/privacy" style={{ color: '#7fd3ce' }}>Privacy</a><a href="/terms" style={{ color: '#7fd3ce' }}>Terms</a>
           </div>
         </div>
       </main>
