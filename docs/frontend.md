@@ -1,6 +1,6 @@
 # ClassSight Frontend
 
-> Updated: November 2026 — reflects the U2 design-system rebuild (tokens.css, component library, shell components).
+> Updated: November 2026 — reflects App Interior Redesign (Prompt 11 / v0.4.0), unified AppShell, SVG icon system, ARIA tab navigation, and 137-route QA sweep.
 
 ## Quick start
 
@@ -8,8 +8,10 @@
 cd frontend-next
 npm install
 npm run dev        # http://localhost:3010
-npm run build      # production build
-npm run typecheck  # TypeScript check only
+npm run build      # production build (generates 66/66 static pages)
+npm run typecheck  # TypeScript check only (npx tsc --noEmit)
+npm run test:plans # Verify plan registry
+npm run test:owner-config # Verify owner config sync
 ```
 
 Set `NEXT_PUBLIC_DEMO_DATA=true` (default in `.env.development`) to enable `/admin` and `/owner`.
@@ -20,139 +22,78 @@ Set `NEXT_PUBLIC_DEMO_DATA=true` (default in `.env.development`) to enable `/adm
 
 Tokens live in **`frontend-next/styles/tokens.css`** (light mode under `:root`, dark mode under `[data-theme="dark"]`).
 
-| Variable | Light value | Purpose |
-|---|---|---|
-| `--lagoon-400` | `#2DD4BF` | Accent, hover glow |
-| `--lagoon-500` | `#0E9F9A` | Links, focus rings |
-| `--lagoon-600` | `#0B7F7B` | Primary button background |
-| `--coral-500` | `#FF6B4A` | CTA, highlights |
-| `--ink-900` | `#0F1830` | Body text |
-| `--bg` | `#FBFAF7` | Page background (warm paper) |
-| `--surface` | `#FFFFFF` | Card surface |
-| `--tier-auto` | `#12B76A` | AUTO chip fill |
-| `--tier-review` | `#F5A524` | REVIEW chip fill |
-| `--tier-unknown` | `#8B93A7` | UNKNOWN chip fill |
-| `--tier-absent` | `#E5484D` | ABSENT chip fill |
+| Variable | Light value | Dark value | Purpose |
+|---|---|---|---|
+| `--lagoon-400` | `#2DD4BF` | `#2DD4BF` | Accent, hover glow |
+| `--lagoon-500` | `#0E9F9A` | `#14B8A6` | Links, focus rings |
+| `--lagoon-600` | `#0B7F7B` | `#0D9488` | Primary button background |
+| `--coral-500` | `#FF6B4A` | `#FF6B4A` | CTA, highlights |
+| `--ink-900` | `#0F1830` | `#F1F5F9` | High-contrast body text |
+| `--bg` | `#FBFAF7` | `#0B1120` | Page background |
+| `--surface` | `#FFFFFF` | `#131C31` | Card surface |
+| `--tier-auto` | `#12B76A` | `#34D399` | AUTO chip fill |
+| `--tier-review` | `#F5A524` | `#FBBF24` | REVIEW chip fill |
+| `--tier-unknown` | `#8B93A7` | `#94A3B8` | UNKNOWN chip fill |
+| `--tier-absent` | `#E5484D` | `#F87171` | ABSENT chip fill |
 
 **To change a colour:** edit the CSS variable under `:root` for light and `[data-theme="dark"]` for dark.  
-**Never** put white text on `--coral-500`, `--lagoon-400`, or `--lagoon-500` — they fail AA contrast with white. Primary buttons use `--lagoon-600` (dark enough for white text).
+**Never** put white text on low-contrast accents — primary buttons use `--lagoon-600` (meets WCAG 2.1 AA with white text).
 
 ---
 
-## Shells
+## Interior Shell Architecture (`AppShell`)
 
-| Shell | File | Used for |
-|---|---|---|
-| `PublicShell` | `components/shell/PublicShell.tsx` | All `/` marketing, legal, docs, blog pages |
-| `AuthShell` | `components/shell/AuthShell.tsx` | `/login`, `/signup`, `/forgot-password`, `/reset-password`, `/verify-email`, `/accept-invite`, `/two-factor`, `/logout`, `/onboarding` |
-| `AppShell` | `components/shell/AppShell.tsx` | Teacher `/app/teacher/*`, admin `/admin/*`, owner `/owner/*`, portal `/portal/*`. Accepts `role` prop: `teacher \| portal \| admin \| owner`. |
+The entire interior application is wrapped in a single unified shell: **`components/shell/AppShell.tsx`**.
+
+### 1. Grouped Navigation Sidebar
+- **Workspace**: Dashboard (`/app`), Today (`/app/today`), Take Attendance (`/app?tab=capture`), Review Queue (`/app/review`), Sessions (`/app/sessions`).
+- **Classes**: Classes (`/app/classes`), Enrollment (`/app/enrollment`), Students (`/app/students`), Timetable (`/app/timetable`), Cameras (`/app/cameras`).
+- **Insights**: Analytics (`/app/analytics`), Reports (`/app/reports`), Risk Radar (`/app/risk`).
+- **Requests**: Leave (`/app/leave`), Disputes (`/app/disputes`).
+- **Account**: Notifications (`/app/notifications`), Settings (`/app/settings`), Help (`/app/help`).
+- Collapsible sidebar, active route detection, mobile drawer, and plan lock icons via `LockedFeature`.
+
+### 2. Top Bar Utilities
+- **Breadcrumbs**: Dynamic hierarchical path navigation (`AppBreadcrumbs`).
+- **Global Search / Command Palette**: Press `Ctrl+K` or click search to open `CommandPalette` with instant route search and actions.
+- **Theme Toggle**: Sun/moon button persists preference in `localStorage` under `classsight-theme` and updates `data-theme` attribute on `<html>`.
+- **Language Switch**: English / Hindi toggle with partial translation indicators.
+- **Notification Bell**: Unread count badge with dropdown preview and mark-as-read controls.
+- **Quick Action**: "Take attendance" action button.
+- **Profile Menu**: User avatar pill with role badge, dropdown menu (Profile, Settings, Appearance, Keyboard shortcuts, Help, Sign out).
+- **Developer Hint**: Live environment badge visible only when `NODE_ENV=development`.
+
+### 3. SVG Icon System
+All emoji icons and emoji empty states have been replaced with dedicated, scalable, theme-aware inline SVG icons in **`components/ui/Icons.tsx`**.
+
+### 4. TabNav Accessibility & Overflow Fix
+The tab navigation (`TabNav.tsx`) uses `role="tablist"`, `role="tab"`, `aria-selected`, and supports full keyboard arrow navigation (`ArrowRight`, `ArrowLeft`, `Home`, `End`). Horizontal scrollbar chrome is hidden and stray vertical scrollbars have been eliminated with `overflow-y: hidden; overflow-x: auto;`.
 
 ---
 
 ## Routes and Verification
 
 All routes are declared in **`frontend-next/config/routes.ts`**.  
-The full manifest contains **115 routes** (56 base/static/wired routes + 20 institution admin sections + 11 platform owner console sections + 5 tenant detail sub-routes + 9 portal sections + 14 teacher workspace sections).
+The complete application manifest contains **137 routes** (including the public showcase, marketing, legal, onboarding, auth, and the full `/app/*`, `/admin/*`, `/owner/*`, `/portal/*` interior routes).
 
-Verification status from Prompt 10:
-- **Manifest Sweep**: 115/115 routes clean (HTTP 200, zero console errors, zero page errors, single h1, unique titles, no horizontal overflow at 360px & 768px). Evidence: `.work/logs/v4-sweep.log`.
-- **Link Crawler**: 115 pages crawled, 118 internal targets checked, 0 dead links, 0 `href="#"` fragments. Evidence: `.work/logs/v4-crawler.log`.
-- **Contrast**: 36/36 token pairs pass WCAG 2.1 AA/AAA contrast. Evidence: `.work/logs/v4-contrast.log`.
-- **Workspace Depth Audit**: 70/70 workspace routes pass depth audit with rich cards, data tables, state previews, and honesty disclosures. Evidence: `.work/logs/v5-audit.log`.
-- **Interactive UX**: 14/14 automated checks pass (keyboard login with Enter submit, eye toggle on login and signup, notification bell count & persistence, Hindi language switch, Ctrl+K palette navigation, `?` shortcut panel, onboarding checklist persistence, demo switcher, LockedFeature modal). Evidence: `.work/logs/v4-ux.log`.
-
-Add a new page:
-1. Create `app/new-page/page.tsx`
-2. Add an entry to `config/routes.ts`
-3. Add it to `PublicShell` nav if public
+### Verification Summary (v0.4.0)
+- **Manifest Sweep**: 137/137 routes swept (HTTP 200 OK, zero console errors, zero page runtime errors, exactly one `h1`, unique document titles, main landmark present, no horizontal overflow at 360px and 768px viewports). Evidence: `.work/logs/qa_results.json`.
+- **Color Contrast**: 86/86 views checked in both light and dark themes (0 failures across all text nodes and buttons). Evidence: `.work/logs/qa_results.json`.
+- **Keyboard Navigation**: Automated tests verified `Ctrl+K` palette trigger and `Escape` dismiss, theme toggle keypress, profile menu toggle, and tab arrow-key switching.
+- **Test Suites**:
+  - `face-service-fastapi` pytest: 17/17 PASS
+  - `backend-spring` Maven test suite: 24/24 PASS
+  - `tests/api` API smoke suite: 3/3 PASS
+  - `tests/e2e` browser smoke: 1/1 PASS
 
 ---
 
-## Component library
+## Honesty and Honesty Disclosures
 
-All shared UI components live in **`frontend-next/components/ui/`**.  
-Import from the barrel: `import { Button, Input, DataTable } from '@/components/ui'`
-
-Key components:
-- **Button** — `variant`: `primary | secondary | danger | ghost | link`; `size`: `sm | md | lg`; `loading` prop
-- **PasswordInput** — eye toggle (accessible), caps-lock warning, strength meter
-- **DataTable** — search, sort, filter, pagination, bulk-select, empty/loading/error states
-- **TierChip** — `tier`: `AUTO | REVIEW | UNKNOWN | ABSENT`
-- **Charts** — `DonutChart`, `BarChart`, `LineChart`, `Heatmap`, `SeatMap` (all inline SVG, no library)
-- **CommandPalette** — triggered by `Ctrl+K`
-
-Kitchen sink: **`/dev/ui`** (dev server only)
-
----
-
-## Environment flags
-
-| Variable | Default | Effect |
-|---|---|---|
-| `NEXT_PUBLIC_DEMO_DATA` | `true` (dev) | Enables `/admin` and `/owner`; without it those routes return 404 |
-| `NEXT_PUBLIC_DEMO_PLAN` | `advanced` (dev) | Shows all plan-gated features unlocked |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | `hello@classsight.example` | Contact email in footer |
-| `NEXT_PUBLIC_FORMS_ENDPOINT` | (unset) | If set, form submissions POST here; otherwise show "Demo mode, nothing was sent" |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:8080` | Spring Boot backend URL |
-| `NEXT_PUBLIC_FACE_API_URL` | `http://localhost:8000` | FastAPI face service URL |
-
----
-
-## Setting prices and limits
-
-Edit **only `frontend-next/lib/plans.ts`**.  
-Prices are `null` placeholders — the UI shows "Contact us" wherever a price is null.  
-Feature limits (CSV row limits, storage quotas, etc.) are also set here.  
-Do not scatter prices across other files.
-
----
-
-## Feature registry
-
-All features (FT01–FT20, D01–D24) are declared in **`frontend-next/config/features.ts`**.  
-Each entry has: `id`, `name`, `plan` (`essential | pro | advanced`), `status` (`WIRED | UI-PREVIEW | COMING-SOON`), `module`, `route`.
-
-The registry is used by:
-- `/pricing` feature comparison table
-- `/features` and `/features/[slug]` pages
-- The `LockedFeature` component (shows upgrade prompt if plan too low)
-
----
-
-## Theme
-
-The root layout (`app/layout.tsx`) includes an inline script that reads `localStorage.getItem('classsight-theme')` before first paint to prevent flash-of-wrong-theme. The `ThemeToggle` component (in `ToolsAndBadges.tsx`) persists the choice.
-
-Dark mode uses the `[data-theme="dark"]` attribute on `<html>`. CSS custom properties are overridden in `tokens.css`.
-
----
-
-## Honesty and honesty phrases
-
-The following phrases are contractually required to appear verbatim wherever the subject is discussed:
-
+The following verbatim phrases are enforced across all interior and public views:
 1. **Face embeddings:** "Face embeddings are not yet encrypted at rest."
-2. **Auto-commit:** "Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action."
-3. **Consent/legal:** "Designed to support consent workflows; legal text needs lawyer review."
-4. **Accuracy numbers:** any figure must be labelled "Simulated on LFW, NOT classroom accuracy."
-5. **Minor students:** "Guardian consent is required for minors."
-6. **UI-PREVIEW forms:** submit result must say "Demo mode, nothing was sent."
-
----
-
-## Run the UI (README excerpt)
-
-```bash
-# Prerequisites: Node 20+, npm 10+
-cd frontend-next
-cp .env.example .env.local   # copy and fill real values for staging/prod
-npm install
-npm run dev      # dev server on http://localhost:3010
-```
-
-For production:
-```bash
-NEXT_PUBLIC_DEMO_DATA=true npm run build
-# then:
-npm start
-```
+2. **Auto-commit rule:** "Single-capture attendance cannot be committed without the faculty review call; multi-shot finalise can finalise a clean accumulator by explicit faculty action."
+3. **Consent workflows:** "Designed to support consent workflows; legal text needs lawyer review."
+4. **Accuracy figures:** "Simulated on LFW, NOT classroom accuracy."
+5. **Minors:** "Guardian consent is required for minors."
+6. **UI-PREVIEW forms:** Submit confirmation banner states: "Demo mode, nothing was sent."
