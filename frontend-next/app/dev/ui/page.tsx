@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Logo } from '@/components/brand/Logo';
 import {
   Button,
   Input,
@@ -131,6 +132,103 @@ export default function UiKitchenSink() {
         {/* TAB 1: FOUNDATIONS & BUTTONS */}
         {activeTab === 'foundations' && (
           <div style={{ display: 'grid', gap: '24px' }}>
+            <Card>
+              <h2 style={{ fontSize: '18px', marginBottom: '8px' }}>ClassSight Brand Logo</h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Variants: Mark, Lockup, Icon. Tones: Auto (theme-following), onDark, onLight, Mono.
+              </p>
+
+              <div style={{ display: 'grid', gap: '16px' }}>
+                {/* Background 1: Ink Background (#0A1020) */}
+                <div style={{ backgroundColor: '#0A1020', padding: '20px', borderRadius: 'var(--radius)', color: '#FFFFFF' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#2DD4BF', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.05em' }}>
+                    On Ink Background (#0A1020)
+                  </div>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="mark" tone="onDark" size={40} />
+                      <span style={{ fontSize: '11px', color: '#CBD5E1' }}>mark (onDark)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="icon" tone="onDark" size={40} />
+                      <span style={{ fontSize: '11px', color: '#CBD5E1' }}>icon (onDark)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="lockup" tone="onDark" size={32} />
+                      <span style={{ fontSize: '11px', color: '#CBD5E1' }}>lockup (onDark)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="mark" tone="onDark" size={40} loading />
+                      <span style={{ fontSize: '11px', color: '#CBD5E1' }}>mark (loading spin)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Background 2: Paper Background (#FBFAF7) */}
+                <div style={{ backgroundColor: '#FBFAF7', padding: '20px', borderRadius: 'var(--radius)', color: '#0F1830', border: '1px solid #DCE4EC' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#0B7F7B', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.05em' }}>
+                    On Paper Background (#FBFAF7)
+                  </div>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="mark" tone="onLight" size={40} />
+                      <span style={{ fontSize: '11px', color: '#526174' }}>mark (onLight)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="icon" tone="onLight" size={40} />
+                      <span style={{ fontSize: '11px', color: '#526174' }}>icon (onLight)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="lockup" tone="onLight" size={32} />
+                      <span style={{ fontSize: '11px', color: '#526174' }}>lockup (onLight)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Background 3: Lagoon Background (#0B7F7B) */}
+                <div style={{ backgroundColor: '#0B7F7B', padding: '20px', borderRadius: 'var(--radius)', color: '#FFFFFF' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#FFFFFF', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.05em' }}>
+                    On Lagoon Background (#0B7F7B)
+                  </div>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="mark" tone="mono" size={40} />
+                      <span style={{ fontSize: '11px', color: '#FFFFFF' }}>mark (mono)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="icon" tone="onLight" size={40} />
+                      <span style={{ fontSize: '11px', color: '#FFFFFF' }}>icon tile</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="lockup" tone="mono" size={32} />
+                      <span style={{ fontSize: '11px', color: '#FFFFFF' }}>lockup (mono)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Auto Tone (Theme-Adaptive) */}
+                <div style={{ backgroundColor: 'var(--surface-raised)', padding: '20px', borderRadius: 'var(--radius)', border: '1px solid var(--line)' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.05em' }}>
+                    Adaptive Tone (Auto — Follows Theme CSS Variables)
+                  </div>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="mark" tone="auto" size={40} />
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>mark (auto)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="icon" tone="auto" size={40} />
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>icon (auto)</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center' }}>
+                      <Logo variant="lockup" tone="auto" size={32} />
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>lockup (auto)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             <Card>
               <h2 style={{ fontSize: '18px', marginBottom: '16px' }}>Buttons & Actions</h2>
               <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>

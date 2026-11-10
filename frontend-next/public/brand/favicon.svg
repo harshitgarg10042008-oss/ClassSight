@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="ClassSight">
+  <!-- Ink tile -->
+  <rect width="32" height="32" rx="7" fill="#0A1020"/>
+  <!-- Scaled mark (100->32, scale=0.32, translate so center=16) -->
+  <!-- Corner brackets scaled: each coord * 0.32, centered -->
+  <!-- Original: 12,18,30,70,82,88 -> scaled * 0.32 = 3.84,5.76,9.6,22.4,26.24,28.16 -->
+  <!-- At 32px: show corner brackets + ring + dot + spark -->
+  <path d="M3.84 9.6V5.76Q3.84 3.84 5.76 3.84H9.6M22.4 3.84H26.24Q28.16 3.84 28.16 5.76V9.6M3.84 22.4V26.24Q3.84 28.16 5.76 28.16H9.6M22.4 28.16H26.24Q28.16 28.16 28.16 26.24V22.4"
+        fill="none" stroke="#2DD4BF" stroke-width="1.28" stroke-linecap="round"/>
+  <!-- C ring: original cx=51,cy=50,r=24 -> scaled 51*0.32=16.32, 50*0.32=16, r=7.68 -->
+  <!-- Arc from 68.4,34.6 to 68.4,65.4 scaled -> 21.9,11.1 to 21.9,20.9 -->
+  <path d="M21.9 11.1A7.68 7.68 0 1 0 21.9 20.9"
+        fill="none" stroke="#2DD4BF" stroke-width="2.88" stroke-linecap="round"/>
+  <!-- Coral dot: cx=51*0.32=16.32, cy=16, r=2.08 -->
+  <circle cx="16.32" cy="16" r="2.08" fill="#FF6B4A"/>
+  <!-- Spark: cx=74*0.32=23.68, cy=16, r=0.96 -->
+  <circle cx="23.68" cy="16" r="0.96" fill="#2DD4BF"/>
+</svg>
+

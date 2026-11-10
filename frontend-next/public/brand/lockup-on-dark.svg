@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-label="ClassSight">
+  <!-- Mark (scaled to 80x80, horizontally positioned) -->
+  <g transform="translate(0,0) scale(0.8)">
+    <path d="M12 30V18Q12 12 18 12H30M70 12H82Q88 12 88 18V30M12 70V82Q12 88 18 88H30M70 88H82Q88 88 88 82V70"
+          fill="none" stroke="#2DD4BF" stroke-width="4" stroke-linecap="round"/>
+    <path d="M68.4 34.6A24 24 0 1 0 68.4 65.4"
+          fill="none" stroke="#2DD4BF" stroke-width="9" stroke-linecap="round"/>
+    <circle cx="51" cy="50" r="6.5" fill="#FF6B4A"/>
+    <circle cx="74" cy="50" r="3" fill="#2DD4BF"/>
+  </g>
+  <!-- Wordmark: gap ~20px from mark (80*0.8=64, gap=16) -->
+  <!-- "Class" in white, "Sight" in lagoon-400, weight 500 -->
+  <text x="84" y="50"
+        font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="32" font-weight="500"
+        dominant-baseline="middle"
+        fill="#FFFFFF">Class</text>
+  <text x="84" y="50"
+        font-family="system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="32" font-weight="500"
+        dominant-baseline="middle"
+        fill="#2DD4BF">
+    <tspan dx="78">Sight</tspan>
+  </text>
+</svg>
+

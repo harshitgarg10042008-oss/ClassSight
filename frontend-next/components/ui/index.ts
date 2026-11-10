@@ -12,4 +12,5 @@ export * from './Charts';
 export * from './ThemeToggle';
 export * from './Card';
 export * from './SampleBanner';
+export * from '../brand/Logo';
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="ClassSight mark">
+  <!-- Corner brackets -->
+  <path d="M12 30V18Q12 12 18 12H30M70 12H82Q88 12 88 18V30M12 70V82Q12 88 18 88H30M70 88H82Q88 88 88 82V70"
+        fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+  <!-- C aperture ring -->
+  <path d="M68.4 34.6A24 24 0 1 0 68.4 65.4"
+        fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/>
+  <!-- Dot (currentColor, no separate coral for mono) -->
+  <circle cx="51" cy="50" r="6.5" fill="currentColor"/>
+  <!-- Spark dot -->
+  <circle cx="74" cy="50" r="3" fill="currentColor"/>
+</svg>
+

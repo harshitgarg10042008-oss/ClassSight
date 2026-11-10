@@ -1,11 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
-  <title>ClassSight</title>
-  <defs>
-    <linearGradient id="background" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#2563eb"/>
-      <stop offset="1" stop-color="#14b8a6"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#background)"/>
-  <path d="M43 18H30c-7.18 0-13 5.82-13 13v2c0 7.18 5.82 13 13 13h13v-8H31a5 5 0 0 1-5-5v-2a5 5 0 0 1 5-5h12v-8Z" fill="#fff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="ClassSight">
+  <!-- Ink tile background -->
+  <rect width="100" height="100" rx="22" fill="#0A1020"/>
+  <!-- Corner brackets -->
+  <path d="M12 30V18Q12 12 18 12H30M70 12H82Q88 12 88 18V30M12 70V82Q12 88 18 88H30M70 88H82Q88 88 88 82V70"
+        fill="none" stroke="#2DD4BF" stroke-width="4" stroke-linecap="round"/>
+  <!-- C aperture ring -->
+  <path d="M68.4 34.6A24 24 0 1 0 68.4 65.4"
+        fill="none" stroke="#2DD4BF" stroke-width="9" stroke-linecap="round"/>
+  <!-- Coral dot -->
+  <circle cx="51" cy="50" r="6.5" fill="#FF6B4A"/>
+  <!-- Spark dot -->
+  <circle cx="74" cy="50" r="3" fill="#2DD4BF"/>
 </svg>
