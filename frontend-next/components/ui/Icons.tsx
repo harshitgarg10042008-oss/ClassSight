@@ -346,9 +346,23 @@ export function UserIcon({ size = 18, className = '', ...props }: IconProps) {
 
 /* ── Hand-Crafted Empty-State Illustrations (Replaces emoji glyphs) ── */
 
-export function EmptyRosterSvg({ size = 64, className = '' }: { size?: number; className?: string }) {
+export function ClockIcon({ size = 18, className = '', ...props }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
+export interface IllustrationProps extends React.SVGProps<SVGSVGElement> {
+  size?: number;
+  className?: string;
+}
+
+export function EmptyRosterSvg({ size = 64, className = '', ...props }: IllustrationProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true" {...props}>
       <rect x="8" y="10" width="48" height="46" rx="4" stroke="var(--line-strong)" fill="var(--surface-subtle)" />
       <circle cx="24" cy="26" r="6" stroke="var(--lagoon-600)" fill="var(--lagoon-400)" fillOpacity="0.2" />
       <path d="M14 42c0-4 4-6 10-6s10 2 10 6" stroke="var(--lagoon-600)" />
@@ -359,9 +373,9 @@ export function EmptyRosterSvg({ size = 64, className = '' }: { size?: number; c
   );
 }
 
-export function EmptySessionSvg({ size = 64, className = '' }: { size?: number; className?: string }) {
+export function EmptySessionSvg({ size = 64, className = '', ...props }: IllustrationProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true" {...props}>
       <circle cx="32" cy="32" r="24" stroke="var(--line-strong)" fill="var(--surface-subtle)" />
       <polyline points="32 18 32 32 42 38" stroke="var(--lagoon-600)" strokeWidth="2.5" strokeLinecap="round" />
       <circle cx="32" cy="32" r="2" fill="var(--lagoon-600)" />
@@ -369,9 +383,9 @@ export function EmptySessionSvg({ size = 64, className = '' }: { size?: number; 
   );
 }
 
-export function EmptyAnalyticsSvg({ size = 64, className = '' }: { size?: number; className?: string }) {
+export function EmptyAnalyticsSvg({ size = 64, className = '', ...props }: IllustrationProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true" {...props}>
       <rect x="10" y="12" width="44" height="42" rx="4" stroke="var(--line-strong)" fill="var(--surface-subtle)" />
       <line x1="16" y1="44" x2="48" y2="44" stroke="var(--line-strong)" />
       <rect x="18" y="30" width="6" height="14" rx="1" fill="var(--lagoon-500)" stroke="none" />
@@ -381,21 +395,22 @@ export function EmptyAnalyticsSvg({ size = 64, className = '' }: { size?: number
   );
 }
 
-export function EmptyReviewSvg({ size = 64, className = '' }: { size?: number; className?: string }) {
+export function EmptyReviewSvg({ size = 64, className = '', ...props }: IllustrationProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true" {...props}>
       <circle cx="32" cy="32" r="24" stroke="var(--line-strong)" fill="var(--surface-subtle)" />
       <path d="M22 33l7 7 14-14" stroke="var(--tier-auto)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-export function EmptySearchSvg({ size = 64, className = '' }: { size?: number; className?: string }) {
+export function EmptySearchSvg({ size = 64, className = '', ...props }: IllustrationProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true" {...props}>
       <circle cx="28" cy="28" r="14" stroke="var(--line-strong)" fill="var(--surface-subtle)" />
       <line x1="38" y1="38" x2="52" y2="52" stroke="var(--lagoon-600)" strokeWidth="2.5" strokeLinecap="round" />
       <line x1="22" y1="28" x2="34" y2="28" stroke="var(--line-strong)" strokeDasharray="2 2" />
     </svg>
   );
 }
+

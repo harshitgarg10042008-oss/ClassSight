@@ -357,3 +357,4 @@ export function CommandPalette() {
     </div>
   );
 }
+

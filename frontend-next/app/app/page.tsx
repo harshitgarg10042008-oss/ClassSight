@@ -3,8 +3,42 @@
 import {
   ChangeEvent, FormEvent, PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState,
 } from 'react';
+import Link from 'next/link';
 import CameraCapture from '../../components/CameraCapture';
 import { PasswordInput } from '@/components/ui/PasswordInput';
+import { AppShell } from '@/components/shell/AppShell';
+import {
+  DashboardIcon,
+  TodayIcon,
+  CameraIcon,
+  ReviewIcon,
+  SessionsIcon,
+  ClassesIcon,
+  EnrollIcon,
+  StudentsIcon,
+  TimetableIcon,
+  CamerasIcon,
+  AnalyticsIcon,
+  ReportsIcon,
+  RiskIcon,
+  LeaveIcon,
+  DisputesIcon,
+  BellIcon,
+  SettingsIcon,
+  HelpIcon,
+  SearchIcon,
+  SignOutIcon,
+  CheckIcon,
+  WarningIcon,
+  DownloadIcon,
+  CloseIcon,
+  ClockIcon,
+  RefreshIcon,
+  EmptyRosterSvg,
+  EmptySessionSvg,
+  EmptyAnalyticsSvg,
+  EmptyReviewSvg,
+} from '@/components/ui/Icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Room = { id: number; name: string; building?: string; capacity?: number; active: boolean };
@@ -189,7 +223,7 @@ export default function ClassSightApp() {
       // 401 = token missing/invalid, 403 = token expired or insufficient role.
       // Clear the stale session so the login screen is shown immediately.
       if (res.status === 401 || res.status === 403) {
-        clearSessionRef.current('⚠️ Your session has expired. Please log in again.');
+        clearSessionRef.current('Your session has expired. Please log in again.');
         throw new Error('Your session has expired. Please log in again.');
       }
       const t = await res.text();
@@ -244,61 +278,31 @@ export default function ClassSightApp() {
 
   const navItems = [
     ...(['TEACHER','ADMIN','HOD'].includes(userRole) ? [
-      { id: 'teacher',    label: 'Take Attendance', icon: '📷' },
-      { id: 'enrollment', label: 'Enrollment',       icon: '👤' },
-      { id: 'analytics',  label: 'Analytics',        icon: '📊' },
+      { id: 'teacher',    label: 'Take Attendance' },
+      { id: 'enrollment', label: 'Enrollment' },
+      { id: 'analytics',  label: 'Analytics' },
     ] : []),
-    ...(userRole === 'STUDENT' ? [{ id: 'student', label: 'My Attendance', icon: '🎓' }] : []),
-    ...(['HOD','ADMIN'].includes(userRole) ? [{ id: 'hod', label: 'Disputes & Audit', icon: '⚖️' }] : []),
-    ...(userRole === 'ADMIN' ? [{ id: 'admin', label: 'Timetable Admin', icon: '🗓️' }] : []),
+    ...(userRole === 'STUDENT' ? [{ id: 'student', label: 'My Attendance' }] : []),
+    ...(['HOD','ADMIN'].includes(userRole) ? [{ id: 'hod', label: 'Disputes & Audit' }] : []),
+    ...(userRole === 'ADMIN' ? [{ id: 'admin', label: 'Timetable Admin' }] : []),
   ];
 
   const initials = userFullName.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 
   return (
-    <main id="main-content" className="app-layout">
-      <h1 className="sr-only">Faculty attendance workspace</h1>
-      <nav className="sidebar">
-        <div className="sidebar-logo">
-          <div className="logo-mark">
-            <div className="logo-icon">C</div>
-            <div><div className="logo-text">ClassSight</div><div className="logo-sub">Attendance Hub</div></div>
-          </div>
-        </div>
-        <div className="sidebar-user">
-          <div className="user-avatar">{initials}</div>
-          <div><div className="user-name">{userFullName}</div><div className="user-role-badge">{userRole}</div></div>
-        </div>
-        <div className="sidebar-nav">
-          <div className="nav-section-label">Navigation</div>
-          {navItems.map(item => (
-            <button key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} onClick={() => setPage(item.id)}>
-              <span className="nav-icon">{item.icon}</span>{item.label}
-            </button>
-          ))}
-        </div>
-        <div className="sidebar-footer">
-          <button onClick={() => clearSession()}>🚪 Sign Out</button>
-        </div>
-      </nav>
-
-      <div className="main-content">
-        <div className="top-bar">
-          <div>
-            <div className="page-title">{navItems.find(n => n.id === page)?.label ?? 'Dashboard'}</div>
-            <div className="page-subtitle">ClassSight · {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-          </div>
-        </div>
-        <div className="content-area">
-          {page === 'teacher'    && <TeacherPage    authFetch={authFetch} getCsrf={getCsrf} />}
-          {page === 'enrollment' && <EnrollmentPage authFetch={authFetch} getCsrf={getCsrf} />}
-          {page === 'analytics'  && <AnalyticsPage  authFetch={authFetch} />}
-          {page === 'hod'        && <HodPage        authFetch={authFetch} getCsrf={getCsrf} />}
-          {page === 'admin'      && <AdminPage      authFetch={authFetch} getCsrf={getCsrf} />}
-          {page === 'student'    && <StudentPage    authFetch={authFetch} getCsrf={getCsrf} />}
-        </div>
+    <AppShell
+      title={page === 'teacher' ? 'Faculty Dashboard & Attendance' : (navItems.find(n => n.id === page)?.label ?? 'Faculty Workspace')}
+      crumbs={[{ label: 'Workspace', href: '/app' }, { label: navItems.find(n => n.id === page)?.label ?? 'Dashboard' }]}
+    >
+      <div className="content-area">
+        {page === 'teacher'    && <TeacherPage    authFetch={authFetch} getCsrf={getCsrf} />}
+        {page === 'enrollment' && <EnrollmentPage authFetch={authFetch} getCsrf={getCsrf} />}
+        {page === 'analytics'  && <AnalyticsPage  authFetch={authFetch} />}
+        {page === 'hod'        && <HodPage        authFetch={authFetch} getCsrf={getCsrf} />}
+        {page === 'admin'      && <AdminPage      authFetch={authFetch} getCsrf={getCsrf} />}
+        {page === 'student'    && <StudentPage    authFetch={authFetch} getCsrf={getCsrf} />}
       </div>
-    </main>
+    </AppShell>
   );
 }
 
@@ -442,6 +446,105 @@ function TeacherPage({ authFetch, getCsrf }: {
 
   return (
     <div>
+      {/* ── Faculty Dashboard Overview Widgets ── */}
+      <div className="section-card" style={{ marginBottom: 24 }}>
+        <div className="section-head">
+          <div>
+            <span className="eyebrow">Faculty Overview</span>
+            <h2>Today’s Classes &amp; Quick Actions</h2>
+            <p className="hint">Review your scheduled lecture windows and pending attendance confirmations below.</p>
+          </div>
+          <span className="badge badge-green">3 Classes Today</span>
+        </div>
+
+        <div className="stats-grid" style={{ marginTop: 16 }}>
+          <div className="stat-card blue">
+            <div className="stat-value">3 Classes</div>
+            <div className="stat-label">Scheduled Today</div>
+          </div>
+          <div className="stat-card amber">
+            <div className="stat-value">1 Session</div>
+            <div className="stat-label">Awaiting Faculty Review</div>
+          </div>
+          <div className="stat-card red">
+            <div className="stat-value">2 Students</div>
+            <div className="stat-label">Attendance Risk (&lt;75%)</div>
+          </div>
+          <div className="stat-card green">
+            <div className="stat-value">86.4%</div>
+            <div className="stat-label">Term Average Attendance</div>
+          </div>
+        </div>
+
+        {/* Today's Schedule Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 20 }}>
+          <div style={{ padding: 16, border: '2px solid var(--lagoon-500)', borderRadius: 10, background: 'rgba(14, 159, 154, 0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="badge badge-green">Window Open Now</span>
+              <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>09:00 – 10:00</span>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 15, marginTop: 8 }}>Mathematics I (MATH101)</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CS-2026-A &bull; Room 101 &bull; 42 Students</div>
+            <button
+              type="button"
+              className="btn-sm"
+              style={{ marginTop: 12, width: '100%' }}
+              onClick={() => {
+                if (assignments[0]) setAssId(assignments[0].id);
+                if (rooms[0]) setRoomId(rooms[0].id);
+                setStep('select');
+              }}
+            >
+              Configure Live Attendance ↓
+            </button>
+          </div>
+
+          <div style={{ padding: 16, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="badge badge-blue">Upcoming</span>
+              <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>11:00 – 12:00</span>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 15, marginTop: 8 }}>Data Structures (CS201)</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>CS-2026-B &bull; Room 102 &bull; 38 Students</div>
+            <Link href="/app/today" className="btn-sm btn-secondary" style={{ marginTop: 12, display: 'block', textAlign: 'center', textDecoration: 'none' }}>
+              View Schedule Details
+            </Link>
+          </div>
+
+          <div style={{ padding: 16, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className="badge badge-amber">Action Needed</span>
+              <span style={{ fontSize: 12, fontFamily: 'monospace', fontWeight: 700 }}>Session #21</span>
+            </div>
+            <div style={{ fontWeight: 800, fontSize: 15, marginTop: 8 }}>Faculty Review Required</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>3 candidate faces need confirmation</div>
+            <Link href="/app/review?session=21" className="btn-sm" style={{ marginTop: 12, display: 'block', textAlign: 'center', textDecoration: 'none', backgroundColor: 'var(--tier-review-text)', color: '#fff' }}>
+              Review Session #21 Now →
+            </Link>
+          </div>
+        </div>
+
+        {/* Quick Actions Grid */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
+          <Link href="/app/enrollment" className="button-secondary cs-button">
+            <EnrollIcon size={16} />
+            <span>Enrol Student Biometrics</span>
+          </Link>
+          <Link href="/app/classes" className="button-secondary cs-button">
+            <ClassesIcon size={16} />
+            <span>Manage Classes</span>
+          </Link>
+          <Link href="/app/risk" className="button-secondary cs-button">
+            <RiskIcon size={16} />
+            <span>Risk Radar (&lt;75%)</span>
+          </Link>
+          <Link href="/app/analytics" className="button-secondary cs-button">
+            <AnalyticsIcon size={16} />
+            <span>Attendance Reports</span>
+          </Link>
+        </div>
+      </div>
+
       <div className="progress-steps">
         {(['select','capture','review'] as const).map((s, i) => (
           <div key={s} className={`step-pill ${step === s ? 'active' : (step === 'review' && s !== 'review') || (step === 'capture' && s === 'select') ? 'done' : ''}`}
@@ -498,22 +601,22 @@ function TeacherPage({ authFetch, getCsrf }: {
           <div className="section-head">
             <div><span className="eyebrow">Step 2</span><h2>Capture Classroom Photo</h2></div>
             <div style={{ display:'flex', gap:8 }}>
-              <button className={mode === 'webcam' ? '' : 'btn-secondary'} onClick={() => setMode('webcam')}>📹 Webcam</button>
-              <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => setMode('file')}>📂 File Upload</button>
+              <button className={mode === 'webcam' ? '' : 'btn-secondary'} onClick={() => setMode('webcam')}><CameraIcon size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Webcam</button>
+              <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => setMode('file')}><DownloadIcon size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />File Upload</button>
             </div>
           </div>
           <p className="hint">Capture up to three photos. The same student across shots is counted once using the highest-confidence match.</p>
           {/* D02 Capture Coach — UI-PREVIEW */}
           {!showCoach ? (
             <button type="button" className="btn-secondary btn-sm" style={{marginBottom:12}} onClick={() => setShowCoach(true)}>
-              📋 Show Capture Coach checklist
+              <HelpIcon size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Show Capture Coach checklist
             </button>
           ) : (
             <div className="section-card" style={{marginBottom:16,padding:'16px 20px',borderLeft:'4px solid var(--lagoon-500)'}}>
               <div className="section-head" style={{marginBottom:8}}>
                 <strong>Capture Coach</strong>
                 <span className="badge badge-blue" style={{fontSize:11}}>UI-PREVIEW</span>
-                <button type="button" className="btn-secondary btn-sm" onClick={() => setShowCoach(false)}>✕</button>
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setShowCoach(false)}><CloseIcon size={14} /></button>
               </div>
               <ul style={{listStyle:'none',padding:0,margin:0,display:'flex',flexDirection:'column',gap:6}}>
                 {[
@@ -524,7 +627,9 @@ function TeacherPage({ authFetch, getCsrf }: {
                   ['Expected student count matches the roster', null],
                 ].map(([text, ok]) => (
                   <li key={String(text)} style={{display:'flex',alignItems:'center',gap:8}}>
-                    <span style={{fontSize:16}}>{ok === true ? '✅' : ok === false ? '⚠️' : '➖'}</span>
+                    <span style={{fontSize:14, display:'inline-flex', alignItems:'center'}}>
+                      {ok === true ? <CheckIcon size={16} style={{ color: 'var(--tier-auto)' }} /> : ok === false ? <WarningIcon size={16} style={{ color: 'var(--tier-review)' }} /> : <span style={{ width: 16, textAlign: 'center', color: 'var(--text-muted)' }}>—</span>}
+                    </span>
                     <span>{String(text)}</span>
                     {ok === null && <span className="badge badge-gray" style={{fontSize:10}}>Verify manually</span>}
                   </li>
@@ -628,7 +733,7 @@ function TeacherPage({ authFetch, getCsrf }: {
                       </div>
                     )}
                   </div>
-                  <div className="record-actions"><button className={`btn-sm ${ip?'':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'PRESENT'})}>✓ Present</button><button className={`btn-sm ${ia?'btn-danger':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'ABSENT'})}>✗ Absent</button></div>
+                  <div className="record-actions"><button className={`btn-sm ${ip?'':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'PRESENT'})}>Present</button><button className={`btn-sm ${ia?'btn-danger':'btn-secondary'}`} onClick={()=>setDecisions({...decisions,[rec.studentId]:'ABSENT'})}>Absent</button></div>
                 </div>;
               })}
             </div>
@@ -637,7 +742,7 @@ function TeacherPage({ authFetch, getCsrf }: {
               {unknownItems.length>0&&<label style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}><input type="checkbox" checked={ackUnknown} onChange={event=>setAckUnknown(event.target.checked)} /><span>I reviewed {unknownItems.length} unknown face(s); unassigned faces are intentionally ignored.</span></label>}
               <button className="btn-lg" onClick={finalize} disabled={busy||review.records.some(record=>!decisions[record.studentId])||(unknownItems.length>0&&!ackUnknown)}>{busy?<><span className="spinner"/>Finalizing…</>:'Finalize Attendance Session'}</button>
             </div>:review?.status==='FINALIZED'?<div className="alert alert-success" style={{marginTop:16}}>Attendance finalized after faculty review. ERP-ready payload is local only, not sent.</div>:null}
-          </>) : review?.status === 'FAILED' ? null : <div className="empty-state"><span className="empty-icon">⏳</span><p>Recognition engine processing… polling every 1.5 s</p></div>}
+          </>) : review?.status === 'FAILED' ? null : <div className="empty-state"><div className="spinner" style={{ width: 28, height: 28, margin: '0 auto 12px' }} /><p>Recognition engine processing… polling every 1.5 s</p></div>}
           <div style={{ marginTop:20 }}>
             <button className="btn-secondary" onClick={() => { setStep('capture'); setReview(null); reviewPhotoUrls.forEach(url=>URL.revokeObjectURL(url)); setReviewPhotoUrls([]); setAckUnknown(false); setUnknownAssignments({}); setDecisions({}); shots.forEach(shot=>URL.revokeObjectURL(shot.url)); setShots([]); }}>← Take Another Photo</button>
           </div>
@@ -1138,8 +1243,8 @@ function AnalyticsPage({ authFetch }: { authFetch: (p: string, o?: RequestInit) 
   return (
     <div>
       <div className="inner-tabs">
-        <button className={`inner-tab ${tab === 'overview' ? 'active' : ''}`} onClick={() => { setTab('overview'); loadAll(); }}>📊 Overview</button>
-        <button className={`inner-tab ${tab === 'detail' ? 'active' : ''}`} onClick={() => setTab('detail')}>🔍 Subject Detail</button>
+        <button className={`inner-tab ${tab === 'overview' ? 'active' : ''}`} onClick={() => { setTab('overview'); loadAll(); }}><AnalyticsIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Overview</button>
+        <button className={`inner-tab ${tab === 'detail' ? 'active' : ''}`} onClick={() => setTab('detail')}><SearchIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Subject Detail</button>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
 
@@ -1148,8 +1253,8 @@ function AnalyticsPage({ authFetch }: { authFetch: (p: string, o?: RequestInit) 
           <div className="section-head">
             <div><span className="eyebrow">Analytics</span><h2>Attendance Report</h2></div>
             <div style={{ display:'flex', gap:8 }}>
-              <button className="btn-secondary btn-sm" onClick={dlExcel} disabled={!summary}>⬇ Excel</button>
-              <button className="btn-secondary btn-sm" onClick={dlPdf}   disabled={!summary}>⬇ PDF</button>
+              <button className="btn-secondary btn-sm" onClick={dlExcel} disabled={!summary}><DownloadIcon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />Excel</button>
+              <button className="btn-secondary btn-sm" onClick={dlPdf}   disabled={!summary}><DownloadIcon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />PDF</button>
             </div>
           </div>
           <div style={{ display:'flex', gap:10, alignItems:'flex-end', marginBottom:20, flexWrap:'wrap' }}>
@@ -1158,13 +1263,13 @@ function AnalyticsPage({ authFetch }: { authFetch: (p: string, o?: RequestInit) 
                 {assignments.map(a => <option key={a.id} value={a.id}>{a.subject.code} — {a.subject.name} · {a.classSection.name}</option>)}
               </select>
             </label>
-            <button onClick={loadDetail} disabled={loading || !assignId}>{loading ? <><span className="spinner" />Loading…</> : '📊 Load Report'}</button>
+            <button onClick={loadDetail} disabled={loading || !assignId}>{loading ? <><span className="spinner" />Loading…</> : 'Load Report'}</button>
           </div>
           {summary ? (<>
             <div className="stats-grid" style={{ marginBottom:20 }}>
-              <div className="stat-card blue"><span className="stat-icon">👥</span><div className="stat-value">{summary.students.length}</div><div className="stat-label">Students</div></div>
-              <div className="stat-card green"><span className="stat-icon">📈</span><div className="stat-value">{summary.averageAttendance?.toFixed(1) ?? '—'}%</div><div className="stat-label">Average</div></div>
-              <div className="stat-card red"><span className="stat-icon">⚠️</span><div className="stat-value">{summary.shortfallCount}</div><div className="stat-label">Below 75%</div></div>
+              <div className="stat-card blue"><span className="stat-icon"><StudentsIcon size={20} /></span><div className="stat-value">{summary.students.length}</div><div className="stat-label">Students</div></div>
+              <div className="stat-card green"><span className="stat-icon"><AnalyticsIcon size={20} /></span><div className="stat-value">{summary.averageAttendance?.toFixed(1) ?? '—'}%</div><div className="stat-label">Average</div></div>
+              <div className="stat-card red"><span className="stat-icon"><WarningIcon size={20} /></span><div className="stat-value">{summary.shortfallCount}</div><div className="stat-label">Below 75%</div></div>
             </div>
             <div className="table-wrap"><table>
               <thead><tr><th>Roll</th><th>Student</th><th>Attended</th><th>Total</th><th>Attendance %</th><th>Status</th></tr></thead>
@@ -1177,14 +1282,14 @@ function AnalyticsPage({ authFetch }: { authFetch: (p: string, o?: RequestInit) 
                 </tr>
               ))}</tbody>
             </table></div>
-          </>) : (!loading && <div className="empty-state"><span className="empty-icon">📊</span><p>Select a subject and click Load Report.</p></div>)}
+          </>) : (!loading && <div className="empty-state"><EmptyAnalyticsSvg size={56} style={{ margin: '0 auto 12px' }} /><p>Select a subject and click Load Report.</p></div>)}
         </div>
       )}
 
       {tab === 'overview' && (
         <div>
           {loading && <div className="alert alert-info"><span className="spinner" />Loading…</div>}
-          {allSum.length === 0 && !loading && <div className="empty-state"><span className="empty-icon">📊</span><p>Loading subject summaries…</p></div>}
+          {allSum.length === 0 && !loading && <div className="empty-state"><EmptyAnalyticsSvg size={56} style={{ margin: '0 auto 12px' }} /><p>Loading subject summaries…</p></div>}
           {allSum.map((s, i) => (
             <div className="section-card" key={i} style={{ marginBottom:14 }}>
               <div className="section-head">
@@ -1249,21 +1354,21 @@ function HodPage({ authFetch, getCsrf }: {
   return (
     <div>
       <div className="stats-grid" style={{ marginBottom:20 }}>
-        <div className="stat-card amber"><span className="stat-icon">⏳</span><div className="stat-value">{pending.length}</div><div className="stat-label">Pending</div></div>
-        <div className="stat-card green"><span className="stat-icon">✅</span><div className="stat-value">{disputes.filter(d => d.status === 'APPROVED').length}</div><div className="stat-label">Approved</div></div>
-        <div className="stat-card red"><span className="stat-icon">❌</span><div className="stat-value">{disputes.filter(d => d.status === 'REJECTED').length}</div><div className="stat-label">Rejected</div></div>
-        <div className="stat-card purple"><span className="stat-icon">📝</span><div className="stat-value">{audit.length}</div><div className="stat-label">Audit Entries</div></div>
+        <div className="stat-card amber"><span className="stat-icon"><ClockIcon size={20} /></span><div className="stat-value">{pending.length}</div><div className="stat-label">Pending</div></div>
+        <div className="stat-card green"><span className="stat-icon"><CheckIcon size={20} /></span><div className="stat-value">{disputes.filter(d => d.status === 'APPROVED').length}</div><div className="stat-label">Approved</div></div>
+        <div className="stat-card red"><span className="stat-icon"><CloseIcon size={20} /></span><div className="stat-value">{disputes.filter(d => d.status === 'REJECTED').length}</div><div className="stat-label">Rejected</div></div>
+        <div className="stat-card purple"><span className="stat-icon"><ReportsIcon size={20} /></span><div className="stat-value">{audit.length}</div><div className="stat-label">Audit Entries</div></div>
       </div>
 
       <div className="inner-tabs">
-        <button className={`inner-tab ${tab === 'disputes' ? 'active' : ''}`} onClick={() => { setTab('disputes'); loadDisputes(); }}>⚖️ Disputes ({pending.length} pending)</button>
-        <button className={`inner-tab ${tab === 'audit' ? 'active' : ''}`} onClick={() => { setTab('audit'); loadAudit(); }}>📝 Audit Log</button>
+        <button className={`inner-tab ${tab === 'disputes' ? 'active' : ''}`} onClick={() => { setTab('disputes'); loadDisputes(); }}><DisputesIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Disputes ({pending.length} pending)</button>
+        <button className={`inner-tab ${tab === 'audit' ? 'active' : ''}`} onClick={() => { setTab('audit'); loadAudit(); }}><ReportsIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Audit Log</button>
       </div>
       {error && <div className="alert alert-danger">{error}</div>}
       {loading && <div className="alert alert-info"><span className="spinner" />Loading…</div>}
 
       {tab === 'disputes' && (<>
-        {pending.length === 0 && !loading && <div className="empty-state"><span className="empty-icon">🎉</span><p>No pending disputes!</p></div>}
+        {pending.length === 0 && !loading && <div className="empty-state"><EmptyReviewSvg size={56} style={{ margin: '0 auto 12px' }} /><p>No pending disputes!</p></div>}
         {pending.map(d => (
           <div className="dispute-card section-card" key={d.id} style={{ marginBottom:16 }}>
             <div className="dispute-header">
@@ -1281,8 +1386,8 @@ function HodPage({ authFetch, getCsrf }: {
                 <textarea rows={2} placeholder="Enter resolution details…" value={notes[d.id] ?? ''} onChange={e => setNotes({ ...notes, [d.id]: e.target.value })} style={{ resize:'vertical', marginTop:6 }} />
               </label>
               <div className="dispute-actions">
-                <button className="btn-danger btn-sm" onClick={() => resolve(d.id, 'REJECTED')} disabled={busy}>❌ Reject</button>
-                <button className="btn-success btn-sm" onClick={() => resolve(d.id, 'APPROVED')} disabled={busy}>✅ Approve</button>
+                <button className="btn-danger btn-sm" onClick={() => resolve(d.id, 'REJECTED')} disabled={busy}><CloseIcon size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />Reject</button>
+                <button className="btn-success btn-sm" onClick={() => resolve(d.id, 'APPROVED')} disabled={busy}><CheckIcon size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />Approve</button>
               </div>
             </div>
           </div>
@@ -1306,9 +1411,9 @@ function HodPage({ authFetch, getCsrf }: {
 
       {tab === 'audit' && (
         <div className="section-card">
-          <div className="section-head"><div><span className="eyebrow">Audit Trail</span><h2>Override History</h2></div><button className="btn-secondary btn-sm" onClick={loadAudit}>↻ Refresh</button></div>
+          <div className="section-head"><div><span className="eyebrow">Audit Trail</span><h2>Override History</h2></div><button className="btn-secondary btn-sm" onClick={loadAudit}><RefreshIcon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />Refresh</button></div>
           {audit.length === 0 && !loading
-            ? <div className="empty-state"><span className="empty-icon">📋</span><p>No audit entries yet.</p></div>
+            ? <div className="empty-state"><EmptyRosterSvg size={56} style={{ margin: '0 auto 12px' }} /><p>No audit entries yet.</p></div>
             : <div className="table-wrap"><table>
                 <thead><tr><th>Student</th><th>Field</th><th>Old → New</th><th>By</th><th>When</th><th>Reason</th></tr></thead>
                 <tbody>{audit.map(log => (
@@ -1367,7 +1472,7 @@ function AdminPage({ authFetch, getCsrf }: {
     try {
       const csrf = await getCsrf();
       const d = await authFetch('/api/timetable/sessions/generate', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-XSRF-TOKEN':csrf.token }, body:JSON.stringify({ fromDate: from, toDate: to }) }).then(r => r.json());
-      setMsg(`✅ Generated ${d.generated ?? ''} sessions.`); loadSessions();
+      setMsg(`Generated ${d.generated ?? ''} sessions.`); loadSessions();
     } catch (err) { setError(err instanceof Error ? err.message : 'Error'); }
     finally { setBusy(false); }
   }
@@ -1385,7 +1490,7 @@ function AdminPage({ authFetch, getCsrf }: {
     try {
       const csrf = await getCsrf(), form = new FormData(); form.append('file', csvFile);
       const d = await authFetch('/api/timetable/import/csv', { method:'POST', headers:{ 'X-XSRF-TOKEN':csrf.token }, body:form }).then(r => r.json());
-      setMsg(`✅ Imported ${d.slotsImported ?? ''} slots.`); loadSlots();
+      setMsg(`Imported ${d.slotsImported ?? ''} slots.`); loadSlots();
     } catch (err) { setError(err instanceof Error ? err.message : 'Error'); }
     finally { setBusy(false); }
   }
@@ -1400,9 +1505,9 @@ function AdminPage({ authFetch, getCsrf }: {
       {error && <div className="alert alert-danger">{error}</div>}
       {msg   && <div className="alert alert-success">{msg}</div>}
       <div className="inner-tabs">
-        <button className={`inner-tab ${tab === 'slots' ? 'active' : ''}`} onClick={() => { setTab('slots'); loadSlots(); }}>🗓 Weekly Timetable</button>
-        <button className={`inner-tab ${tab === 'sessions' ? 'active' : ''}`} onClick={() => { setTab('sessions'); loadSessions(); }}>📅 Sessions</button>
-        <button className={`inner-tab ${tab === 'csv' ? 'active' : ''}`} onClick={() => setTab('csv')}>📥 CSV Import</button>
+        <button className={`inner-tab ${tab === 'slots' ? 'active' : ''}`} onClick={() => { setTab('slots'); loadSlots(); }}><TimetableIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Weekly Timetable</button>
+        <button className={`inner-tab ${tab === 'sessions' ? 'active' : ''}`} onClick={() => { setTab('sessions'); loadSessions(); }}><SessionsIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Sessions</button>
+        <button className={`inner-tab ${tab === 'csv' ? 'active' : ''}`} onClick={() => setTab('csv')}><DownloadIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />CSV Import</button>
       </div>
 
       {tab === 'slots' && (<>
@@ -1422,7 +1527,7 @@ function AdminPage({ authFetch, getCsrf }: {
             </table></div>
           </div>
         ) : null)}
-        {!loading && slots.length === 0 && <div className="empty-state"><span className="empty-icon">🗓️</span><p>No timetable slots configured. Use CSV Import to add slots.</p></div>}
+        {!loading && slots.length === 0 && <div className="empty-state"><EmptyRosterSvg size={56} style={{ margin: '0 auto 12px' }} /><p>No timetable slots configured. Use CSV Import to add slots.</p></div>}
       </>)}
 
       {tab === 'sessions' && (
@@ -1432,8 +1537,8 @@ function AdminPage({ authFetch, getCsrf }: {
             <label>From<input type="date" value={from} onChange={e => setFrom(e.target.value)} /></label>
             <label>To<input type="date" value={to} onChange={e => setTo(e.target.value)} /></label>
             <div style={{ display:'flex', gap:8, alignItems:'flex-end' }}>
-              <button className="btn-secondary" onClick={loadSessions} disabled={loading}>🔍 List</button>
-              <button onClick={generate} disabled={busy}>⚡ Generate</button>
+              <button className="btn-secondary" onClick={loadSessions} disabled={loading}><SearchIcon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />List</button>
+              <button onClick={generate} disabled={busy}><RefreshIcon size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} />Generate</button>
             </div>
           </div>
           {loading && <div className="alert alert-info"><span className="spinner" />Loading…</div>}
@@ -1449,7 +1554,7 @@ function AdminPage({ authFetch, getCsrf }: {
               </tr>
             ))}</tbody>
           </table></div>}
-          {!loading && sessions.length === 0 && <div className="empty-state"><span className="empty-icon">📅</span><p>No sessions in range. Use Generate to create from timetable slots.</p></div>}
+          {!loading && sessions.length === 0 && <div className="empty-state"><EmptySessionSvg size={56} style={{ margin: '0 auto 12px' }} /><p>No sessions in range. Use Generate to create from timetable slots.</p></div>}
         </div>
       )}
 
@@ -1457,11 +1562,11 @@ function AdminPage({ authFetch, getCsrf }: {
         <div className="section-card">
           <div className="section-head">
             <div><span className="eyebrow">Bulk Import</span><h2>Import Timetable via CSV</h2><p style={{ fontSize:13, color:'var(--muted)', margin:'4px 0 0' }}>Columns: <code>day_of_week, start_time, end_time, subject_code, section_name, teacher_username, room_name</code></p></div>
-            <a href={`${API}/api/timetable/import/template`} download="timetable-template.csv" style={{ padding:'10px 16px', background:'var(--card-2)', border:'1px solid var(--line)', borderRadius:10, textDecoration:'none', fontSize:13, fontWeight:700, color:'var(--ink)' }}>⬇ Template</a>
+            <a href={`${API}/api/timetable/import/template`} download="timetable-template.csv" style={{ padding:'10px 16px', background:'var(--card-2)', border:'1px solid var(--line)', borderRadius:10, textDecoration:'none', fontSize:13, fontWeight:700, color:'var(--ink)', display:'inline-flex', alignItems:'center', gap:6 }}><DownloadIcon size={14} />Template</a>
           </div>
           <form onSubmit={importCsv} className="form-grid">
             <label>Timetable CSV file<input type="file" accept=".csv" onChange={e => setCsvFile(e.target.files?.[0] ?? null)} /></label>
-            <button type="submit" className="btn-lg" disabled={busy || !csvFile}>{busy ? <><span className="spinner" />Importing…</> : '📥 Import Timetable'}</button>
+            <button type="submit" className="btn-lg" disabled={busy || !csvFile}>{busy ? <><span className="spinner" />Importing…</> : 'Import Timetable'}</button>
           </form>
           <div className="divider" />
           <h3 style={{ marginBottom:10 }}>Format Reference</h3>
@@ -1514,7 +1619,7 @@ function StudentPage({ authFetch, getCsrf }: {
     try {
       const csrf = await getCsrf();
       await authFetch('/api/student/dispute', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-XSRF-TOKEN':csrf.token }, body:JSON.stringify({ sessionId: Number(sessId), reason }) });
-      setMsg('✅ Dispute submitted. Your HOD will review it shortly.'); setSessId(''); setReason(''); loadDisp();
+      setMsg('Dispute submitted. Your HOD will review it shortly.'); setSessId(''); setReason(''); loadDisp();
     } catch (err) { setError(err instanceof Error ? err.message : 'Error'); }
     finally { setBusy(false); }
   }
@@ -1528,19 +1633,19 @@ function StudentPage({ authFetch, getCsrf }: {
       {msg   && <div className="alert alert-success">{msg}</div>}
       {attendance.length > 0 && (
         <div className="stats-grid" style={{ marginBottom:20 }}>
-          <div className="stat-card blue"><span className="stat-icon">📚</span><div className="stat-value">{attendance.length}</div><div className="stat-label">Subjects</div></div>
-          <div className="stat-card green"><span className="stat-icon">✅</span><div className="stat-value">{avg.toFixed(1)}%</div><div className="stat-label">Overall Average</div></div>
-          <div className="stat-card red"><span className="stat-icon">⚠️</span><div className="stat-value">{attendance.filter(a => a.percentage < 75).length}</div><div className="stat-label">Below 75%</div></div>
+          <div className="stat-card blue"><span className="stat-icon"><ClassesIcon size={20} /></span><div className="stat-value">{attendance.length}</div><div className="stat-label">Subjects</div></div>
+          <div className="stat-card green"><span className="stat-icon"><CheckIcon size={20} /></span><div className="stat-value">{avg.toFixed(1)}%</div><div className="stat-label">Overall Average</div></div>
+          <div className="stat-card red"><span className="stat-icon"><WarningIcon size={20} /></span><div className="stat-value">{attendance.filter(a => a.percentage < 75).length}</div><div className="stat-label">Below 75%</div></div>
         </div>
       )}
       <div className="inner-tabs">
-        <button className={`inner-tab ${tab === 'attendance' ? 'active' : ''}`} onClick={() => { setTab('attendance'); loadAtt(); }}>📊 My Attendance</button>
-        <button className={`inner-tab ${tab === 'dispute' ? 'active' : ''}`} onClick={() => { setTab('dispute'); loadDisp(); }}>⚖️ Raise Dispute</button>
+        <button className={`inner-tab ${tab === 'attendance' ? 'active' : ''}`} onClick={() => { setTab('attendance'); loadAtt(); }}><AnalyticsIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />My Attendance</button>
+        <button className={`inner-tab ${tab === 'dispute' ? 'active' : ''}`} onClick={() => { setTab('dispute'); loadDisp(); }}><DisputesIcon size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />Raise Dispute</button>
       </div>
 
       {tab === 'attendance' && (<>
         {loading && <div className="alert alert-info"><span className="spinner" />Loading…</div>}
-        {attendance.length === 0 && !loading && <div className="empty-state"><span className="empty-icon">📋</span><p>No records yet. Attend classes to see your data here.</p></div>}
+        {attendance.length === 0 && !loading && <div className="empty-state"><EmptyRosterSvg size={56} style={{ margin: '0 auto 12px' }} /><p>No records yet. Attend classes to see your data here.</p></div>}
         {attendance.map((a, i) => (
           <div className="section-card" key={i} style={{ marginBottom:14 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12, flexWrap:'wrap', gap:8 }}>
@@ -1551,8 +1656,8 @@ function StudentPage({ authFetch, getCsrf }: {
               <span className={`badge ${a.percentage >= 75 ? 'badge-green' : a.percentage >= 60 ? 'badge-amber' : 'badge-red'}`} style={{ fontSize:14, padding:'6px 14px' }}>{a.percentage.toFixed(1)}%</span>
             </div>
             <div className="attendance-bar"><div className={`attendance-bar-fill ${bc(a.percentage)}`} style={{ width:`${a.percentage}%` }} /></div>
-            {a.percentage < 75 && <div style={{ fontSize:12, color:'#dc2626', marginTop:8, fontFamily:"'DM Mono',monospace" }}>
-              ⚠️ Need {Math.ceil((0.75 * a.total - a.attended) / 0.25)} more class(es) to reach 75%
+            {a.percentage < 75 && <div style={{ fontSize:12, color:'var(--coral-500)', marginTop:8, fontFamily:"'DM Mono',monospace", display:'flex', alignItems:'center', gap:6 }}>
+              <WarningIcon size={14} />Need {Math.ceil((0.75 * a.total - a.attended) / 0.25)} more class(es) to reach 75%
             </div>}
           </div>
         ))}
@@ -1565,7 +1670,7 @@ function StudentPage({ authFetch, getCsrf }: {
           <form onSubmit={submitDispute} className="form-grid">
             <label>Session ID<input type="number" placeholder="e.g. 42" value={sessId} onChange={e => setSessId(e.target.value)} /><span className="hint">Ask your teacher for the session ID.</span></label>
             <label>Reason<textarea rows={4} placeholder="Explain why your attendance is incorrect…" value={reason} onChange={e => setReason(e.target.value)} style={{ resize:'vertical' }} /></label>
-            <button type="submit" className="btn-lg" disabled={busy || !sessId.trim() || !reason.trim()}>{busy ? <><span className="spinner" />Submitting…</> : '📨 Submit Dispute'}</button>
+            <button type="submit" className="btn-lg" disabled={busy || !sessId.trim() || !reason.trim()}>{busy ? <><span className="spinner" />Submitting…</> : 'Submit Dispute'}</button>
           </form>
         </div>
         {disputes.length > 0 && (

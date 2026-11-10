@@ -232,10 +232,10 @@ export default function TeacherPage() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className={mode === 'webcam' ? '' : 'btn-secondary'} onClick={() => setMode('webcam')}>
-                  📹 Webcam
+                  Webcam
                 </button>
                 <button className={mode === 'file' ? '' : 'btn-secondary'} onClick={() => setMode('file')}>
-                  📂 File Upload
+                  File Upload
                 </button>
               </div>
             </div>
@@ -284,9 +284,9 @@ export default function TeacherPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-              <span className="badge badge-green">🟢 {present} Present</span>
-              <span className="badge badge-red">🔴 {absent} Absent</span>
-              {inReview > 0 && <span className="badge badge-amber">🟡 {inReview} Review</span>}
+              <span className="badge badge-green">{present} Present</span>
+              <span className="badge badge-red">{absent} Absent</span>
+              {inReview > 0 && <span className="badge badge-amber">{inReview} Review</span>}
             </div>
             {(review.diagnostics?.length ?? 0) < (review.allRecords?.length ?? 0) && (
               <div className="alert alert-warning">
