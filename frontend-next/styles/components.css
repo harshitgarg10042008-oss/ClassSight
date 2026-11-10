@@ -2475,7 +2475,7 @@
 .cs-stat-hint {
   font-size: 11px;
   color: var(--muted);
-  font-family: 'DM Mono', monospace;
+  font-family: inherit;
 }
 
 .cs-mockup-footer {
@@ -2932,7 +2932,7 @@
   border-radius: 10px;
   background: var(--paper);
   border: 1px solid var(--line);
-  font-family: 'DM Mono', monospace;
+  font-family: inherit;
   font-size: 11px;
 }
 

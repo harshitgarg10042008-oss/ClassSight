@@ -7,6 +7,7 @@ import Link from 'next/link';
 import CameraCapture from '../../components/CameraCapture';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { AppShell } from '@/components/shell/AppShell';
+import { Logo } from '@/components/brand/Logo';
 import {
   DashboardIcon,
   TodayIcon,
@@ -250,12 +251,8 @@ export default function ClassSightApp() {
     return (
       <main id="main-content" className="login-shell">
         <div className="login-card">
-          <div className="login-logo">
-            <div className="login-logo-icon">C</div>
-            <div>
-              <div className="login-logo-text">ClassSight</div>
-              <div style={{ fontSize: 11, color: '#4a6b5c', fontFamily: "'DM Mono',monospace", marginTop: 2 }}>INTELLIGENT ATTENDANCE</div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <Logo variant="lockup" tone="auto" size={36} />
           </div>
           <h1>Welcome back</h1>
           <p>Sign in to your institutional portal</p>
@@ -292,7 +289,8 @@ export default function ClassSightApp() {
   return (
     <AppShell
       title={page === 'teacher' ? 'Faculty Dashboard & Attendance' : (navItems.find(n => n.id === page)?.label ?? 'Faculty Workspace')}
-      crumbs={[{ label: 'Workspace', href: '/app' }, { label: navItems.find(n => n.id === page)?.label ?? 'Dashboard' }]}
+      crumbs={[{ label: 'Workspace', href: '/app' }, { label: page === 'teacher' ? 'Dashboard' : (navItems.find(n => n.id === page)?.label ?? 'Dashboard') }]}
+      isSampleData={false}
     >
       <div className="content-area">
         {page === 'teacher'    && <TeacherPage    authFetch={authFetch} getCsrf={getCsrf} />}
@@ -447,6 +445,10 @@ function TeacherPage({ authFetch, getCsrf }: {
   return (
     <div>
       {/* ── Faculty Dashboard Overview Widgets ── */}
+      {/* B8 fix: prominent Sample data banner on fictional overview numbers */}
+      <div className="sample-banner" role="status" style={{ marginBottom: 16 }}>
+        <strong>Sample data</strong> — The overview numbers below (3 Classes, 86.4%, Session #21, 2 at risk) are fictional demonstration values. The attendance capture and finalization engine below uses your live backend.
+      </div>
       <div className="section-card" style={{ marginBottom: 24 }}>
         <div className="section-head">
           <div>
@@ -518,7 +520,7 @@ function TeacherPage({ authFetch, getCsrf }: {
             </div>
             <div style={{ fontWeight: 800, fontSize: 15, marginTop: 8 }}>Faculty Review Required</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>3 candidate faces need confirmation</div>
-            <Link href="/app/review?session=21" className="btn-sm" style={{ marginTop: 12, display: 'block', textAlign: 'center', textDecoration: 'none', backgroundColor: 'var(--tier-review-text)', color: '#fff' }}>
+            <Link href="/app/review?session=21" className="cs-button button-primary button-sm" style={{ marginTop: 12, display: 'block', textAlign: 'center', textDecoration: 'none' }}>
               Review Session #21 Now →
             </Link>
           </div>

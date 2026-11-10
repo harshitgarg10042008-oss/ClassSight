@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { site } from '@/config/site';
@@ -10,6 +10,7 @@ import { Breadcrumbs, Crumb } from '../ui/NavigationAndFeedback';
 import { CommandPalette } from './CommandPalette';
 import { useApp } from '../AppContext';
 import { ApiClient } from '@/lib/api';
+import { Logo } from '../brand/Logo';
 import {
   DashboardIcon,
   TodayIcon,
@@ -61,6 +62,71 @@ export interface AppShellProps {
   isSampleData?: boolean;
 }
 
+// ── Sidebar state helpers ─────────────────────────────────────────────────────
+// B1 fix: separate userPreference (persisted) from autoCollapsed (viewport only)
+
+const SIDEBAR_KEY = 'classsight-sidebar-collapsed';
+const MOBILE_BREAKPOINT = 1024; // below this: off-canvas drawer, not rail
+
+function readSidebarPref(): boolean {
+  try {
+    const v = localStorage.getItem(SIDEBAR_KEY);
+    // B1 fix: validate; anything unexpected → fallback to expanded (false)
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    return false; // invalid/null → expanded
+  } catch {
+    return false; // storage unavailable → expanded
+  }
+}
+
+function writeSidebarPref(collapsed: boolean) {
+  try {
+    localStorage.setItem(SIDEBAR_KEY, String(collapsed));
+  } catch {}
+}
+
+// ── Route → breadcrumb map ────────────────────────────────────────────────────
+// B4 fix: derive breadcrumbs from pathname so they always match the page
+
+const ROUTE_LABELS: { pattern: RegExp; label: string }[] = [
+  { pattern: /^\/app\/teacher(\/.*)?$/,    label: 'Take Attendance'  },
+  { pattern: /^\/app\/today$/,             label: 'Today'            },
+  { pattern: /^\/app\/review$/,            label: 'Review Queue'     },
+  { pattern: /^\/app\/sessions(\/.*)?$/,   label: 'Sessions'         },
+  { pattern: /^\/app\/classes(\/.*)?$/,    label: 'Classes'          },
+  { pattern: /^\/app\/enrollment$/,        label: 'Enrollment'       },
+  { pattern: /^\/app\/students(\/.*)?$/,   label: 'Students'         },
+  { pattern: /^\/app\/timetable$/,         label: 'Timetable'        },
+  { pattern: /^\/app\/cameras$/,           label: 'Cameras'          },
+  { pattern: /^\/app\/analytics(\/.*)?$/,  label: 'Analytics'        },
+  { pattern: /^\/app\/reports$/,           label: 'Reports'          },
+  { pattern: /^\/app\/risk$/,              label: 'Risk Radar'       },
+  { pattern: /^\/app\/leave$/,             label: 'Leave'            },
+  { pattern: /^\/app\/disputes$/,          label: 'Disputes'         },
+  { pattern: /^\/app\/notifications$/,     label: 'Notifications'    },
+  { pattern: /^\/app\/settings(\/.*)?$/,   label: 'Settings'         },
+  { pattern: /^\/app\/help$/,              label: 'Help'             },
+  { pattern: /^\/app\/hod(\/.*)?$/,        label: 'HOD Dashboard'    },
+  { pattern: /^\/app\/student(\/.*)?$/,    label: 'My Attendance'    },
+  { pattern: /^\/app$/,                    label: 'Dashboard'        },
+];
+
+function routeLabel(pathname: string): string {
+  for (const { pattern, label } of ROUTE_LABELS) {
+    if (pattern.test(pathname)) return label;
+  }
+  return 'Workspace';
+}
+
+function derivecrumbs(pathname: string): Crumb[] {
+  if (pathname === '/app') return [{ label: 'Workspace' }];
+  const label = routeLabel(pathname);
+  return [{ label: 'Workspace', href: '/app' }, { label }];
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export function AppShell({
   children,
   title,
@@ -72,7 +138,6 @@ export function AppShell({
   const router = useRouter();
   const {
     user,
-    setUser,
     language,
     toggleLanguage,
     notifications,
@@ -83,8 +148,13 @@ export function AppShell({
     isDev,
   } = useApp();
 
-  const [collapsed, setCollapsed] = useState(false);
+  // B1 fix: userPreference (persisted in localStorage, validated on read)
+  const [userPrefCollapsed, setUserPrefCollapsed] = useState(false);
+  // B1 fix: autoCollapsed (derived from viewport, never persisted)
+  const [isMobile, setIsMobile] = useState(false);
+  // Mobile off-canvas drawer
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
@@ -93,21 +163,52 @@ export function AppShell({
   const profileRef = useRef<HTMLDivElement | null>(null);
   const notifRef = useRef<HTMLDivElement | null>(null);
 
-  // Restore collapsed state
+  // Hydrate sidebar preference from localStorage (client-only)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('classsight-sidebar-collapsed');
-      if (stored === 'true') setCollapsed(true);
-    } catch {}
+    setUserPrefCollapsed(readSidebarPref());
   }, []);
 
+  // B1 fix: Track viewport width for auto-collapse
+  useEffect(() => {
+    function checkMobile() {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    }
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // B1 fix: collapsed = userPref AND not mobile (mobile uses drawer instead)
+  const collapsed = !isMobile && userPrefCollapsed;
+
   function toggleCollapsed() {
-    const next = !collapsed;
-    setCollapsed(next);
-    try {
-      localStorage.setItem('classsight-sidebar-collapsed', String(next));
-    } catch {}
+    const next = !userPrefCollapsed;
+    setUserPrefCollapsed(next);
+    writeSidebarPref(next);
   }
+
+  // B1 fix: "[" key shortcut to toggle sidebar
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return;
+      if (e.key === '[') {
+        e.preventDefault();
+        if (isMobile) {
+          setMobileDrawerOpen((o) => !o);
+        } else {
+          toggleCollapsed();
+        }
+      }
+      if (e.key === '?' && !e.shiftKey) {
+        e.preventDefault();
+        setShortcutsModalOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, userPrefCollapsed]);
 
   // Click outside listener for dropdown menus
   useEffect(() => {
@@ -123,18 +224,6 @@ export function AppShell({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Keyboard shortcut: Shift+? for shortcuts modal
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
-        e.preventDefault();
-        setShortcutsModalOpen((prev) => !prev);
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   function handleSignOut() {
     try {
       new ApiClient().clearToken();
@@ -146,7 +235,7 @@ export function AppShell({
     router.push('/login');
   }
 
-  // Sidebar navigation grouped according to prompt spec
+  // Sidebar navigation
   const navGroups: NavGroup[] = [
     {
       name: 'Workspace',
@@ -219,14 +308,149 @@ export function AppShell({
     },
   ];
 
-  // Derive active breadcrumbs if not supplied
-  const resolvedCrumbs: Crumb[] = crumbs || [
-    { label: 'Workspace', href: '/app' },
-    { label: title || 'Faculty App' },
-  ];
+  // B4 fix: breadcrumbs derived from pathname unless explicitly supplied
+  const resolvedCrumbs: Crumb[] = crumbs ?? derivecrumbs(pathname);
 
   const filteredNotifications = notifications.filter((n) =>
     notifFilter === 'unread' ? !n.read : true
+  );
+
+  // ── Sidebar inner content ───────────────────────────────────────────────────
+  const sidebarNav = (
+    <nav className="cs-sidebar-nav" aria-label="Interior Sections">
+      {navGroups.map((group) => (
+        <div key={group.name} className="cs-sidebar-group">
+          {!collapsed && <div className="cs-sidebar-group-title">{group.name}</div>}
+          {group.items.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/app' && pathname.startsWith(item.href));
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`cs-sidebar-link ${isActive ? 'is-active' : ''}`}
+                // B1 fix: tooltip on collapsed items
+                title={collapsed ? item.label : undefined}
+                // B1 fix: aria-label for collapsed icon-only links
+                aria-label={collapsed ? item.label : undefined}
+                onClick={() => setMobileDrawerOpen(false)}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <span className="cs-sidebar-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                {!collapsed && (
+                  <>
+                    <span className="cs-sidebar-label">{item.label}</span>
+                    {item.planGate && (
+                      <span className="cs-lock-indicator" title={`Available on ${item.planGate} plan`}>
+                        <LockIcon size={12} />
+                      </span>
+                    )}
+                    {item.badge && (
+                      <span
+                        className={`cs-sidebar-badge ${
+                          item.badgeTone ? `tone-${item.badgeTone}` : ''
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
+  // ── Main sidebar element ────────────────────────────────────────────────────
+  const sidebar = (
+    <aside
+      className={`cs-app-sidebar ${collapsed ? 'is-collapsed' : ''} ${mobileDrawerOpen ? 'is-mobile-open' : ''}`}
+      aria-label="Faculty Navigation"
+    >
+      {/* B3 fix: use Logo component instead of old "C" tile */}
+      <div className="cs-sidebar-header">
+        <Link
+          href="/app"
+          className="cs-brand-link"
+          onClick={() => setMobileDrawerOpen(false)}
+          aria-label="ClassSight — go to dashboard"
+        >
+          {collapsed ? (
+            /* B1 fix: clicking mark in collapsed rail expands sidebar */
+            <span
+              onClick={(e) => { e.preventDefault(); toggleCollapsed(); }}
+              style={{ cursor: 'pointer', display: 'flex' }}
+              role="button"
+              aria-label="Expand sidebar"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollapsed(); } }}
+            >
+              <Logo variant="mark" tone="auto" size={28} decorative />
+            </span>
+          ) : (
+            <Logo variant="lockup" tone="auto" size={28} decorative />
+          )}
+        </Link>
+        {/* B1 fix: toggle button always visible in sidebar header */}
+        <button
+          type="button"
+          className="cs-sidebar-collapse-btn"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!collapsed}
+          title={`${collapsed ? 'Expand' : 'Collapse'} sidebar ([)`}
+        >
+          {collapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
+        </button>
+      </div>
+
+      <div className="cs-sidebar-role-indicator">
+        {!collapsed && (
+          <div className="cs-role-badge-row">
+            <span className="cs-sidebar-role-tag">Faculty Workspace</span>
+            {isDev && <span className="cs-dev-pill" title="NODE_ENV is development">DEV</span>}
+          </div>
+        )}
+      </div>
+
+      {/* B5 fix: only the nav list scrolls */}
+      {sidebarNav}
+
+      {/* Sidebar Footer — pinned */}
+      <div className="cs-sidebar-footer">
+        {!collapsed && (
+          <div className="cs-sidebar-user-card">
+            <Avatar name={user.fullName} size="sm" />
+            <div className="cs-sidebar-user-info">
+              <span className="cs-sidebar-user-name">{user.fullName}</span>
+              <span className="cs-sidebar-user-role">{user.role}</span>
+            </div>
+          </div>
+        )}
+        <div className="cs-sidebar-footer-actions">
+          <button
+            type="button"
+            className="cs-quick-palette-trigger"
+            onClick={() => setCommandPaletteOpen(true)}
+            title="Search and shortcuts (Ctrl+K)"
+            aria-label="Open command palette"
+          >
+            <KbdIcon size={16} />
+            {!collapsed && <span>Ctrl+K</span>}
+          </button>
+          <div className="cs-theme-holder">
+            <ThemeToggle />
+          </div>
+        </div>
+      </div>
+    </aside>
   );
 
   return (
@@ -244,136 +468,32 @@ export function AppShell({
       )}
 
       {/* ── Sidebar ────────────────────────────────────────────────────────── */}
-      <aside
-        className={`cs-app-sidebar ${mobileDrawerOpen ? 'is-mobile-open' : ''}`}
-        aria-label="Faculty Navigation"
-      >
-        <div className="cs-sidebar-header">
-          <Link href="/app" className="cs-brand-link" onClick={() => setMobileDrawerOpen(false)}>
-            <span className="cs-brand-mark">C</span>
-            {!collapsed && (
-              <div className="cs-brand-text-block">
-                <span className="cs-brand-name">{site.name}</span>
-                <span className="cs-brand-sub">Attendance Hub</span>
-              </div>
-            )}
-          </Link>
-          <button
-            type="button"
-            className="cs-sidebar-collapse-btn"
-            onClick={toggleCollapsed}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {collapsed ? <ChevronRightIcon size={16} /> : <ChevronLeftIcon size={16} />}
-          </button>
-        </div>
-
-        <div className="cs-sidebar-role-indicator">
-          {!collapsed && (
-            <div className="cs-role-badge-row">
-              <span className="cs-sidebar-role-tag">Faculty Workspace</span>
-              {isDev && <span className="cs-dev-pill" title="NODE_ENV is development">DEV</span>}
-            </div>
-          )}
-        </div>
-
-        {/* Grouped Navigation */}
-        <nav className="cs-sidebar-nav" aria-label="Interior Sections">
-          {navGroups.map((group) => (
-            <div key={group.name} className="cs-sidebar-group">
-              {!collapsed && <div className="cs-sidebar-group-title">{group.name}</div>}
-              {group.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== '/app' && pathname.startsWith(item.href));
-
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`cs-sidebar-link ${isActive ? 'is-active' : ''}`}
-                    title={collapsed ? `${item.label}${item.planGate ? ` (${item.planGate})` : ''}` : undefined}
-                    onClick={() => setMobileDrawerOpen(false)}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <span className="cs-sidebar-icon" aria-hidden="true">
-                      {item.icon}
-                    </span>
-                    {!collapsed && (
-                      <>
-                        <span className="cs-sidebar-label">{item.label}</span>
-                        {item.planGate && (
-                          <span className="cs-lock-indicator" title={`Available on ${item.planGate} plan`}>
-                            <LockIcon size={12} />
-                          </span>
-                        )}
-                        {item.badge && (
-                          <span
-                            className={`cs-sidebar-badge ${
-                              item.badgeTone ? `tone-${item.badgeTone}` : ''
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="cs-sidebar-footer">
-          {!collapsed && (
-            <div className="cs-sidebar-user-card">
-              <Avatar name={user.fullName} size="sm" />
-              <div className="cs-sidebar-user-info">
-                <span className="cs-sidebar-user-name">{user.fullName}</span>
-                <span className="cs-sidebar-user-role">{user.role}</span>
-              </div>
-            </div>
-          )}
-          <div className="cs-sidebar-footer-actions">
-            <button
-              type="button"
-              className="cs-quick-palette-trigger"
-              onClick={() => setCommandPaletteOpen(true)}
-              title="Search and shortcuts (Ctrl+K)"
-              aria-label="Open command palette"
-            >
-              <KbdIcon size={16} />
-              {!collapsed && <span>Ctrl+K</span>}
-            </button>
-            <div className="cs-theme-holder">
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </aside>
+      {sidebar}
 
       {/* ── Main Content Area ──────────────────────────────────────────────── */}
       <div className="cs-app-main-panel">
         {/* Topbar */}
         <header className="cs-app-topbar">
           <div className="cs-topbar-left">
+            {/* B1 fix: mobile menu button AND collapse toggle always reachable in topbar */}
             <button
               type="button"
               className="cs-topbar-mobile-btn"
-              onClick={() => setMobileDrawerOpen(true)}
-              aria-label="Open navigation menu"
+              onClick={() => isMobile ? setMobileDrawerOpen(true) : toggleCollapsed()}
+              aria-label={isMobile ? 'Open navigation menu' : (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
+              {isMobile ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              ) : (
+                collapsed ? <ChevronRightIcon size={18} /> : <ChevronLeftIcon size={18} />
+              )}
             </button>
 
-            {/* Breadcrumbs */}
+            {/* B4 fix: breadcrumbs derived from pathname */}
             <Breadcrumbs crumbs={resolvedCrumbs} />
           </div>
 
@@ -402,24 +522,31 @@ export function AppShell({
               <span className="cs-quick-take-text">Take attendance</span>
             </Link>
 
-            {/* English / Hindi Language Switch (Marked Partial) */}
+            {/* B6 fix: Language switch — neutral "Partial" badge, no red styling */}
             <button
               type="button"
               className="cs-lang-toggle-btn"
               onClick={toggleLanguage}
-              title={`Switch language. Currently ${language.toUpperCase()} (आंशिक / Partial localization)`}
-              aria-label={`Language switch: current ${language === 'en' ? 'English' : 'Hindi'}`}
+              title={language === 'en'
+                ? 'Switch to Hindi (partial translation)'
+                : 'Switch to English'}
+              aria-label={`Language: ${language === 'en' ? 'English' : 'Hindi'}. Click to switch.`}
             >
               <span className="cs-lang-code">{language === 'en' ? 'EN' : 'हिन्दी'}</span>
-              <span className="cs-lang-partial-tag" title="Partial localization">आंशिक</span>
+              <span
+                className="cs-lang-partial-tag"
+                title="Hindi translation is partial"
+              >
+                Partial
+              </span>
             </button>
 
-            {/* Persisted Theme Toggle (Sun/Moon SVG) */}
+            {/* Theme Toggle */}
             <div className="cs-topbar-theme-wrap">
               <ThemeToggle />
             </div>
 
-            {/* Notification Bell with Dropdown */}
+            {/* Notification Bell */}
             <div className="cs-notif-dropdown-wrap" ref={notifRef}>
               <button
                 type="button"
@@ -493,7 +620,8 @@ export function AppShell({
                               <span>{n.title}</span>
                             </div>
                             <div className="cs-notif-item-desc">{n.description}</div>
-                            <span className="cs-notif-item-time">{n.timestamp}</span>
+                            {/* B7 fix: timestamps in cs-mono */}
+                            <span className="cs-notif-item-time cs-mono">{n.timestamp}</span>
                           </div>
                         </div>
                       ))
@@ -538,30 +666,15 @@ export function AppShell({
                   </div>
 
                   <div className="cs-profile-menu-links">
-                    <Link
-                      href="/app/settings?tab=profile"
-                      role="menuitem"
-                      className="cs-profile-menu-item"
-                      onClick={() => setProfileOpen(false)}
-                    >
+                    <Link href="/app/settings?tab=profile" role="menuitem" className="cs-profile-menu-item" onClick={() => setProfileOpen(false)}>
                       <UserIcon size={16} />
                       <span>My Profile</span>
                     </Link>
-                    <Link
-                      href="/app/settings"
-                      role="menuitem"
-                      className="cs-profile-menu-item"
-                      onClick={() => setProfileOpen(false)}
-                    >
+                    <Link href="/app/settings" role="menuitem" className="cs-profile-menu-item" onClick={() => setProfileOpen(false)}>
                       <SettingsIcon size={16} />
                       <span>Settings</span>
                     </Link>
-                    <Link
-                      href="/app/settings?tab=appearance"
-                      role="menuitem"
-                      className="cs-profile-menu-item"
-                      onClick={() => setProfileOpen(false)}
-                    >
+                    <Link href="/app/settings?tab=appearance" role="menuitem" className="cs-profile-menu-item" onClick={() => setProfileOpen(false)}>
                       <span className="cs-menu-icon-wrap" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <circle cx="12" cy="12" r="5" />
@@ -570,6 +683,25 @@ export function AppShell({
                       </span>
                       <span>Appearance</span>
                     </Link>
+                    {/* B1 fix: Reset layout option */}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="cs-profile-menu-item"
+                      onClick={() => {
+                        try { localStorage.removeItem(SIDEBAR_KEY); } catch {}
+                        setUserPrefCollapsed(false);
+                        setProfileOpen(false);
+                      }}
+                    >
+                      <span className="cs-menu-icon-wrap" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                          <path d="M3 3v5h5" />
+                        </svg>
+                      </span>
+                      <span>Reset layout</span>
+                    </button>
                     <button
                       type="button"
                       role="menuitem"
@@ -583,14 +715,9 @@ export function AppShell({
                       <span>Keyboard shortcuts</span>
                       <kbd className="cs-menu-kbd">?</kbd>
                     </button>
-                    <Link
-                      href="/app/help"
-                      role="menuitem"
-                      className="cs-profile-menu-item"
-                      onClick={() => setProfileOpen(false)}
-                    >
+                    <Link href="/app/help" role="menuitem" className="cs-profile-menu-item" onClick={() => setProfileOpen(false)}>
                       <HelpIcon size={16} />
-                      <span>Help & Support</span>
+                      <span>Help &amp; Support</span>
                     </Link>
                   </div>
 
@@ -611,17 +738,17 @@ export function AppShell({
           </div>
         </header>
 
-        {/* Development Mode Hint (shown strictly when NODE_ENV === 'development') */}
+        {/* Development Mode Hint */}
         {isDev && (
           <div className="cs-dev-hint-banner" role="status">
             <span>ClassSight Dev Mode &bull; Mock token active &bull; All APIs routed to local backend:8080</span>
           </div>
         )}
 
-        {/* Optional Fictional Sample Data Banner */}
+        {/* B8 fix: Sample Data Banner */}
         {isSampleData && (
           <div className="sample-banner" role="status">
-            <strong>Sample data</strong> Preview mode &mdash; fictional attendance records for demonstration. No live backend state modified.
+            <strong>Sample data</strong> — fictional attendance records for demonstration. No live backend state modified.
           </div>
         )}
 
@@ -642,33 +769,19 @@ export function AppShell({
 
         {/* Mobile Bottom Navigation Bar */}
         <nav className="cs-mobile-bottom-bar" aria-label="Mobile Bottom Navigation">
-          <Link
-            href="/app"
-            className={`cs-bottom-nav-item ${pathname === '/app' ? 'is-active' : ''}`}
-          >
+          <Link href="/app" className={`cs-bottom-nav-item ${pathname === '/app' ? 'is-active' : ''}`}>
             <DashboardIcon size={20} />
             <span className="cs-bottom-label">Dashboard</span>
           </Link>
-          <Link
-            href="/app/today"
-            className={`cs-bottom-nav-item ${pathname === '/app/today' ? 'is-active' : ''}`}
-          >
+          <Link href="/app/today" className={`cs-bottom-nav-item ${pathname === '/app/today' ? 'is-active' : ''}`}>
             <TodayIcon size={20} />
             <span className="cs-bottom-label">Today</span>
           </Link>
-          <Link
-            href="/app/teacher"
-            className={`cs-bottom-nav-item cs-bottom-nav-take ${
-              pathname === '/app/teacher' ? 'is-active' : ''
-            }`}
-          >
+          <Link href="/app/teacher" className={`cs-bottom-nav-item cs-bottom-nav-take ${pathname === '/app/teacher' ? 'is-active' : ''}`}>
             <CameraIcon size={22} />
             <span className="cs-bottom-label">Capture</span>
           </Link>
-          <Link
-            href="/app/review"
-            className={`cs-bottom-nav-item ${pathname === '/app/review' ? 'is-active' : ''}`}
-          >
+          <Link href="/app/review" className={`cs-bottom-nav-item ${pathname === '/app/review' ? 'is-active' : ''}`}>
             <ReviewIcon size={20} />
             <span className="cs-bottom-label">Review</span>
           </Link>
@@ -713,6 +826,10 @@ export function AppShell({
               <div className="cs-shortcut-row">
                 <span>Open Command Palette</span>
                 <span><kbd>Ctrl</kbd> + <kbd>K</kbd></span>
+              </div>
+              <div className="cs-shortcut-row">
+                <span>Toggle Sidebar</span>
+                <span><kbd>[</kbd></span>
               </div>
               <div className="cs-shortcut-row">
                 <span>Show Keyboard Shortcuts</span>

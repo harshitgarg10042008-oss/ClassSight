@@ -159,6 +159,27 @@ function SettingsContent() {
             <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)' }}>
               Theme preference is synchronized with your system OS dark mode preferences by default.
             </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 18, border: '1px solid var(--line)', borderRadius: 10, background: 'var(--surface-raised)', marginTop: 16 }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>Sidebar &amp; Layout State</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Reset the collapsed sidebar state and restore default workspace layout dimensions.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="button-secondary cs-button"
+                onClick={() => {
+                  try {
+                    localStorage.removeItem('classsight-sidebar-collapsed');
+                    window.location.reload();
+                  } catch {}
+                }}
+              >
+                Reset layout
+              </button>
+            </div>
           </div>
         )}
 
