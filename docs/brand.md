@@ -103,3 +103,4 @@ The web application uses the unified `<Logo />` component (`frontend-next/compon
 - ❌ Do NOT rotate the mark or change the angle of the aperture opening.
 - ❌ Do NOT apply drop shadows, 3D extrusions, gradients, or outer glows to the mark.
 - ❌ Do NOT substitute web fonts or third-party fonts for the wordmark text.
+
