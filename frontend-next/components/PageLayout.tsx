@@ -1,45 +1,41 @@
-import Link from 'next/link';
-import { WorkspaceChrome } from './shell/WorkspaceChrome';
+'use client';
 
-const links = [
-  { href: '/app', label: 'Teacher', pageId: 'teacher' },
-  { href: '/app/enrollment', label: 'Enrollment', pageId: 'enrollment' },
-  { href: '/app/analytics', label: 'Analytics', pageId: 'analytics' },
-  { href: '/app/student', label: 'Student', pageId: 'student' },
-  { href: '/app/hod', label: 'HOD', pageId: 'hod' },
-];
+import React from 'react';
+import { AppShell } from './shell/AppShell';
+import { Crumb } from './ui/NavigationAndFeedback';
+
+export interface PageLayoutProps {
+  pageId?: string;
+  title?: string;
+  crumbs?: Crumb[];
+  actions?: React.ReactNode;
+  isSampleData?: boolean;
+  children: React.ReactNode;
+}
 
 export function PageLayout({
   pageId,
+  title,
+  crumbs,
+  actions,
+  isSampleData = false,
   children,
-}: {
-  pageId: string;
-  children: React.ReactNode;
-}) {
+}: PageLayoutProps) {
+  // If no title is given, derive from pageId
+  const displayTitle =
+    title ||
+    (pageId
+      ? pageId.charAt(0).toUpperCase() + pageId.slice(1).replace('-', ' ')
+      : undefined);
+
   return (
-    <main id="main-content" className="app-shell">
-      <header className="topbar">
-        <Link href="/app" className="brand">ClassSight</Link>
-        <nav aria-label="Primary navigation">
-          {links.map((link) => (
-            <Link
-              key={link.pageId}
-              href={link.href}
-              className={link.pageId === pageId ? 'active' : undefined}
-            >
-              {link.label}
-            </Link>
-          ))}
-          <Link href="/notifications">Notifications</Link>
-          <Link href="/privacy">Privacy</Link>
-          <Link href="/terms">Terms</Link>
-          <Link href="/">Product site</Link>
-        </nav>
-      </header>
-      <div className="page-content">
-        <WorkspaceChrome />
-        {children}
-      </div>
-    </main>
+    <AppShell
+      title={displayTitle}
+      crumbs={crumbs}
+      actions={actions}
+      isSampleData={isSampleData}
+    >
+      {children}
+    </AppShell>
   );
 }

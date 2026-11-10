@@ -975,15 +975,25 @@ tbody tr:hover td { background: var(--card-2); }
 .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; display: block; }
 .empty-state p { font-size: 14px; max-width: 320px; margin: 0 auto; }
 
-/* ── Tabs inside pages ───────────────────────────────── */
+/* ── Tabs inside pages (Fixed: no stray vertical scrollbar) ───────────── */
 .inner-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 4px;
   border-bottom: 2px solid var(--line);
   margin-bottom: 24px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.inner-tabs::-webkit-scrollbar {
+  display: none;
+}
+@media (max-width: 480px) {
+  .inner-tabs {
+    overflow-x: auto;
+  }
 }
 
 .inner-tab {
