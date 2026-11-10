@@ -196,14 +196,14 @@ export default function SessionsHistoryPage() {
                   <td>
                     <div style={{ display: 'flex', gap: 6, fontSize: 12, fontWeight: 700 }}>
                       <span style={{ color: 'var(--tier-auto-text)' }}>{s.autoCount} AUTO</span>
-                      <span style={{ color: 'var(--line-strong)' }}>&bull;</span>
+                      <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>&bull;</span>
                       <span style={{ color: 'var(--tier-review-text)' }}>{s.reviewCount} REV</span>
-                      <span style={{ color: 'var(--line-strong)' }}>&bull;</span>
-                      <span style={{ color: '#ef4444' }}>{s.unknownCount} UNK</span>
+                      <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>&bull;</span>
+                      <span style={{ color: 'var(--tier-absent-text)' }}>{s.unknownCount} UNK</span>
                     </div>
                   </td>
                   <td>
-                    <span className="tabular-nums" style={{ color: s.absentCount > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
+                    <span className="tabular-nums" style={{ color: s.absentCount > 0 ? 'var(--tier-absent-text)' : 'var(--text-muted)', fontWeight: 600 }}>
                       {s.absentCount} absent
                     </span>
                   </td>

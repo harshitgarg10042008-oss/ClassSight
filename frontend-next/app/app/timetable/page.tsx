@@ -140,7 +140,7 @@ export default function TimetablePage() {
                           </div>
                         ) : (
                           <div style={{ minHeight: 70, borderRadius: 8, border: '1px dashed var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: 11, color: 'var(--line-strong)' }}>Free</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Free</span>
                           </div>
                         )}
                       </td>
