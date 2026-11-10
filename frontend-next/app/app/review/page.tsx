@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PageLayout } from '@/components/PageLayout';
 import { api, type Review } from '@/lib/api';
 import { ReviewIcon, CameraIcon, CheckIcon, WarningIcon } from '@/components/ui/Icons';
 
-export default function ReviewQueuePage() {
+function ReviewQueueContent() {
   const searchParams = useSearchParams();
   const requestedSession = searchParams.get('session');
 
@@ -216,6 +216,14 @@ export default function ReviewQueuePage() {
         </div>
       </div>
     </PageLayout>
+  );
+}
+
+export default function ReviewQueuePage() {
+  return (
+    <Suspense fallback={<div className="empty-state" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" style={{ width: 28, height: 28, margin: '0 auto 12px' }} /><p>Loading review queue…</p></div>}>
+      <ReviewQueueContent />
+    </Suspense>
   );
 }
 

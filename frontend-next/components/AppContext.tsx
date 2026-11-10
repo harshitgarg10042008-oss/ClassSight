@@ -182,12 +182,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Keyboard shortcut for command palette (Ctrl+K or Cmd+K)
+  // Keyboard shortcut for command palette (Ctrl+K or Cmd+K) and Escape to close
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setCommandPaletteOpen((prev) => !prev);
+      } else if (e.key === 'Escape') {
+        setCommandPaletteOpen(false);
       }
     }
     window.addEventListener('keydown', handleKeyDown);

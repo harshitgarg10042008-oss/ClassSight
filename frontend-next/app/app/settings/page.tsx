@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PageLayout } from '@/components/PageLayout';
 import { TabNav, TabItem } from '@/components/ui/TabNav';
@@ -8,7 +8,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useApp } from '@/components/AppContext';
 import { SettingsIcon, UserIcon, LockIcon, BellIcon, GlobeIcon, CheckIcon } from '@/components/ui/Icons';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'profile';
 
@@ -219,3 +219,12 @@ export default function SettingsPage() {
     </PageLayout>
   );
 }
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="empty-state" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="spinner" style={{ width: 28, height: 28, margin: '0 auto 12px' }} /><p>Loading settings…</p></div>}>
+      <SettingsContent />
+    </Suspense>
+  );
+}
+

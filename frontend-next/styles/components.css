@@ -780,7 +780,7 @@
   font-weight: 600;
 }
 .cs-crumb-separator {
-  color: var(--line-strong);
+  color: var(--text-muted);
   margin: 0 4px;
 }
 
@@ -1589,9 +1589,10 @@
   color: var(--text);
 }
 .cs-sidebar-link.is-active {
-  background-color: rgba(14, 159, 154, 0.1);
-  color: var(--lagoon-600);
+  background-color: var(--surface-hover);
+  color: var(--text);
   font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--lagoon-600);
 }
 .cs-sidebar-badge {
   margin-left: auto;

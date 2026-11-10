@@ -47,8 +47,17 @@ export function CommandPalette() {
       setQuery('');
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
+
+      function onGlobalKeyDown(e: KeyboardEvent) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setCommandPaletteOpen(false);
+        }
+      }
+      window.addEventListener('keydown', onGlobalKeyDown);
+      return () => window.removeEventListener('keydown', onGlobalKeyDown);
     }
-  }, [commandPaletteOpen]);
+  }, [commandPaletteOpen, setCommandPaletteOpen]);
 
   const items: PaletteItem[] = [
     // Navigation
