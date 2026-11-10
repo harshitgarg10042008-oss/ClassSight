@@ -6,6 +6,7 @@ import { EntitlementMatrix, FeatureFlags, RolesMatrix } from './Matrices';
 import { WorkspaceTable } from './WorkspaceTable';
 import { WorkspaceChrome } from '@/components/shell/WorkspaceChrome';
 import { LockedFeature } from '@/components/LockedFeature';
+import { Logo } from '@/components/brand/Logo';
 
 export type WorkspaceId = 'admin' | 'owner' | 'teacher' | 'portal';
 
@@ -43,6 +44,12 @@ export function WorkspacePage({ area, sectionId }: { area: WorkspaceId; sectionI
 
   return (
     <main id="main-content" className="workspace-shell">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <Link href="/" aria-label="ClassSight Home">
+          <Logo variant="lockup" tone="auto" size={28} decorative />
+        </Link>
+        <span className="badge badge-purple">{config.eyebrow}</span>
+      </div>
       <WorkspaceChrome />
       <header className="workspace-header">
         <div>

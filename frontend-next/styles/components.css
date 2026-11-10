@@ -1,5 +1,23 @@
 /* ── ClassSight SaaS Component Library Styles ─────────────────── */
 
+/* ── Logo Brand ───────────────────────────────────────────────── */
+.cs-logo-spin {
+  animation: cs-logo-ring-spin 1200ms linear infinite;
+  transform-origin: center;
+}
+@keyframes cs-logo-ring-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-logo-spin { animation: none; }
+}
+
+/* Monospace helper class */
+.cs-mono {
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', Consolas, 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Buttons ─────────────────────────────────────────────────── */
 .cs-button {
   display: inline-flex;
@@ -1217,17 +1235,6 @@
   font-size: 18px;
   color: var(--text);
 }
-.cs-brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background-color: var(--lagoon-600);
-  color: #ffffff;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-  font-weight: 800;
-}
 .cs-desktop-nav {
   display: flex;
   align-items: center;
@@ -1520,10 +1527,11 @@
 
 /* ── Layout Shells: AppShell ─────────────────────────────────── */
 .cs-app-layout {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 240px 1fr;
   background-color: var(--paper);
+  /* B1 fix: transition both grid width and sidebar */
   transition: grid-template-columns var(--duration-normal) var(--ease);
 }
 .cs-app-layout.is-collapsed {
@@ -1536,8 +1544,9 @@
   flex-direction: column;
   position: sticky;
   top: 0;
-  height: 100vh;
-  overflow-y: auto;
+  /* B5 fix: 100dvh, NO overflow on the sidebar itself */
+  height: 100dvh;
+  overflow: hidden; /* prevent stray scrollbar on sidebar container */
 }
 .cs-sidebar-header {
   padding: 16px;
@@ -1545,6 +1554,7 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--line-subtle);
+  flex-shrink: 0;
 }
 .cs-sidebar-collapse-btn {
   background: none;
@@ -1554,14 +1564,22 @@
   font-size: 11px;
   color: var(--text-muted);
   cursor: pointer;
+  flex-shrink: 0;
+  /* B1 fix: visible focus ring */
+  outline: none;
+}
+.cs-sidebar-collapse-btn:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .cs-sidebar-role-indicator {
   padding: 8px 16px 4px;
+  flex-shrink: 0;
 }
 .cs-sidebar-role-tag {
   font-size: 11px;
   font-weight: 800;
-  color: var(--lagoon-600);
+  color: var(--lagoon-600);\r
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1571,6 +1589,22 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* B5 fix: ONLY the nav list scrolls */
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  min-height: 0;
+}
+.cs-sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.cs-sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cs-sidebar-nav::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 2px;
 }
 .cs-sidebar-link {
   display: flex;
@@ -1579,10 +1613,14 @@
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   text-decoration: none;
+  /* B7 fix: system sans font, NOT monospace */
+  font-family: inherit;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   transition: all var(--duration-fast) var(--ease);
+  /* B1 fix: tooltip via native title + this ensures tooltip shows */
+  white-space: nowrap;
 }
 .cs-sidebar-link:hover {
   background-color: var(--surface-hover);
@@ -1609,6 +1647,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* B5 fix: footer pinned to bottom */
+  flex-shrink: 0;
 }
 .cs-sidebar-user-card {
   display: flex;
@@ -1834,17 +1874,17 @@
   .cs-app-sidebar {
     display: none;
   }
+  /* B1 fix: show topbar button on mobile/tablet */
   .cs-topbar-mobile-btn {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .cs-mobile-bottom-bar {
     display: flex;
   }
   .cs-app-content {
     padding-bottom: 70px;
-  }
-  .cs-footer-grid {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -3456,15 +3496,19 @@
 }
 .cs-lang-partial-tag {
   font-size: 9.5px;
-  padding: 1px 4px;
+  padding: 1px 5px;
   border-radius: 3px;
-  background-color: #fee2e2;
-  color: #991b1b;
-  font-weight: 800;
+  /* B6 fix: neutral badge instead of red-error styling */
+  background-color: var(--surface-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  font-weight: 700;
+  cursor: help;
 }
 :root.dark .cs-lang-partial-tag {
-  background-color: #7f1d1d;
-  color: #fecaca;
+  background-color: var(--surface-hover);
+  color: var(--text-muted);
+  border-color: var(--line-strong);
 }
 
 .cs-topbar-theme-wrap {

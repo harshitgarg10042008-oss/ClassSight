@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { site } from '@/config/site';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LanguageSwitch } from '../ui/ToolsAndBadges';
+import { Logo } from '../brand/Logo';
 
 export function AuthShell({
   children,
@@ -24,9 +25,8 @@ export function AuthShell({
       {/* Brand Panel (Left) */}
       <aside className="cs-auth-brand-panel">
         <div className="cs-auth-brand-header">
-          <Link href="/" className="cs-brand-link">
-            <span className="cs-brand-mark">C</span>
-            <span className="cs-brand-name" style={{ color: 'white' }}>{site.name}</span>
+          <Link href="/" className="cs-brand-link" aria-label="ClassSight Home">
+            <Logo variant="lockup" tone="onDark" size={32} decorative />
           </Link>
           <div className="cs-auth-theme-tools">
             <LanguageSwitch />

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Card, Tabs, Badge, Switch, Select } from '@/components/ui';
+import { Logo } from '@/components/brand/Logo';
 
 export function NotificationPreferencesAndTemplates() {
   const [activeTab, setActiveTab] = useState<'preferences' | 'templates'>('preferences');
@@ -238,7 +239,10 @@ This email confirms that facial feature template enrollment has been completed f
           </div>
 
           <Card style={{ padding: '24px' }}>
-            <span className="cs-eyebrow">Email Template Preview</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span className="cs-eyebrow">Email Template Preview</span>
+              <Logo variant="lockup" tone="auto" size={20} decorative />
+            </div>
             <h3 style={{ fontSize: '18px', fontWeight: '800', margin: '4px 0 12px' }}>
               {templates[activeTemplate].title}
             </h3>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/brand/readme-banner.svg" alt="ClassSight — Attendance that keeps faculty in control" width="800"/>
+</p>
+
 # ClassSight — Intelligent Biometric Classroom Attendance Platform
 
 ClassSight is an enterprise-grade classroom attendance platform combining deep biometric facial recognition, automated attendance finalization, human-in-the-loop review, real-time analytics, local ERP export, IP/webcam camera adapters, MinIO S3 object storage, and a modern Next.js faculty interface.

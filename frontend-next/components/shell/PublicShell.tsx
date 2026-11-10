@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { site } from '@/config/site';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LanguageSwitch } from '../ui/ToolsAndBadges';
+import { Logo } from '../brand/Logo';
 
 export function PublicShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -15,9 +16,8 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       {/* Sticky Header */}
       <header className="cs-public-header">
         <div className="cs-public-nav-container">
-          <Link href="/" className="cs-brand-link">
-            <span className="cs-brand-mark">C</span>
-            <span className="cs-brand-name">{site.name}</span>
+          <Link href="/" className="cs-brand-link" aria-label="ClassSight Home">
+            <Logo variant="lockup" tone="auto" size={30} decorative />
           </Link>
 
           <nav className="cs-desktop-nav" aria-label="Main Navigation">
@@ -118,9 +118,8 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       <footer className="cs-public-footer">
         <div className="cs-footer-grid">
           <div className="cs-footer-brand-col">
-            <Link href="/" className="cs-brand-link">
-              <span className="cs-brand-mark">C</span>
-              <span className="cs-brand-name">{site.name}</span>
+            <Link href="/" className="cs-brand-link" aria-label="ClassSight Home">
+              <Logo variant="lockup" tone="auto" size={30} decorative />
             </Link>
             <p className="cs-footer-tagline">{site.tagline}</p>
             <p className="cs-footer-disclaimer">

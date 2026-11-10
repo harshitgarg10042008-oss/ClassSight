@@ -76,7 +76,6 @@ a { color: var(--link); }
 .marketing-nav a:not(.button) { color: var(--muted); }
 .marketing-nav a:not(.button):hover { color: var(--lagoon-600); }
 .marketing-brand { color: var(--text); }
-.brand-mark { background: var(--lagoon-600); color: white; }
 .button-primary { background: var(--lagoon-600); border-color: var(--lagoon-600); color: white; }
 .button-primary:hover { background: var(--ink-900); border-color: var(--ink-900); }
 .hero { background: linear-gradient(135deg, var(--ink-950), var(--ink-900)); color: #f7fbff; border-radius: 24px; padding: clamp(32px, 7vw, 88px); position: relative; overflow: hidden; }
@@ -404,33 +403,6 @@ button, input, select, textarea { font: inherit; }
   position: relative;
   z-index: 1;
   box-shadow: 0 32px 80px rgba(0,0,0,.4);
-}
-
-.login-logo {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 36px;
-}
-
-.login-logo-icon {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #2563eb 0%, #10b981 100%);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 900;
-  color: #fff;
-}
-
-.login-logo-text {
-  font-size: 22px;
-  font-weight: 800;
-  color: #f0fdf4;
-  letter-spacing: -.04em;
 }
 
 .login-card h1 {
@@ -1081,7 +1053,6 @@ h3 { font-size: 17px; font-weight: 800; letter-spacing: -.03em; margin: 0 0 4px;
 .admin-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 20px; }.admin-links a { color: var(--accent); text-transform: capitalize; }
 .marketing-header { max-width: 1200px; margin: auto; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .marketing-brand { color: var(--ink); text-decoration: none; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 9px; }
-.brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: white; }
 .marketing-nav { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
 .marketing-nav a { color: var(--muted); text-decoration: none; font-weight: 700; font-size: 14px; }
 .marketing-nav .button { color: white; }

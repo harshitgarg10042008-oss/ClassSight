@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%" height="auto" role="img" aria-label="ClassSight — Attendance that keeps faculty in control">
+  <!-- Ink background -->
+  <rect width="800" height="200" rx="16" fill="#0A1020"/>
+  <!-- Subtle grid lines -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#2DD4BF" stroke-width="0.5" stroke-opacity="0.12"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="200" rx="16" fill="url(#grid)"/>
+  
+  <!-- Centered Lockup + Tagline -->
+  <g transform="translate(48, 50)">
+    <!-- Mark 100x100 scaled to 70x70 -->
+    <g transform="scale(0.7)">
+      <path d="M12 30V18Q12 12 18 12H30M70 12H82Q88 12 88 18V30M12 70V82Q12 88 18 88H30M70 88H82Q88 88 88 82V70"
+            fill="none" stroke="#2DD4BF" stroke-width="4" stroke-linecap="round"/>
+      <path d="M68.4 34.6A24 24 0 1 0 68.4 65.4"
+            fill="none" stroke="#2DD4BF" stroke-width="9" stroke-linecap="round"/>
+      <circle cx="51" cy="50" r="6.5" fill="#FF6B4A"/>
+      <circle cx="74" cy="50" r="3" fill="#2DD4BF"/>
+    </g>
+    <!-- Wordmark -->
+    <text x="85" y="44"
+          font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+          font-size="38" font-weight="600"
+          fill="#FFFFFF">Class<tspan fill="#2DD4BF">Sight</tspan></text>
+    <!-- Tagline -->
+    <text x="86" y="74"
+          font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+          font-size="16" font-weight="400"
+          fill="#94A3B8">Attendance that keeps faculty in control</text>
+  </g>
+</svg>

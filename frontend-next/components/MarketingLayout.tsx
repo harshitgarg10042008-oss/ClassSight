@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import { site } from '@/config/site';
 import { ThemeToggle } from './ui/ThemeToggle';
+import { Logo } from './brand/Logo';
 
 export function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="marketing-shell">
       <header className="marketing-header">
-        <Link className="marketing-brand" href="/"><span className="brand-mark">C</span> {site.name}</Link>
+        <Link className="marketing-brand" href="/" aria-label="ClassSight Home">
+          <Logo variant="lockup" tone="auto" size={32} decorative />
+        </Link>
         <nav aria-label="Marketing navigation" className="marketing-nav">
           {site.navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
           <ThemeToggle />
