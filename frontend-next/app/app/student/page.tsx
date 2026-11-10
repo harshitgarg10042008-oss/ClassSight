@@ -19,8 +19,7 @@ export default function StudentPage() {
 
   return (
     <PageLayout pageId="student">
-    <h1 className="sr-only">Student workspace</h1>
-    <div className="section-card">
+        <div className="section-card">
       <div className="section-head">
         <div>
           <span className="eyebrow">Student Portal</span>

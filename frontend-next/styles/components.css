@@ -1691,6 +1691,9 @@
 .cs-app-content {
   flex: 1;
   padding: 24px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 .cs-app-content-container {
   max-width: 1200px;
@@ -1790,6 +1793,41 @@
     gap: 8px;
     margin-top: 8px;
   }
+
+  /* Mobile topbar responsive constraints (prevent horizontal overflow) */
+  .cs-app-topbar {
+    padding: 8px 12px;
+  }
+  .cs-topbar-center {
+    display: none !important;
+  }
+  .cs-breadcrumbs {
+    display: none !important;
+  }
+  .cs-topbar-quick-take-btn {
+    display: none !important;
+  }
+  .cs-user-pill-name {
+    display: none !important;
+  }
+  .cs-lang-badge {
+    display: none !important;
+  }
+  .cs-lang-toggle-btn {
+    padding: 4px 6px;
+    font-size: 11px;
+  }
+  .cs-header-actions .button-primary,
+  .cs-header-actions .button-secondary,
+  .cs-header-actions .button-outline,
+  .cs-header-actions .cs-theme-toggle-btn,
+  .cs-header-actions .cs-lang-toggle-btn {
+    display: none !important;
+  }
+  .cs-bubble {
+    display: none !important;
+  }
+
   .cs-app-layout {
     grid-template-columns: 1fr;
   }
@@ -3947,4 +3985,45 @@
 }
 .cs-bottom-nav-take {
   color: var(--lagoon-600) !important;
+}
+
+/* Accessibility & sr-only */
+.cs-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.cs-required-mark {
+  color: var(--coral-500) !important;
+}
+
+/* 480px responsive constraints for auth & forms */
+@media (max-width: 480px) {
+  .cs-step-title {
+    display: none !important;
+  }
+  .cs-step-button {
+    gap: 4px !important;
+    padding: 4px !important;
+  }
+  .cs-auth-form-panel {
+    padding: 20px 12px !important;
+  }
+  .cs-auth-card-container {
+    padding: 20px 16px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .ui-card, .cs-card {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+  }
 }

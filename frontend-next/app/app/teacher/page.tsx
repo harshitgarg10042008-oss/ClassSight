@@ -131,7 +131,7 @@ export default function TeacherPage() {
       <header className="workspace-header">
         <div>
           <p className="eyebrow">Faculty workspace</p>
-          <h1>Take attendance</h1>
+          <h2>Take attendance</h2>
           <p className="page-subtitle">Capture a group photo, review every result, then finalize. Nothing is committed until a faculty member confirms the review.</p>
         </div>
         <div className="workspace-header-meta">
