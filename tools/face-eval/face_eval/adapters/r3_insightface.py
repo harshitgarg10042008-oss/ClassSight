@@ -13,21 +13,28 @@ from face_eval.interfaces import RecognizerAdapter
 
 
 class R3InsightFaceRecognizer(RecognizerAdapter):
-    """R3: InsightFace buffalo_l ArcFace 512-d, cosine distance."""
+    """R3: InsightFace buffalo_s/buffalo_l ArcFace 512-d, cosine distance."""
 
-    def __init__(self, name: str = "buffalo_l") -> None:
+    def __init__(self, name: str = "buffalo_s") -> None:
         try:
             import insightface
             from insightface.app import FaceAnalysis
         except ImportError as e:
             raise ImportError("insightface not installed") from e
 
-        self._app = FaceAnalysis(name=name, providers=["CPUExecutionProvider"])
-        self._app.prepare(ctx_id=0, det_size=(160, 160))
+        self.model_name = name
+        try:
+            self._app = FaceAnalysis(name=name, providers=["CPUExecutionProvider"])
+            self._app.prepare(ctx_id=0, det_size=(256, 256))
+        except Exception:
+            # Fallback to buffalo_s
+            self.model_name = "buffalo_s"
+            self._app = FaceAnalysis(name="buffalo_s", providers=["CPUExecutionProvider"])
+            self._app.prepare(ctx_id=0, det_size=(256, 256))
 
     @property
     def name(self) -> str:
-        return "InsightFace-buffalo_l-cosine"
+        return f"InsightFace-{self.model_name}-cosine"
 
     @property
     def embedding_dim(self) -> int:
@@ -37,7 +44,7 @@ class R3InsightFaceRecognizer(RecognizerAdapter):
     def licence_note(self) -> str:
         return (
             "InsightFace models: Apache 2.0 for code; "
-            "buffalo_l weights: for research/non-commercial use — commercial use NOT VERIFIED, needs legal review."
+            "buffalo_s/l weights: for research/non-commercial use — commercial use NOT VERIFIED, needs legal review."
         )
 
     def embed(self, aligned_face: np.ndarray) -> np.ndarray:
@@ -45,25 +52,29 @@ class R3InsightFaceRecognizer(RecognizerAdapter):
         import cv2
 
         # Convert RGB to BGR for InsightFace
-        img_bgr = cv2.cvtColor(aligned_face, cv2.COLOR_RGB2BGR) if aligned_face.shape[-1] == 3 else aligned_face
+        img_bgr = cv2.cvtColor(aligned_face, cv2.COLOR_RGB2BGR) if aligned_face.shape[-1] == 3 else aligned_face.copy()
 
-        # Try app.get() detection first
-        faces = self._app.get(img_bgr)
-        if faces and hasattr(faces[0], "normed_embedding") and faces[0].normed_embedding is not None:
-            return np.asarray(faces[0].normed_embedding, dtype=np.float32)
+        # 1. Detection and landmark alignment
+        try:
+            faces = self._app.get(img_bgr)
+            if faces and hasattr(faces[0], "normed_embedding") and faces[0].normed_embedding is not None:
+                return np.asarray(faces[0].normed_embedding, dtype=np.float32)
+        except Exception:
+            pass
 
-        # Fallback for tightly cropped faces where detector may fail:
-        # call the recognition sub-model directly if present
+        # 2. Fallback for pre-cropped faces where detector might miss
         if hasattr(self._app, "models") and "recognition" in self._app.models:
             rec_model = self._app.models["recognition"]
-            emb = rec_model.get(img_bgr)
-            if emb is not None:
-                norm = np.linalg.norm(emb)
-                if norm > 0:
-                    emb = emb / norm
-                return np.asarray(emb, dtype=np.float32)
+            in_w, in_h = rec_model.input_size
+            crop_resized = cv2.resize(img_bgr, (in_w, in_h))
+            feats = rec_model.get_feat(crop_resized)
+            if feats is not None and len(feats) > 0:
+                feat = feats[0].flatten()
+                norm = float(np.linalg.norm(feat))
+                if norm > 1e-8:
+                    feat = feat / norm
+                return np.asarray(feat, dtype=np.float32)
 
-        # If still nothing, return a zero embedding placeholder
         return np.zeros(self.embedding_dim, dtype=np.float32)
 
     def distance(self, a: np.ndarray, b: np.ndarray) -> float:

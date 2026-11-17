@@ -11,6 +11,11 @@ import sys
 from pathlib import Path
 from collections import Counter
 
+# Ensure tools/face-eval is in sys.path
+_tools_dir = Path(__file__).resolve().parent.parent.parent
+if str(_tools_dir) not in sys.path:
+    sys.path.insert(0, str(_tools_dir))
+
 from face_eval.datasets.real_dataset import VALID_CONDITIONS
 
 

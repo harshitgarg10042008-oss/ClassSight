@@ -15,7 +15,7 @@ import numpy as np
 from face_eval.interfaces import RecognizerAdapter
 
 SFACE_URL = (
-    "https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/"
+    "https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/"
     "face_recognition_sface_2021dec.onnx"
 )
 
@@ -92,9 +92,5 @@ class R5SFaceRecognizer(RecognizerAdapter):
 
     def distance(self, a: np.ndarray, b: np.ndarray) -> float:
         """Cosine distance: 1 - cosine_similarity."""
-        import cv2
-
-        feat1 = a.reshape(1, -1).astype(np.float32)
-        feat2 = b.reshape(1, -1).astype(np.float32)
-        sim = float(self._model.match(feat1, feat2, cv2.FaceRecognizerSF.FR_COSINE))
-        return float(max(0.0, 1.0 - sim))
+        dot = float(np.dot(a, b))
+        return float(max(0.0, 1.0 - dot))

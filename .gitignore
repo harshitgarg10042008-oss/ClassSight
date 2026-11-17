@@ -31,3 +31,10 @@ eval_data/
 .work/eval-results/
 FINAL_RECOGNITION_EVAL.md
 .work/eval-venv/
+*.onnx
+*.pth
+*.pt
+*.bin
+*.weights
+*.tar.gz
+*.tgz
