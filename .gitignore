@@ -25,3 +25,9 @@ runtime-check/backups/
 FINAL_*.md
 tools/eval/out/
 tests/e2e/screenshots/
+
+# Face recognition evaluation harness artifacts
+eval_data/
+.work/eval-results/
+FINAL_RECOGNITION_EVAL.md
+.work/eval-venv/
