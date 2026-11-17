@@ -1,0 +1,81 @@
+# ClassSight Face-Eval Harness — Configuration
+# ---------------------------------------------
+# Edit this file to control which recognizers, datasets, and phases run.
+# DO NOT commit eval_data/ or .work/ to git.
+
+random_seed: 42
+calibration_split_seed: 42
+calibration_fraction: 0.3
+
+datasets:
+  lfw:
+    path: "C:/Users/vishe/scikit_learn_data/lfw_home/lfw_funneled"
+    alt_path: "eval_data/lfw"
+    type: "lfw"
+    enabled: true
+
+  calfw:
+    path: "eval_data/calfw"
+    type: "calfw"
+    enabled: false  # NOT VERIFIED — download and licence not confirmed
+
+  cplfw:
+    path: "eval_data/cplfw"
+    type: "cplfw"
+    enabled: false  # NOT VERIFIED — download and licence not confirmed
+
+  real:
+    path: "eval_data/real"
+    type: "real"
+    min_people: 10
+    min_sessions: 2
+    enabled: true  # auto-detects if real consented data present; skips gracefully if not
+
+recognizers:
+  - id: R0
+    name: "FaceNet-128d-seed42-L1 (Baseline)"
+    enabled: true
+
+  - id: R1
+    name: "FaceNet-512d-cosine"
+    enabled: true
+
+  - id: R2
+    name: "FaceNet-512d-L1"
+    enabled: true
+
+  - id: R3
+    name: "InsightFace-buffalo_l-cosine"
+    enabled: true
+
+  - id: R4
+    name: "AdaFace"
+    enabled: false  # attempt only — may not be installable in all environments
+
+  - id: R5
+    name: "ONNX-SFace"
+    enabled: true
+
+detectors:
+  - id: D0
+    name: "MTCNN (baseline)"    # matches production face-service-fastapi
+
+  - id: D1
+    name: "YuNet"
+
+  - id: D2
+    name: "SCRFD/RetinaFace (InsightFace)"
+
+thresholds:
+  # DISCREPANCY NOTE:
+  #   T_auto   — production code (MANHATTAN_AUTO_ACCEPT): 8.0  |  prompt spec: 7.75
+  #   T_review — production code (MANHATTAN_THRESHOLD):   9.74 |  prompt spec: 9.4924
+  #   M        — production code (MATCH_MARGIN):          0.5  |  prompt spec: 1.5
+  # Using production-code values as ground truth. Prompt spec values recorded for reference.
+  T_auto: 8.0      # from production code (prompt spec says 7.75  — discrepancy noted)
+  T_review: 9.74   # from production code (prompt spec says 9.4924 — discrepancy noted)
+  M: 0.5           # from production code (prompt spec says 1.5   — discrepancy noted)
+  # Prompt-spec reference values (do not use for calibration):
+  _spec_T_auto: 7.75
+  _spec_T_review: 9.4924
+  _spec_M: 1.5

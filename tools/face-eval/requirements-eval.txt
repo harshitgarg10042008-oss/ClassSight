@@ -1,0 +1,27 @@
+# Core scientific / numeric
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+
+# Image processing
+Pillow>=10.0
+opencv-python-headless>=4.8
+
+# Machine learning
+scikit-learn>=1.3
+
+# Deep learning (face embeddings)
+torch>=2.0
+torchvision>=0.15
+facenet-pytorch>=2.5.3
+
+# InsightFace (R3 ArcFace back-end)
+insightface>=0.7
+onnxruntime>=1.16
+
+# Utilities
+tqdm>=4.65
+pyyaml>=6.0
+
+# Testing
+pytest>=7.4
